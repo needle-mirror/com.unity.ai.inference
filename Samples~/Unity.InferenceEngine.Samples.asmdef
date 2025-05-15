@@ -1,0 +1,16 @@
+{
+    "name": "Unity.InferenceEngine.Samples",
+    "references": [
+        "Unity.InferenceEngine",
+        "Unity.Burst",
+        "Unity.InferenceEngine.ONNX.Editor"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
+}

@@ -1,0 +1,1317 @@
+#pragma kernel Conv3D_Generic MainName=Conv3D_Generic CONV3D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel Conv2D_Generic MainName=Conv2D_Generic CONV2D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel Conv1D_Generic MainName=Conv1D_Generic CONV1D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+
+#pragma kernel Conv3D_1x1_Generic MainName=Conv3D_1x1_Generic CONV3D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel Conv2D_1x1_Generic MainName=Conv2D_1x1_Generic CONV2D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel Conv1D_1x1_Generic MainName=Conv1D_1x1_Generic CONV1D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+
+#pragma kernel ConvTranspose3D_Generic MainName=ConvTranspose3D_Generic CONV_TRANSPOSE CONV3D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel ConvTranspose2D_Generic MainName=ConvTranspose2D_Generic CONV_TRANSPOSE CONV2D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+#pragma kernel ConvTranspose1D_Generic MainName=ConvTranspose1D_Generic CONV_TRANSPOSE CONV1D NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+
+//Not tested yet:
+// #pragma kernel ConvTranspose3D_1x1_Generic MainName=ConvTranspose3D_1x1_Generic CONV_TRANSPOSE CONV3D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+// #pragma kernel ConvTranspose2D_1x1_Generic MainName=ConvTranspose2D_1x1_Generic CONV_TRANSPOSE CONV2D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+// #pragma kernel ConvTranspose1D_1x1_Generic MainName=ConvTranspose1D_1x1_Generic CONV_TRANSPOSE CONV1D K1x1 NUMTHREADS_X=16 NUMTHREADS_Y=8 ELEM_PER_THREAD_X=4 ELEM_PER_THREAD_Y=8 CACHE_DEPTH=16
+
+
+#pragma multi_compile_local _ USEBIAS
+#pragma multi_compile_local _ UNIT_STRIDES
+
+// Note: this is bogus (actual values will be taken from the pragma definitions above) but prevents the compiler IPC from crashing,
+// ie this is to bypass a bug.
+#if !defined(NUMTHREADS_X)
+#define NUMTHREADS_X 8
+#endif
+#if !defined(NUMTHREADS_Y)
+#define NUMTHREADS_Y 8
+#endif
+
+
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Kptr;
+StructuredBuffer<float> Bptr;
+RWStructuredBuffer<float> Optr;
+
+uint O_channels, O_depth, O_height, O_width;
+uint X_channels, X_depth, X_height, X_width;
+uint K_depth, K_height, K_width;
+
+uint4 _Pad;
+uint4 _Stride;
+uint4 _Dilation;
+float _MinValue;
+
+#if defined(UNIT_STRIDES)
+#define _StrideParam uint4(1,1,1,1)
+#else
+#define _StrideParam _Stride
+#endif
+
+inline float ApplyFusedActivation(float v)
+{
+    return max(v, _MinValue);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// Main config:
+
+
+//#define BIAS_AFTER
+//..slightly faster before
+
+// Compiler IPC crash BS again, I can no longer disable this, don't know what is causing it,
+// but faster anyway:
+#define NB_THREADIDS_FROM_NUMTHREADS_XY
+
+#if !defined(K1x1)
+#define CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+#endif
+
+#if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE) && defined(SHADER_API_WEBGPU)
+// For SHADER_API_WEBGPU even when K1x1 (ie no spatial window), see ConvTranspose.compute, we still enable the caching 
+// path as if there was a spatial window, as this removes the triple for loop for it (but needs in turn to recover the individual window coord from a linear index)
+#define CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+#endif
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+
+// To quickly test variants
+
+//#define CACHE_DEPTH 16 // 32
+
+
+// #if 0
+// #define NUMTHREADS_X 64
+// #define NUMTHREADS_Y 4
+// #define ELEM_PER_THREAD_X 1
+// #define ELEM_PER_THREAD_Y 1
+
+// #elif !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+// //#define BIAS_AFTER
+
+// #define NUMTHREADS_X 16
+// #define NUMTHREADS_Y 8
+// #define ELEM_PER_THREAD_X 4
+// #define ELEM_PER_THREAD_Y 8
+
+// #else
+// //#define BIAS_AFTER
+
+// #define NUMTHREADS_X 16
+// #define NUMTHREADS_Y 8
+// #define ELEM_PER_THREAD_X 4
+// #define ELEM_PER_THREAD_Y 8
+// #endif
+
+
+// ------------------------------------------------------------------
+// Main threadgroup config
+#define NB_THREADS_PER_TG (NUMTHREADS_X*NUMTHREADS_Y)
+#define LOG2_NB_THREADS_PER_TG uint(log2(NB_THREADS_PER_TG))
+
+// Output channels and spatial elements per TG
+#define NB_OUTCHAN_PER_TG (ELEM_PER_THREAD_Y*NUMTHREADS_Y)
+#define LOG2_NB_OUTCHAN_PER_TG uint(log2(NB_OUTCHAN_PER_TG))
+
+#define NB_SPATIALS_PER_TG (ELEM_PER_THREAD_X*NUMTHREADS_X)
+#define LOG2_NB_SPATIALS_PER_TG uint(log2(NB_SPATIALS_PER_TG))
+// ------------------------------------------------------------------
+
+
+#if !defined(SHADER_API_D3D11)
+#define MIN_WHEN_NON_D3D(val, maxidx) (min((val), (maxidx)))
+#else
+#define MIN_WHEN_NON_D3D(val, maxidx) (val)
+#endif
+
+
+
+#if defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+#define IF_ONLY_INCHAN_ELSE(a, b) (b)
+#else
+#define IF_ONLY_INCHAN_ELSE(a, b) (a)
+#endif
+
+#if defined(CONV_TRANSPOSE)
+#define IF_CONV_TRANSPOSE_ELSE(a, b) (a)
+#else
+#define IF_CONV_TRANSPOSE_ELSE(a, b) (b)
+#endif
+
+
+#define NB_BANKS 32
+#define LOG2_NB_BANKS 5
+
+
+// Main derived config that makes the rest of the code generic:
+//
+// NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE
+// NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+//
+// SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE
+// SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE
+//
+// NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE
+//
+// NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE
+// eg stride when doing multiple load/store in LDS   (using the counter )
+//
+// IF_THREAD_DOING_W_LDS_STORE
+// ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE
+// ->in the original conv scheme just "ti" because all threads index into LDS, high part are for the inner cache chunk,
+// low part is for all the output channels
+//
+// NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE
+// NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+// 
+// SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE
+// SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE
+// 
+// NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE
+// 
+// NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE
+// 
+// IF_THREAD_DOING_X_LDS_STORE
+// ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE
+//
+//
+// need also (then not enough threadids left for inner chunk, used in inner product sum)
+//    NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE
+//    NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE
+
+
+#define LDS_W_STRICT_SIZE (CACHE_DEPTH * NB_OUTCHAN_PER_TG)
+#define LDS_X_STRICT_SIZE (CACHE_DEPTH * NB_SPATIALS_PER_TG)
+#define LDS_W_FINAL_SIZE (LDS_W_STRICT_SIZE + (LDS_W_STRICT_SIZE >> LOG2_NB_BANKS))
+#define LDS_X_FINAL_SIZE (LDS_X_STRICT_SIZE + (LDS_X_STRICT_SIZE >> LOG2_NB_BANKS))
+#define LDS_BCAO(off) (off + (off >> LOG2_NB_BANKS)) // bank conflict avoidance offset
+
+
+#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+#define USE_ALTERNATE_LDS_ORG_X // TODO investigate (hunch: drvopt), saves 2ms / 40ms 
+#define USE_ALTERNATE_LDS_ORG_W // TODO investigate, saves 5-6 / 42ms
+#endif
+
+#ifdef USE_ALTERNATE_LDS_ORG_W
+
+groupshared float LDS_W[NB_OUTCHAN_PER_TG * (CACHE_DEPTH+1)];
+// ITE = inner (kernel inputchannel and possibly flattened spatial) index, threadid for output indices, explicit output channel
+#define LDS_ACCESS_W_ITE(ik, ytid, eoc) LDS_W[(ik) * (NUMTHREADS_Y * ELEM_PER_THREAD_Y + 1) + (ytid) * ELEM_PER_THREAD_Y + (eoc)]
+
+#else // #ifdef USE_ALTERNATE_LDS_ORG_W
+
+groupshared float LDS_W[LDS_W_FINAL_SIZE];
+#define LDS_ACCESS_W_BCA(offset) LDS_W[LDS_BCAO(offset)]
+// slower?
+// #define LDS_ACCESS_W(offset) LDS_ACCESS_W_BCA(offset) // LDS_W[offset]
+#define LDS_ACCESS_W(offset) LDS_W[offset]
+
+#endif // #ifdef USE_ALTERNATE_LDS_ORG_W
+
+
+#ifdef USE_ALTERNATE_LDS_ORG_X
+
+groupshared float LDS_X[NB_SPATIALS_PER_TG * (CACHE_DEPTH+0)];
+// ITE = inner (kernel inputchannel and possibly flattened spatial) index, threadid for output spatial indices, explicit spatial indices
+#define LDS_ACCESS_X_ITE(ik, xtid, esp) LDS_X[(ik) * (NUMTHREADS_X * ELEM_PER_THREAD_X) + (xtid) * ELEM_PER_THREAD_X + (esp)]
+
+#else // #ifdef USE_ALTERNATE_LDS_ORG_X
+
+groupshared float LDS_X[LDS_X_FINAL_SIZE];
+#define LDS_ACCESS_X_BCA(offset) LDS_X[LDS_BCAO(offset)]
+// slower?
+// #define LDS_ACCESS_X(offset) LDS_ACCESS_X_BCA(offset) // LDS_X[offset]
+#define LDS_ACCESS_X(offset) LDS_X[offset]
+
+#endif // #ifdef USE_ALTERNATE_LDS_ORG_X
+
+// ------------------------------------------------------------------
+// Main threadgroup config
+// #define NB_THREADS_PER_TG (NUMTHREADS_X*NUMTHREADS_Y)
+// #define LOG2_NB_THREADS_PER_TG uint(log2(NB_THREADS_PER_TG))
+
+// // Output channels and spatial elements per TG
+// #define NB_OUTCHAN_PER_TG (ELEM_PER_THREAD_Y*NUMTHREADS_Y)
+// #define LOG2_NB_OUTCHAN_PER_TG uint(log2(NB_OUTCHAN_PER_TG))
+
+// #define NB_SPATIALS_PER_TG (ELEM_PER_THREAD_X*NUMTHREADS_X)
+// #define LOG2_NB_SPATIALS_PER_TG uint(log2(NB_SPATIALS_PER_TG))
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// Weight LDS loads
+
+// assert NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE <= NB_THREADS_PER_TG
+// as we dont do any multiple explicit loads for output channels loads in LDS:
+
+// #if NB_OUTCHAN_PER_TG > NB_THREADS_PER_TG
+    // #error Having NB_OUTCHAN_PER_TG > NB_THREADS_PER_TG needs additional loops in LDS W/X load/stores, and probably not useful.
+// #endif
+
+#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+    #define NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE NUMTHREADS_Y
+#else
+    #if NB_OUTCHAN_PER_TG > NB_THREADS_PER_TG
+        #define NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE NB_THREADS_PER_TG
+    #else
+        #define NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE NB_OUTCHAN_PER_TG
+    #endif
+#endif
+
+#if !( ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 1) \
+    || ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 2) \
+    || ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 4) \
+    || ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 8) \
+    || ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 16) \
+    || ((NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == 32) )
+#error NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE should be a power of 2
+#endif
+
+
+#define NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE (NB_OUTCHAN_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE)
+
+
+#define LOG2_NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE uint(log2(NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE))
+
+#define NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE (NB_THREADS_PER_TG/NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE)
+
+
+#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+    #define SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid) (gtid.y)
+    #define SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) (gtid.x)
+#else
+    #define SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid) (ti & (NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE-1))
+    #define SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) (ti >> LOG2_NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE)
+#endif
+
+#if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+
+    #define NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE (CACHE_DEPTH / NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE)
+    // ...again CACHE_DEPTH should be pow2, and eg we have 16 / (256/64) = 16/4 = 4
+    // see assert above and also, assert CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+    // or test and if <, need also an additional test in IF_THREAD_DOING_W_LDS_STORE as we have more threads
+    // than required to load the input channels even!
+
+    // #define SEL_HIGHTHREADS_AS_INCHAN_FOR_WEIGHTS_LDS_STORE(ti, gtid) (ti & (NB_THREADS_PER_TG-NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE))
+    // ...this is because *remaining* high threadids are used straight for input channels
+    // and the number of threads to be used for output channels are the amount we need to output,
+    // the **MASK** for the later is (NB_THREADS_PER_TG-NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE): we dont use NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+    // since this is not the mask, we actually want to leave the bits in the same position!
+
+    // So yeah right now in this scheme we (another assert) assume # output channels is always loaded all using threadids,
+    // never explicitly.
+
+    // #define ADD_WEIGHTS_LDS_STORE_IDX_FROM_THREAD(ti, gtid) (SEL_HIGHTHREADS_AS_INCHAN_FOR_WEIGHTS_LDS_STORE(ti, gtid) + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid))
+    // ...but in that case just use ti directly!!
+    // ie SEL_HIGHTHREADS_AS_INCHAN_FOR_WEIGHTS_LDS_STORE(ti, gtid) + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid) == ti !!
+
+
+    #define NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE (NB_THREADS_PER_TG)
+    // assert (NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) == NB_THREADS_PER_TG
+    #if (NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) != NB_THREADS_PER_TG
+    #error (NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE) should be == NB_THREADS_PER_TG
+    #endif
+
+    // TODO: will no longer be needed once we actually not hardcode ti & 63 for SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE !!
+    // ACTUALLY NO case still useful: CACHE_DEPTH is not as high as the number of leftover threads so still need to keep excessive
+    // threads out of the loading code block!
+    #define IF_THREAD_DOING_W_LDS_STORE(ti, gtid) // here passthrough, ie if(true), as CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+
+    #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+        #define ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid) (gtid.y)  // TODOTODO CUSTOM! combine x and y
+    #else
+        #define ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid) (ti)
+    #endif
+
+#else // #if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+
+    // Here CACHE_DEPTH < NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+    // so we have more threads than needed to load weights in the LDS:
+
+    #define NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE 1
+    //#define SEL_HIGHTHREADS_AS_INCHAN_FOR_WEIGHTS_LDS_STORE(ti, gtid) (ti & (NB_THREADS_PER_TG-NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE))
+    // This would be to work as a mask like the original (ti & 0x1C0)
+
+
+    #define NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE (CACHE_DEPTH * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE)
+
+    #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+        #define IF_THREAD_DOING_W_LDS_STORE(ti, gtid) if (gtid.x < CACHE_DEPTH) // x threadids are used for inchan
+        #define ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid) (gtid.y)  // TODOTODO CUSTOM! combine x and y
+    #else
+        #define IF_THREAD_DOING_W_LDS_STORE(ti, gtid) if (ti < NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE) // high threads are used for inchan, hence the ti < test
+        // Guarded version not really needed if using the IF_THREAD_DOING_W_LDS_STORE :
+        // #define ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid) (ti & (NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE - 1))
+        #define ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid) (ti)
+    #endif
+
+#endif // #if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE
+
+#define LOG2_NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE uint(log2(NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE))
+
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// X Input LDS loads
+
+// assert NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE <= NB_THREADS_PER_TG
+// as we dont do any multiple explicit loads for spatial dimensions elements (from the input X) loads in LDS:
+//#define NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE min(NB_THREADS_PER_TG, NB_SPATIALS_PER_TG)
+// #if NB_SPATIALS_PER_TG > NB_THREADS_PER_TG
+    // #error Having NB_SPATIALS_PER_TG > NB_THREADS_PER_TG needs additional loops in LDS W/X load/stores, and probably not useful.
+// #endif
+
+
+
+#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+    #define NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE NUMTHREADS_X
+#else
+    #if NB_SPATIALS_PER_TG > NB_THREADS_PER_TG
+        #define NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE NB_THREADS_PER_TG
+    #else
+        #define NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE NB_SPATIALS_PER_TG
+    #endif
+#endif
+
+#if !( ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 1) \
+    || ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 2) \
+    || ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 4) \
+    || ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 8) \
+    || ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 16) \
+    || ((NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == 32) )
+#error NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE should be a power of 2
+#endif
+
+#define NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE (NB_SPATIALS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+
+#define LOG2_NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE uint(log2(NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE))
+
+#define NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE (NB_THREADS_PER_TG/NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+
+
+#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+    #define SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid) (gtid.x)
+    #define SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) (gtid.y)
+#else
+    #define SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid) (ti & (NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE-1))
+    #define SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid)(ti >> LOG2_NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+#endif
+
+
+#if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+
+    #define NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE (CACHE_DEPTH / NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE)
+
+    #define NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE (NB_THREADS_PER_TG)
+    // assert (NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == NB_THREADS_PER_TG
+    #if (NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) != NB_THREADS_PER_TG
+    #error (NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) should be == NB_THREADS_PER_TG
+    #endif
+
+    #define IF_THREAD_DOING_X_LDS_STORE(ti, gtid) // here passthrough, ie if(true), as CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+
+
+    #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+        #define ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid) (gtid.x)  // TODOTODO CUSTOM! combine x and y
+    #else
+        #define ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid) (ti)
+    #endif
+
+#else // #if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+
+    // Here CACHE_DEPTH < NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+    // so we have more threads than needed to load all needed input values from X in the LDS:
+
+    #define NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE 1
+
+    #define NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE (CACHE_DEPTH * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+
+    #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+        #define IF_THREAD_DOING_X_LDS_STORE(ti, gtid) if (gtid.y < CACHE_DEPTH) // y threadids are used for inchan
+        #define ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid) (gtid.x)  // TODOTODO CUSTOM! combine x and y
+    #else
+        #define IF_THREAD_DOING_X_LDS_STORE(ti, gtid) if (ti < NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE)
+        // Guarded version not really needed if using the IF_THREAD_DOING_W_LDS_STORE :
+        // #define ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid) (ti & (NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE - 1))
+        #define ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid) (ti)
+    #endif
+
+#endif // #if CACHE_DEPTH >= NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE
+
+#define LOG2_NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE uint(log2(NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE))
+
+// ------------------------------------------------------------------
+// LDS rebroadcast and MAD to final output writing threads
+// ELEM_PER_THREAD_X ELEM_PER_THREAD_Y
+
+#define NB_ACCU_REG_PER_THREAD (ELEM_PER_THREAD_X * ELEM_PER_THREAD_Y)
+
+// ------------------------------------------------------------------
+
+
+// kicsp = kernel inchan and possible spatial (ie inside a single output channel slice of the kernel)
+// eoc = extra output channel per oc index
+// oc = output channel
+//#define LDS_W(kicsp, eoc, oc)
+//#define LDS_ACCESS_W3(kicsp, eoc, oc)
+//#define LDS_ACCESS_X3(kicsp, esp, sp)
+// or with also gid, tid, etc. ? 
+
+
+
+[numthreads(NUMTHREADS_X, NUMTHREADS_Y, 1)]
+void MainName(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    uint3 gtid = groupThreadID;
+    uint x = dispatchThreadID.x * ELEM_PER_THREAD_X; // depth*width*height
+    uint y = dispatchThreadID.y * ELEM_PER_THREAD_Y; // output_channels
+    uint tx = groupThreadID.x;
+    uint ty = groupThreadID.y;
+    uint bx = (NUMTHREADS_X * groupID.x) * ELEM_PER_THREAD_X;
+    uint by = (NUMTHREADS_Y * groupID.y) * ELEM_PER_THREAD_Y;
+    uint ti = threadIndex;
+    uint xx =  bx + tx;
+    uint yy =  by + ty;
+
+    #if defined(CONV3D)
+    uint d = O_depth;
+    uint h = O_height;
+    uint w = O_width;
+    uint channels = X_channels;
+    uint features = O_channels;
+    uint depthX = X_depth;
+    uint heightX = X_height;
+    uint widthX = X_width;
+    uint strideX = depthX * heightX * widthX;
+    uint strideO = d * h * w;
+    uint strideK = K_depth * K_height * K_width;
+    #elif defined(CONV2D)
+    uint h = O_height;
+    uint w = O_width;
+    uint channels = X_channels;
+    uint features = O_channels;
+    uint heightX = X_height;
+    uint widthX = X_width;
+    uint strideX = heightX * widthX;
+    uint strideO = h * w;
+    uint strideK = K_height * K_width;
+    #elif defined(CONV1D)
+    uint w = O_width;
+    uint channels = X_channels;
+    uint features = O_channels;
+    uint widthX = X_width;
+    uint strideX = widthX;
+    uint strideO = w;
+    uint strideK = K_width;
+    #endif
+
+    uint kInnerSliceSize = channels * strideK;
+    uint maxBIndex = (features - 1);
+
+
+#if !defined(CONV_TRANSPOSE)
+// Important:
+//
+// First note "channels" (input channels number) and "features" (output channels number)
+// are taken from the input tensor X and the output tensor O, NOT the kernel.
+// This allows us to ignore for these the swap in semantics on which axes we use in the kernel
+// for the inner product part of the convolution, depending on if we have conv transpose or not.
+// ie the semantics of "channels" and "features" stay the same whether we have conv transpose
+// or not.
+//
+// When not conv transpose, the kernel inner slice size - that is the inner (input) channels and spatial dims
+// on which we do an inner product with the input data X -
+// and output channel element strides are the same, obviously because these axes are all adjacent,
+// but the kernel is kept identical if to be used in a conv transpose, but the semantics of the
+// output/input channel axes are swapped (eg to allow reusing the same kernel tensors in forward and
+// backward passes since the conv transpose is effectively the gradient of the conv with the same kernel
+// wrt to its inputs given the outputs that were generated).
+// Thus in conv transpose, we sum on the outermost axis (axis 0) of the kernel for "input" channels
+// and the spatial axes, so the "inner slice" (also called "kicsp" in this code, that we cache in a mixed
+// fashion when CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE) is effectively split and not contiguous.
+#define kStrideOC kInnerSliceSize
+#else
+// When conv transpose, switching output channels in the kernel means switching elements on axis 1
+// (ie + spatial dims total size, strideK)
+#define kStrideOC strideK
+#endif
+
+
+    uint batchReadOffset = dispatchThreadID.z * channels * strideX;
+    uint batchWriteOffset = dispatchThreadID.z * features * strideO;
+
+
+#if !defined(CONV_TRANSPOSE) || !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+    // If we're not doing conv transpose, the inner kernel slice has channels adjacent (and outermore)
+    // to the innermore spatial dimensions, so we can use a stride to add to the reading index.
+    // When doing conv transpose, we can only use such a stride if we're only caching weights for different inner channels
+    // and NOT mixed with different spatial dims too (what I called a mixed kicsp slice).
+    uint readK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) * kStrideOC 
+        + SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) * IF_ONLY_INCHAN_ELSE(IF_CONV_TRANSPOSE_ELSE(features * strideK, strideK), 1);
+    // IF_ONLY_INCHAN_ELSE : else 1 since in that case we dig in a flattened output channel slice, ie kernel weights can correspond to different input channel indices
+    // but also kernel spatial offsets indices too.
+    // IF_CONV_TRANSPOSE_ELSE: in conv transpose, the semantics of the kernel axes are (in order outermost to inner) input_channels_to_sum, output_channels aka features, spatial dims
+    // (axes 0 and 1 semantics are swapped while keeping the exact same kernel tensor as used in a normal conv).
+    // So the stride of inner channels ("inner" == those on which we sum) is the axis-0 element stride, not axis-1 as in normal convolution.
+
+#else
+    // defined(CONV_TRANSPOSE) && defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE):
+    // Conv transpose path with CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+    //
+    // No inner slice (kicsp) selection with threadids is made outside loops in conv transpose when caching both for
+    // different kernel input (inner) channels and spatial (kicsp slice), (ie when CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+    // as a translation (split in 2 coords) is needed
+    // from inner slice element index to 2 coords: axis 0 element 
+    // (kernel "input channels" on which we sum - again note these are normally the output channels for same kernel used as normal conv kernel)
+    // and linear spatial (flattened spatial dims of the kernel) element.
+    uint readK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) * kStrideOC;
+#endif
+
+    bool outChanMaskK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) < features;
+
+
+    // We will initialize accumulators with output channel bias which is the same for all input/output spatial
+    // coordinates (as conceptually part of the kernels for each output channel, which process the same input)
+    // so we also replicate these values for all spatial coordinates handled.
+    //
+    // We need the following amount of accumulators:
+    //          (ELEM_PER_THREAD_X ie spatial elements per thread) x (ELEM_PER_THREAD_Y ie output channel elements per thread)
+    // 
+    // We use indexing for registers to simplify the code but this is all statically indexed so should not change
+    // any compiler output vs using non-indexing.
+    //
+
+    float dstA[NB_ACCU_REG_PER_THREAD];
+    #define OC_AREG_STRIDE ELEM_PER_THREAD_X  // output channel accumulator reg stride
+
+    uint eoc; // (per thread) explicit output channels indices
+    uint esp; // (per thread) explicit spatial indices
+    [unroll]
+    for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+    {
+    #if defined(USEBIAS) && !defined(BIAS_AFTER)
+        dstA[eoc * OC_AREG_STRIDE] = Bptr[MIN_WHEN_NON_D3D(yy + eoc * NUMTHREADS_Y, maxBIndex)];
+    #else
+        dstA[eoc * OC_AREG_STRIDE] = 0;
+    #endif
+    }
+
+    // Init / Replication of accumulators from bias:
+    [unroll]
+    for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+        [unroll]
+        for (esp = 1; esp < ELEM_PER_THREAD_X; esp++)
+        {
+        #if defined(USEBIAS) && !defined(BIAS_AFTER)
+            dstA[eoc * OC_AREG_STRIDE + esp] = dstA[eoc * OC_AREG_STRIDE];
+        #else
+            dstA[eoc * OC_AREG_STRIDE + esp] = 0;
+        #endif
+        }
+
+
+
+    uint topDPadded[NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+    uint topYPadded[NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+    uint topXPadded[NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+
+
+    [unroll]
+    for (esp = 0; esp < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE; esp++)
+    {
+        // Important: Note the stride of NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE
+        // NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE == NB_SPATIALS_PER_TG
+        uint centroidId = bx + SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid) + esp * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE;
+
+        #if !defined(CONV_TRANSPOSE)
+        uint4 strideParam = _StrideParam;
+        #else
+        uint4 strideParam = uint4(1,1,1,1);
+        #endif
+
+        #if defined(CONV3D)
+        topDPadded[esp] = (((centroidId / w) / h)) * strideParam.x - _Pad.x;
+        topYPadded[esp] = ((centroidId / w) % h) * strideParam.y - _Pad.y;
+        topXPadded[esp] = (centroidId % w) * strideParam.z - _Pad.z;
+
+        #elif defined(CONV2D)
+        topYPadded[esp] = ((centroidId / w)) * strideParam.x - _Pad.x;
+        topXPadded[esp] = (centroidId % w) * strideParam.y - _Pad.y;
+
+        #elif defined(CONV1D)
+        topXPadded[esp] = centroidId * strideParam.x - _Pad.x;
+
+        #endif
+    }
+
+
+    // uint readX = batchReadOffset + strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + linear offset;
+    // Final linear offset, eg for 2D = (topY - _Pad.x) * widthX + (topX - _Pad.y),
+    // will be in kernelOffsetX.
+    #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+    uint readX = batchReadOffset + strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid);
+    #endif
+
+
+
+#if defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+    for (uint i = 0; i < kInnerSliceSize; i += CACHE_DEPTH)
+
+#else // #if CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+
+    // Here we only cache (for the inner product) for different input channels,
+    // not for different kernel spatial coords
+
+    #if defined(CONV_TRANSPOSE)
+    uint weightOffsetK = (strideK - 1);
+    #else
+    uint weightOffsetK = 0;
+    #endif
+
+
+#if !defined(K1x1)
+    #if defined(CONV3D)
+        for (uint dd = 0; dd < K_depth; dd++)
+        for (uint dy = 0; dy < K_height; dy++)
+        for (uint dx = 0; dx < K_width; dx++)
+    #elif defined(CONV2D)
+        for (uint dy = 0; dy < K_height; dy++)
+        for (uint dx = 0; dx < K_width; dx++)
+    #elif defined(CONV1D)
+        for (uint dx = 0; dx < K_width; dx++)
+    #endif
+#endif // !defined(K1x1)
+#endif // #else // #if CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+    {
+        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+            uint kernelOffsetX[NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+            bool maskX[NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+
+            [unroll]
+            for (esp = 0; esp < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE; esp++)
+            {
+                #if defined(CONV_TRANSPOSE)
+                uint4 strideParamIfConvTrans = _StrideParam;
+                #else
+                uint4 strideParamIfConvTrans = uint4(1,1,1,1);
+                #endif
+
+                // Note: because of the define above, if we're not using conv transpose,
+                // all / strideParamIfConvTrans subexpressions and all mask modulo ( % ) tests
+                // will all be optimized out by the compiler.
+                // This is just to avoid even more #ifdef blocks below.
+
+                // We do the same for K1x1 vs dilations:
+                #if defined(K1x1)
+                uint4 dilationParam = uint4(0,0,0,0);
+                uint dd = 0;
+                uint dy = 0;
+                uint dx = 0;
+                #else
+                uint4 dilationParam = _Dilation;
+                #endif
+
+                #ifdef CONV3D
+                kernelOffsetX[esp] = (topDPadded[esp] + _Dilation.x * dd)  / strideParamIfConvTrans[0] * heightX * widthX + (topYPadded[esp] + _Dilation.y * dy) / strideParamIfConvTrans[1] * widthX 
+                    + (topXPadded[esp] + _Dilation.z * dx) / strideParamIfConvTrans[2];
+                maskX[esp] = ((topDPadded[esp] + _Dilation.x * dd) / strideParamIfConvTrans[0]) < depthX &&  ((topDPadded[esp] + _Dilation.x * dd) % strideParamIfConvTrans[0] == 0) &&
+                             ((topYPadded[esp] + _Dilation.y * dy) / strideParamIfConvTrans[1]) < heightX && ((topYPadded[esp] + _Dilation.y * dy) % strideParamIfConvTrans[1] == 0) &&
+                             ((topXPadded[esp] + _Dilation.z * dx) / strideParamIfConvTrans[2]) < widthX &&  ((topXPadded[esp] + _Dilation.z * dx) % strideParamIfConvTrans[2] == 0);
+                #elif defined(CONV2D)
+                kernelOffsetX[esp] = (topYPadded[esp] + _Dilation.x * dy) / strideParamIfConvTrans[0] * widthX + (topXPadded[esp] + _Dilation.y * dx) / strideParamIfConvTrans[1];
+                maskX[esp] = ((topYPadded[esp] + _Dilation.x * dy) / strideParamIfConvTrans[0]) < heightX && ((topYPadded[esp] + _Dilation.x * dy) % strideParamIfConvTrans[0] == 0) &&
+                             ((topXPadded[esp] + _Dilation.y * dx) / strideParamIfConvTrans[1]) < widthX &&  ((topXPadded[esp] + _Dilation.y * dx) % strideParamIfConvTrans[1] == 0);
+                #elif defined(CONV1D)
+                kernelOffsetX[esp] = (topXPadded[esp] + _Dilation.x * dx) / strideParamIfConvTrans[0];
+                maskX[esp] = ((topXPadded[esp] + _Dilation.x * dx) / strideParamIfConvTrans[0]) < widthX && ((topXPadded[esp] + _Dilation.x * dx) % strideParamIfConvTrans[0] == 0);
+                #endif
+            }
+
+        for (uint i = 0; i < channels; i += CACHE_DEPTH)
+        #endif // #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+        {
+            // store to LDS
+            {
+                // #if NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE * NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE == 2 * 8
+                // #error ok
+                // #endif
+                float srcW[NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE * NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE];
+                float srcX[NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE];
+
+                bool innerElemInBound = false;
+
+                // Note: These line (IF_THREAD_DOING_*) can create a huge difference in perf in a case where we have more threadids left for the
+                // inner slice indices after allocating those for output channel indices, then we need for the total CACHE_DEPTH)
+                // since otherwise (eg when not using NB_THREADIDS_FROM_NUMTHREADS_XY) a group of totalthreads_in_tg/(ELEM_PER_THREAD_Y*NUMTHREADS_Y) threads 
+                // all try to load/store the same location (on store, which one is undefined but since all carry the same value it doesn't matter)
+                // but more importantly those requests could come from different waves so even for loads probably no hw broadcast possible
+                // (and for store, can't just pick a single thread for the undefined spec).
+                IF_THREAD_DOING_W_LDS_STORE(ti, gtid)
+                {
+                    const uint innerThreadIdsStride = NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE; // threadids used for inchan stride
+
+                    // uint readK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) * kStrideOC + SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) * IF_ONLY_INCHAN_ELSE(strideK,1);
+                    // bool outChanMaskK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) < features;
+
+
+                #if !defined(CONV_TRANSPOSE) || !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                    // If we're not doing conv transpose, the inner kernel slice has channels adjacent (and outermore)
+                    // to the innermore spatial dimensions, so we can use a stride to add to the reading index.
+                    // When doing conv transpose, we can only use such a stride if we're only caching weights for different inner channels
+                    // and NOT mixed with different spatial dims too (what I called a mixed kicsp slice).
+                    const uint innerIdxStride = IF_ONLY_INCHAN_ELSE(IF_CONV_TRANSPOSE_ELSE(features * strideK, strideK), 1) * innerThreadIdsStride;
+
+                    // in conv transpose, the semantics of the kernel axes are (in order outermost to inner) input_channels_to_sum, output_channels aka features, spatial dims
+                    // (axes 0 and 1 semantics are swapped while keeping the exact same kernel tensor as used in a normal conv).
+
+                    uint baseIdxInnerPartStart = readK + IF_ONLY_INCHAN_ELSE(IF_CONV_TRANSPOSE_ELSE(features * strideK, strideK), 1) * i + IF_ONLY_INCHAN_ELSE(weightOffsetK, 0);
+
+                #else
+                    // defined(CONV_TRANSPOSE) && defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE):
+                    // Conv transpose path with CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE
+                    //
+                    // No inner slice (kicsp) selection with threadids is made outside loops in conv transpose when caching both for
+                    // different kernel input (inner) channels and spatial (kicsp slice), (ie when CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                    // as a translation (split in 2 coords) is needed
+                    // from inner slice element index to 2 coords: axis 0 element 
+                    // (kernel "input channels" on which we sum - again note these are normally the output channels for same kernel used as normal conv kernel)
+                    // and linear spatial (flattened spatial dims of the kernel) element.
+                    // uint readK = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)) * kStrideOC;
+
+                    uint baseIdxInnerPartStart = readK; // + IF_ONLY_INCHAN_ELSE(weightOffsetK, 0); but here defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                #endif
+
+                    uint baseOutputChanElement = (by + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)); // to update outChanMaskK
+
+                    bool curOutChanMaskK = outChanMaskK;
+
+
+                    // TODOTODO: #if defined(CONV_TRANSPOSE) && defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                    // flip the loop order
+                    [unroll]
+                    for (uint eoc = 0; eoc < NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE; eoc++)
+                    {
+                        uint baseIdx = baseIdxInnerPartStart;
+                        uint baseInnerElement = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) + i;
+                        // ...important! reset baseIdx and baseInnerElement for the flattened/combined kStrideOC-sized or input channels-sized slice
+                        [unroll]
+                        for (uint eic = 0; eic < NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE; eic++)
+                        {
+                        #if defined(CONV_TRANSPOSE) && defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                            uint kInnerFlatSpatialElement = baseInnerElement % strideK;
+                            uint kInnerInChannelElement = baseInnerElement / strideK;
+                            baseIdx = baseIdx + kInnerInChannelElement * (features * strideK /* or * kStrideOC */) + (strideK - 1) - kInnerFlatSpatialElement;
+                            // (strideK - 1) - kInnerFlatSpatialElement: kernel is flipped along its spatial axes and the new "top/left/element 0" ie start of the window
+                            // which is aligned on each start of input element (input is conceptually augmented with zero padding and "exploded with interleaved zeroes" by the stride param)
+                            // is the "end" of the "original" (ie that would be used in normal conv) kernel and moving forward in the kernel for conv transpose
+                            // means backward in the "original" kernel.
+                        #endif
+
+                            //innerElemInBound = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) + (i + eic * innerThreadIdsStride) < IF_ONLY_INCHAN_ELSE(channels, kInnerSliceSize);
+                            innerElemInBound = baseInnerElement < IF_ONLY_INCHAN_ELSE(channels, kInnerSliceSize);
+                            float val = 0.0f;
+                            if (curOutChanMaskK && innerElemInBound)
+                                //val = Kptr[readK + IF_ONLY_INCHAN_ELSE(strideK, 1) * (i + eic * innerThreadIdsStride) + IF_ONLY_INCHAN_ELSE(weightOffsetK, 0)];
+                                val = Kptr[baseIdx];
+
+                        #if !defined(CONV_TRANSPOSE) || !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                            baseIdx += innerIdxStride;
+                        #endif
+                            baseInnerElement += innerThreadIdsStride;
+
+                            //LDS_[W_OFFSET + (eic * NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid)] = val;
+                            srcW[eoc * NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE + eic] = val;
+                        }
+                        baseIdxInnerPartStart += kStrideOC * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE;
+                        // switch to next group of explicit output channel (1 group == NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE indices)
+                        baseOutputChanElement += NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE;
+                        curOutChanMaskK = baseOutputChanElement < features;
+                    }
+
+                }
+
+
+                IF_THREAD_DOING_X_LDS_STORE(ti, gtid)
+                {
+
+                    const uint innerThreadIdsStride = NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE; // threadids used for inchan stride
+
+                #if 0
+                    // TODOTODO  conv transpose path
+
+
+                    // Switch LOOP order if NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE
+                    [unroll]
+                    for (uint esp = 0; esp < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE; esp++)
+                    {
+                        // cornerId from -> centroidId = bx + SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid);
+                        // uint readX = strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + cornerId + batchReadOffset;
+                        // update: readX no longer has cornerId
+
+                        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                        //uint readX = batchReadOffset + strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid);
+                        uint baseIdx = readX + strideX * i + kernelOffsetX[esp]; // now kernelOffsetX includes cornerId !
+                        uint innerIdxStride = strideX * innerThreadIdsStride;
+                        #else
+                        // CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE case:
+                        // No readX as it would only contain batchReadOffset outside loops, and no innerIdxStride usage possible
+                        // as the precise index depends on a conversion between what kicsp index in that (kicsp) mixed inner chunk 
+                        // is used for the weights, so converting from the kernel input channel and window coordinates for each 
+                        // to the corresponding input data input channel (same) and spatial offset (from the kernel spatial window part).
+                        #endif
+                        uint baseInnerElement = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + i;
+                        // ...important! reset baseInnerElement for the flattened/combined kStrideOC-sized or input channels-sized slice
+                        // at each start of a new inner (input channel / kernel spatial window) chunk
+
+                        // Also, the switch to next group of explicit spatial indices (esp) (1 group == NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE indices)
+                        // is implicit and precalculated in the [esp] indexed arrays (topDXY, kernelOffsetX)
+
+                        [unroll]
+                        for (uint eic = 0; eic < NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE; eic++)
+                        {
+                        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+                            //innerElemInBound = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + (i + eic * innerThreadIdsStride) < channels;
+                            innerElemInBound = baseInnerElement < channels;
+
+                            float val = 0.0f;
+                            if (maskX[esp] && innerElemInBound)
+                                val = Xptr[baseIdx];
+                                //val = Xptr[readX + strideX * (i + eic * innerThreadIdsStride) + kernelOffsetX];
+                                //                   -------        ---   ----  => hence innerIdxStride to add to baseIdx is just (strideX * innerThreadIdsStride)
+                                // and similarly baseInnerElement just doesn't include the strideX, it just expresses the inner element number not the full linear index
+                                // so it is simply innerThreadIdsStride since we have NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE threadids chunk at each loop turn.
+
+                            baseIdx += innerIdxStride;
+                            baseInnerElement += innerThreadIdsStride;
+                            //LDS_[X_OFFSET + (eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid)] = val;
+                            srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic] = val;
+
+                        #else
+                            // inner index to match kernel CACHE_DEPTH-sized chunk
+                            //uint ii = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + (i + eic * innerThreadIdsStride);
+                            uint ii = baseInnerElement;
+                            bool inBound = ii < kStrideOC; // that way no need to check ic < channels below
+
+                            // Note: K1x1 cannot be defined here at the same time that CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE is,
+                            // as in that K1x1 case, we can only be caching for different input channels indices,
+                            // the spatial dimensions sizes of the kernel all multiply to 1, ie there's only one spatial coord in the kernel.
+                            // #if defined(K1x1)
+                            // #error "K1x1 shouldn't touch the path where CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE"
+                            // #endif
+                            // Update: SHADER_API_WEBGPU
+
+                            #if defined(CONV_TRANSPOSE)
+                            uint4 strideParamIfConvTrans = _StrideParam;
+                            #else
+                            uint4 strideParamIfConvTrans = uint4(1,1,1,1);
+                            #endif
+                            // Note: because of the define above, if we're not using conv transpose,
+                            // all / strideParamIfConvTrans subexpressions and all mask modulo ( % ) tests
+                            // will all be optimized out by the compiler.
+                            // This is just to avoid even more #ifdef blocks below.
+
+                            #if defined(K1x1)
+                            uint4 dilationParam = uint4(0,0,0,0);
+                            #else
+                            uint4 dilationParam = _Dilation;
+                            #endif
+
+                            #if defined(CONV3D)
+                            uint dd = ((ii / K_width) / K_height) % K_depth;
+                            uint ic = ((ii / K_width) / K_height) / K_depth;
+                            uint dy = (ii / K_width) % K_height;
+                            uint dx = ii % K_width;
+                            #elif defined(CONV2D)
+                            uint dy = (ii / K_width) % K_height;
+                            uint ic = (ii / K_width) / K_height;
+                            uint dx = ii % K_width;
+                            #elif defined(CONV1D)
+                            uint dx = ii % K_width;
+                            uint ic = ii / K_width;
+                            #endif
+
+
+                            #ifdef CONV3D
+                            uint kernelOffsetX = (topDPadded[esp] + dilationParam.x * dd)  / strideParamIfConvTrans[0] * heightX * widthX + (topYPadded[esp] + dilationParam.y * dy) / strideParamIfConvTrans[1] * widthX 
+                                + (topXPadded[esp] + dilationParam.z * dx) / strideParamIfConvTrans[2];
+                            bool maskX = ((topDPadded[esp] + dilationParam.x * dd) / strideParamIfConvTrans[0]) < depthX &&  ((topDPadded[esp] + dilationParam.x * dd) % strideParamIfConvTrans[0] == 0) &&
+                                         ((topYPadded[esp] + dilationParam.y * dy) / strideParamIfConvTrans[1]) < heightX && ((topYPadded[esp] + dilationParam.y * dy) % strideParamIfConvTrans[1] == 0) &&
+                                         ((topXPadded[esp] + dilationParam.z * dx) / strideParamIfConvTrans[2]) < widthX &&  ((topXPadded[esp] + dilationParam.z * dx) % strideParamIfConvTrans[2] == 0);
+                            #elif defined(CONV2D)
+                            uint kernelOffsetX = (topYPadded[esp] + dilationParam.x * dy) / strideParamIfConvTrans[0] * widthX + (topXPadded[esp] + dilationParam.y * dx) / strideParamIfConvTrans[1];
+                            bool maskX = ((topYPadded[esp] + dilationParam.x * dy) / strideParamIfConvTrans[0]) < heightX && ((topYPadded[esp] + dilationParam.x * dy) % strideParamIfConvTrans[0] == 0) &&
+                                         ((topXPadded[esp] + dilationParam.y * dx) / strideParamIfConvTrans[1]) < widthX &&  ((topXPadded[esp] + dilationParam.y * dx) % strideParamIfConvTrans[1] == 0);
+                            #elif defined(CONV1D)
+                            uint kernelOffsetX = (topXPadded[esp] + dilationParam.x * dx) / strideParamIfConvTrans[0];
+                            bool maskX = ((topXPadded[esp] + dilationParam.x * dx) / strideParamIfConvTrans[0]) < widthX && ((topXPadded[esp] + dilationParam.x * dx) % strideParamIfConvTrans[0] == 0);
+                            #endif
+
+
+                            float val = 0.0f;
+                            if (maskX && inBound)
+                                val = Xptr[batchReadOffset + strideX * ic + kernelOffsetX];
+                            baseInnerElement += innerThreadIdsStride;
+                            //LDS_[X_OFFSET + (eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid)] = val;
+                            srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic] = val;
+
+                        #endif
+                        } // for explicit inner input channel * maybe kernel spatial offset (if CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+
+                        // CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE case:
+                        // The switch to next group of explicit spatial indices (1 group == NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE indices)
+                        // is implicit and precalculated in the [esp] indexed arrays (topDXY, kernelOffsetX)
+                    }// for explicit spatial channels
+
+                #else // if 0
+
+
+                    // uint centroidId = bx + SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid) + esp * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE;
+                    // -> top*Padded -> kernelOffsetX
+                    // uint readX = strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + batchReadOffset + kernelOffsetX which include the above
+
+                    #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                    uint baseIdx = readX + strideX * i;
+                    uint innerIdxStride = strideX * innerThreadIdsStride;
+                    #else
+                    // CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE case:
+                    // No readX as it would only contain batchReadOffset outside loops, and no innerIdxStride usage possible
+                    // as the precise index depends on a conversion between what kicsp index in that (kicsp) mixed inner chunk 
+                    // is used for the weights, so converting from the kernel input channel and window coordinates for each 
+                    // to the corresponding input data input channel (same) and spatial offset (from the kernel spatial window part).
+                    #endif
+                    uint baseInnerElement = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + i;
+                    // ...important! reset baseInnerElement for the flattened/combined kStrideOC-sized or input channels-sized slice
+                    // at each start of a new inner (input channel / kernel spatial window) chunk
+
+                    // Also, the switch to next group of explicit spatial indices (esp) (1 group == NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE indices)
+                    // is implicit and precalculated in the [esp] indexed arrays (topDXY, kernelOffsetX)
+
+                    [unroll]
+                    for (uint eic = 0; eic < NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE; eic++)
+                    {
+                    #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                        //innerElemInBound = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + (i + eic * innerThreadIdsStride) < channels;
+                        innerElemInBound = baseInnerElement < channels;
+                    #else
+
+                        // inner index to match kernel CACHE_DEPTH-sized chunk
+                        //uint ii = SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + (i + eic * innerThreadIdsStride);
+                        uint ii = baseInnerElement;
+                        bool inBound = ii < kInnerSliceSize; // that way no need to check ic < channels below
+
+                        // Note: K1x1 cannot be defined here at the same time that CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE is,
+                        // as in that K1x1 case, we can only be caching for different input channels indices,
+                        // the spatial dimensions sizes of the kernel all multiply to 1, ie there's only one spatial coord in the kernel.
+                        // Update: see SHADER_API_WEBGPU prob.
+                        #if defined(CONV3D)
+                        uint dd = ((ii / K_width) / K_height) % K_depth;
+                        uint ic = ((ii / K_width) / K_height) / K_depth;
+                        uint dy = (ii / K_width) % K_height;
+                        uint dx = ii % K_width;
+                        #elif defined(CONV2D)
+                        uint dy = (ii / K_width) % K_height;
+                        uint ic = (ii / K_width) / K_height;
+                        uint dx = ii % K_width;
+                        #elif defined(CONV1D)
+                        uint dx = ii % K_width;
+                        uint ic = ii / K_width;
+                        #endif
+
+                    #endif
+
+
+                        [unroll]
+                        for (uint esp = 0; esp < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE; esp++)
+                        {
+                        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                            //uint readX = batchReadOffset + strideX * SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid);
+                            //uint baseIdx = readX + strideX * i + kernelOffsetX[esp]; // now kernelOffsetX includes cornerId !
+                            float val = 0.0f;
+                            if (maskX[esp] && innerElemInBound)
+                                val = Xptr[baseIdx + kernelOffsetX[esp]]; // now kernelOffsetX includes cornerId !
+                                //val = Xptr[readX + strideX * (i + eic * innerThreadIdsStride) + kernelOffsetX];
+                                //                   -------        ---   ----  => hence innerIdxStride to add to baseIdx is just (strideX * innerThreadIdsStride)
+                                // and similarly baseInnerElement just doesn't include the strideX, it just expresses the inner element number not the full linear index
+                                // so it is simply innerThreadIdsStride since we have NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE threadids chunk at each loop turn.
+
+                            //LDS_[X_OFFSET + (eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid)] = val;
+                            srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic] = val;
+
+                        #else
+
+                            #if defined(CONV_TRANSPOSE)
+                            uint4 strideParamIfConvTrans = _StrideParam;
+                            #else
+                            uint4 strideParamIfConvTrans = uint4(1,1,1,1);
+                            #endif
+
+                            // Note: because of the define above, if we're not using conv transpose,
+                            // all / strideParamIfConvTrans subexpressions and all mask modulo ( % ) tests
+                            // will all be optimized out by the compiler.
+                            // This is just to avoid even more #ifdef blocks below.
+
+                            // Note: K1x1 cannot be defined here at the same time that CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE is,
+                            // as in that K1x1 case, we can only be caching for different input channels indices,
+                            // the spatial dimensions sizes of the kernel all multiply to 1, ie there's only one spatial coord in the kernel.
+                            // #if defined(K1x1)
+                            // #error "K1x1 shouldn't touch the path where CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE"
+                            // #endif
+                            // Update: SHADER_API_WEBGPU
+
+                            #if defined(K1x1)
+                            uint4 dilationParam = uint4(0,0,0,0);
+                            #else
+                            uint4 dilationParam = _Dilation;
+                            #endif
+
+
+                            #ifdef CONV3D
+                            uint kernelOffsetX = (topDPadded[esp] + dilationParam.x * dd)  / strideParamIfConvTrans[0] * heightX * widthX + (topYPadded[esp] + dilationParam.y * dy) / strideParamIfConvTrans[1] * widthX 
+                                + (topXPadded[esp] + dilationParam.z * dx) / strideParamIfConvTrans[2];
+                            bool maskX = ((topDPadded[esp] + dilationParam.x * dd) / strideParamIfConvTrans[0]) < depthX &&  ((topDPadded[esp] + dilationParam.x * dd) % strideParamIfConvTrans[0] == 0) &&
+                                         ((topYPadded[esp] + dilationParam.y * dy) / strideParamIfConvTrans[1]) < heightX && ((topYPadded[esp] + dilationParam.y * dy) % strideParamIfConvTrans[1] == 0) &&
+                                         ((topXPadded[esp] + dilationParam.z * dx) / strideParamIfConvTrans[2]) < widthX &&  ((topXPadded[esp] + dilationParam.z * dx) % strideParamIfConvTrans[2] == 0);
+                            #elif defined(CONV2D)
+                            uint kernelOffsetX = (topYPadded[esp] + dilationParam.x * dy) / strideParamIfConvTrans[0] * widthX + (topXPadded[esp] + dilationParam.y * dx) / strideParamIfConvTrans[1];
+                            bool maskX = ((topYPadded[esp] + dilationParam.x * dy) / strideParamIfConvTrans[0]) < heightX && ((topYPadded[esp] + dilationParam.x * dy) % strideParamIfConvTrans[0] == 0) &&
+                                         ((topXPadded[esp] + dilationParam.y * dx) / strideParamIfConvTrans[1]) < widthX &&  ((topXPadded[esp] + dilationParam.y * dx) % strideParamIfConvTrans[1] == 0);
+                            #elif defined(CONV1D)
+                            uint kernelOffsetX = (topXPadded[esp] + dilationParam.x * dx) / strideParamIfConvTrans[0];
+                            bool maskX = ((topXPadded[esp] + dilationParam.x * dx) / strideParamIfConvTrans[0]) < widthX && ((topXPadded[esp] + dilationParam.x * dx) % strideParamIfConvTrans[0] == 0);
+                            #endif
+
+                            //LDS_[X_OFFSET + (eic << LOG2_NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid)] 
+                            float val = 0.0f;
+                            if (maskX && inBound)
+                                val = Xptr[batchReadOffset + strideX * ic + kernelOffsetX];
+
+                            //LDS_[X_OFFSET + (eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid)] = val;
+                            srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic] = val;
+
+                        #endif
+                        }// for explicit spatial channels
+
+
+                        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+                        baseIdx += innerIdxStride;
+                        #endif
+                        baseInnerElement += innerThreadIdsStride;
+
+                    }// for explicit inner input channel * maybe kernel spatial offset (if CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+
+                #endif //0
+                }
+
+
+                GroupMemoryBarrierWithGroupSync();
+
+                // store regs to LDS
+                IF_THREAD_DOING_W_LDS_STORE(ti, gtid)
+                {
+                    [unroll]
+                    for (uint eoc = 0; eoc < NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE; eoc++)
+                    {
+                        [unroll]
+                        for (uint eic = 0; eic < NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE; eic++)
+                        {
+                        #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+                            // Here for eg CACHE_DEPTH = 16, numthreads(16,8,1), we except NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE == 1
+                            // and with, ELEM_PER_THREAD_Y = 8, to have NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE == 8
+                            // #if NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE == 8 && NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE == 1 && NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE == CACHE_DEPTH && NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE == NUMTHREADS_Y
+                            // #error all ok
+                            // #endif
+                            // #if NB_EXPLICIT_OUTCHAN_VAL_NEEDED_W_LDS_STORE == 8 && NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE == 2 && NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE == CACHE_DEPTH/2 && NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE == NUMTHREADS_Y
+                            // #error all ok
+                            // #endif
+                            // #if NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE * NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE == CACHE_DEPTH
+                            // #error okok
+                            // #endif
+
+                            uint index = eoc * CACHE_DEPTH * NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE
+                                        + SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid) * CACHE_DEPTH /* groupThreadID.y * CACHE_DEPTH */
+                                        + (eic * NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE)
+                                        + SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid); /* groupThreadID.x */
+                        #else
+                            uint index = eoc * NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE * NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE // CHECK should be CACHE_DEPTH * NB_OUTCHAN_PER_TG
+                                        + (eic * NB_THREADIDS_FOR_INCHAN_AND_OUTCHAN_W_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_W_LDS_STORE(ti, gtid);
+                        #endif
+                            
+                            #ifdef USE_ALTERNATE_LDS_ORG_W
+                            LDS_ACCESS_W_ITE(SELECT_FROMTHREADIDS_AS_INCHAN_FOR_W_LDS_STORE(ti, gtid) + (NB_THREADIDS_LEFT_FOR_INCHAN_W_LDS_STORE * eic), SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid), eoc) 
+                                = srcW[eoc * NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE + eic];
+                            #else
+                            LDS_ACCESS_W(index) = srcW[eoc * NB_EXPLICIT_INCHAN_VAL_NEEDED_W_LDS_STORE + eic]; // srcW[eic];
+                            #endif
+                        }
+                    }
+                }
+
+                IF_THREAD_DOING_X_LDS_STORE(ti, gtid)
+                {
+                    [unroll]
+                    for (uint eic = 0; eic < NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE; eic++)
+                    {
+                        [unroll]
+                        for (uint esp = 0; esp < NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE; esp++)
+                        {
+                        #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+                            //#if NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE == 4 && NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE == 2 \
+                            //    && NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE == NUMTHREADS_Y && NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE == NUMTHREADS_X
+                            //#error all ok
+                            //#endif
+
+                            uint index = (eic * NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+                                        + SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE /* groupThreadID.y * ... */
+                                        + esp * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE
+                                        + SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid); /* groupThreadID.x */
+
+                        #else
+                            //#if NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE == 1
+                            //#error okok 
+                            //#endif
+                            #if NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE == 1
+                            uint index = (eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE) + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid);
+                            #else
+                            
+                            //#if NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE == CACHE_DEPTH * NB_SPATIALS_PER_TG
+                            //#error ok ok
+                            //#endif
+                            
+                            uint index = eic * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE 
+                                        // NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_INCHAN_AND_SPATIALS_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE == CACHE_DEPTH * NB_SPATIALS_PER_TG
+                                        + esp * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE
+                                        + ADD_IDX_FROM_THREADID_FOR_X_LDS_STORE(ti, gtid);
+                            #endif
+                        #endif
+
+
+                            #ifdef USE_ALTERNATE_LDS_ORG_X
+                            LDS_ACCESS_X_ITE(SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) + eic * NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE, SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid), esp) 
+                                = srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic];
+                            #else
+                            LDS_ACCESS_X(index) = srcX[esp * NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE + eic]; // srcX[eic];
+                            #endif
+                        }
+                    }
+                }
+
+            }// store to LDS
+
+
+            GroupMemoryBarrierWithGroupSync();
+
+            for (uint di = 0; di < CACHE_DEPTH; di++)
+            {
+                // Reload / broadcast on threads and accumulate:
+                float srcW[ELEM_PER_THREAD_Y];
+                float srcX[ELEM_PER_THREAD_X];
+
+
+
+                // Reload weights:
+                [unroll]
+                for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+                {
+                #if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+                    uint index = eoc * CACHE_DEPTH * NUMTHREADS_Y + ty * CACHE_DEPTH + di;
+                    // Note: we dont use the eg SELECT_FROMTHREADIDS_AS_OUTCHAN_FOR_W_LDS_STORE(ti, gtid)
+                    // macros here instead of ty (groupThreadID.y) and NB_THREADIDS_FOR_OUTCHAN_W_LDS_STORE instead of NUMTHREADS_Y etc. 
+                    // because whatever way we arrange the LDS cache, ty (groupThreadID.y) MUST select an output channel index base
+                    // when threads load for a final time here before doing calculations and final output.
+                    // ie it is required by the dispatch convention of having output channel dispatch (and ceil(oc nb / ELEM_PER_THREAD_Y)) flattened
+                    // in gridY and similarly for all output spatial dimensions in gridX.
+
+                    #ifdef USE_ALTERNATE_LDS_ORG_W
+                    srcW[eoc] = LDS_ACCESS_W_ITE(di, groupThreadID.y, eoc);
+                    #else
+                    srcW[eoc] = LDS_ACCESS_W(index);
+                    #endif
+                #else
+                    srcW[eoc] = LDS_ACCESS_W( ((di << LOG2_NB_OUTCHAN_PER_TG) | (eoc * NUMTHREADS_Y | ty)) );
+                #endif
+                }
+
+                // Reload inputs:
+                [unroll]
+                for (esp = 0; esp < ELEM_PER_THREAD_X; esp++)
+                {
+                    //#if defined(NB_THREADIDS_FROM_NUMTHREADS_XY)
+                    //uint index = (eic * NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE)
+                    //            + SELECT_FROMTHREADIDS_AS_INCHAN_FOR_X_LDS_STORE(ti, gtid) * NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE /* groupThreadID.y * ... */
+                    //            + esp * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE
+                    //            + SELECT_FROMTHREADIDS_AS_SPATIALS_FOR_X_LDS_STORE(ti, gtid); /* groupThreadID.x */
+                    // (NB_EXPLICIT_INCHAN_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_LEFT_FOR_INCHAN_X_LDS_STORE) == CACHE_DEPTH
+                    // (NB_EXPLICIT_SPATIALS_VAL_NEEDED_X_LDS_STORE * NB_THREADIDS_FOR_SPATIALS_X_LDS_STORE) == (ELEM_PER_THREAD_X * NUMTHREADS_X)
+                    //
+                    // same either way:
+
+                    #ifdef USE_ALTERNATE_LDS_ORG_X
+                    srcX[esp] = LDS_ACCESS_X_ITE(di, groupThreadID.x, esp);
+                    #else
+                    srcX[esp] = LDS_ACCESS_X( ((di << LOG2_NB_SPATIALS_PER_TG) | (esp * NUMTHREADS_X | tx)) );
+                    #endif
+                }
+
+
+                // Accumulate:
+                [unroll]
+                for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+                    [unroll]
+                    for (esp = 0; esp < ELEM_PER_THREAD_X; esp++)
+                    {
+                        dstA[eoc * OC_AREG_STRIDE + esp] += srcX[esp] * srcW[eoc];
+                    }
+
+            }
+
+            //if (i + CACHE_DEPTH < channels)
+            //GroupMemoryBarrierWithGroupSync();
+        } // reload/broadcast to threads weights/inputs from LDS and MAD/accumulate
+
+        #if !defined(CACHE_MIXED_KERNEL_OUTPUTCHANNEL_SLICE)
+        #if defined(CONV_TRANSPOSE)
+        weightOffsetK--;
+        #else
+        weightOffsetK++;
+        #endif
+        #endif
+    }
+
+
+#if defined(USEBIAS) && defined(BIAS_AFTER)
+    float biases[ELEM_PER_THREAD_Y];
+    [unroll]
+    for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+        biases[eoc] = Bptr[MIN_WHEN_NON_D3D(yy + eoc * NUMTHREADS_Y, maxBIndex)];
+
+#define OUTPUT_EXPLICIT_XY_ITEM(tidx, tidy, eix, eiy)                                                                                                                     \
+    if (((tidx + eix * NUMTHREADS_X) < strideO) && ((tidy + eiy * NUMTHREADS_Y) < features))                                                                              \
+        Optr[(tidx + eix * NUMTHREADS_X) + (tidy + eiy * NUMTHREADS_Y)*strideO + batchWriteOffset] = ApplyFusedActivation(dstA[eiy * OC_AREG_STRIDE + eix] + biases[eiy]);\
+
+#else // #if defined(USEBIAS) && defined(BIAS_AFTER)
+
+#define OUTPUT_EXPLICIT_XY_ITEM(tidx, tidy, eix, eiy)                                                                                                       \
+    if (((tidx + eix * NUMTHREADS_X) < strideO) && ((tidy + eiy * NUMTHREADS_Y) < features))                                                                \
+        Optr[(tidx + eix * NUMTHREADS_X) + (tidy + eiy * NUMTHREADS_Y)*strideO + batchWriteOffset] = ApplyFusedActivation(dstA[eiy * OC_AREG_STRIDE + eix]);\
+
+#endif // #if defined(USEBIAS) && defined(BIAS_AFTER)
+
+
+    // The unroll is what allows the full static analysis and collapse of all the branches in the
+    // macro while at the same time simplifying the output code for all possible permutations
+    // of data arrangements.
+    [unroll]
+    for (eoc = 0; eoc < ELEM_PER_THREAD_Y; eoc++)
+        [unroll]
+        for (esp = 0; esp < ELEM_PER_THREAD_X; esp++)
+            OUTPUT_EXPLICIT_XY_ITEM(xx, yy, esp, eoc)
+
+}

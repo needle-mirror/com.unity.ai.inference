@@ -1,0 +1,17 @@
+{
+    "name": "Unity.InferenceEngine.Editor",
+    "references": [
+        "Unity.InferenceEngine",
+        "Unity.InferenceEngine.ONNX.Editor"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
+}
