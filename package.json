@@ -1,7 +1,7 @@
 {
   "name": "com.unity.ai.inference",
   "displayName": "Inference Engine",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "unity": "6000.0",
   "description": "Inference Engine is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nInference Engine automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
   "dependencies": {
@@ -10,16 +10,16 @@
     "com.unity.modules.imageconversion": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- First version of Inference Engine"
+    "changelog": "### Fixed\n- Issue with incorrect TensorShape in Conv layer when dilations are greater than 1 and auto-padding is used\n- Incorrect Third Party Notices"
   },
   "upmCi": {
-    "footprint": "a6ac5209b8a3258a7c0bdca4e7a70156c3b25e2e"
+    "footprint": "929145d6696ebd9bfdced7d021102c8445d371f8"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.2/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "ce1a84ed8968bcc14439442abaeaaf7f3739e2f3"
+    "revision": "3663cdb57042afa00ba1ea40ac9d48478a046672"
   },
   "samples": [
     {

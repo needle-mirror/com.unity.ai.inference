@@ -126,8 +126,11 @@ namespace Unity.InferenceEngine
 
                 // see https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/core/providers/common.h#L94
                 var legacyTargetSize = (shape[2 + i] + strides[i] - 1) / strides[i];
-                var padNeeded = (legacyTargetSize - 1) * strides[i] + kernel[2 + i] - shape[2 + i];
-                var actualOutSize = (int)((double)(shape[2 + i] + 2 * padNeeded - kernel[2 + i]) / strides[i] + 1);
+
+                // dilations > 1 with autopadding is not supported in onnx runtime but is used by tf2onnx
+                var effectiveKernelSize = dilations[i] * (kernel[2 + i] - 1) + 1;
+                var padNeeded = (legacyTargetSize - 1) * strides[i] + effectiveKernelSize - shape[2 + i];
+                var actualOutSize = (int)((double)(shape[2 + i] + 2 * padNeeded - effectiveKernelSize) / strides[i] + 1);
                 if (actualOutSize < legacyTargetSize)
                     padNeeded += 1;
 
