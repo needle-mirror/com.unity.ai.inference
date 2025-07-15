@@ -52,16 +52,6 @@ namespace Unity.InferenceEngine.ONNX.Editor
         public string Input7 => RequiredInput(7);
         public string Input8 => RequiredInput(8);
 
-        public int? Seed
-        {
-            get
-            {
-                if (HasAttribute("seed"))
-                    return math.asint(GetRequiredFloat("seed"));
-                return null;
-            }
-        }
-
         // ---------------------------------------------------------------------------------
         // Implementation
         private NodeProto m_ONNXNode;

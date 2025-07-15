@@ -14,7 +14,7 @@ namespace Unity.InferenceEngine
         {
             input = input.Float();
             other = other.Float();
-            return FromLayer(new Layers.MatMul(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.MatMul(), new[] { input, other });
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FromLayer(new Layers.Dense(-1, -1, -1, -1, Layers.FusableActivation.None), new[] { input, weight, bias });
+            return FromLayer(new Layers.Dense(Layers.FusableActivation.None), new[] { input, weight, bias });
         }
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using Unity.Profiling;
 
 namespace Unity.InferenceEngine.Layers
 {
@@ -91,10 +90,11 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an `LSTM` recurrent layer. This generates an output tensor by computing a one-layer LSTM (long short-term memory) on an input tensor.
     /// </summary>
-    class LSTM : Layer
+    [Operator(category = "Recurrent")]
+    [Inputs(names = new[] { "X", "W", "R", "B", "sequenceLens", "initialH", "initialC", "P" })]
+    [Outputs(names = new[] { "Y", "Y_h", "Y_c" })]
+    partial class LSTM : Layer
     {
-        static readonly string k_OpName = "LSTM";
-        static readonly ProfilerMarker k_ProfilerMarker = new("InferenceEngine.Layer." + k_OpName);
         public int hiddenSize;
         public RnnDirection direction;
         public RnnActivation[] activations;
@@ -103,54 +103,8 @@ namespace Unity.InferenceEngine.Layers
         public float clip;
         public bool inputForget;
         public RnnLayout layout;
-        public int NumDirections => direction == RnnDirection.Bidirectional ? 2 : 1;
 
-        public LSTM(int Y, int X, int W, int R, int hiddenSize, int Y_h = -1, int Y_c = -1, int B = -1, int sequenceLens = -1, int initialH = -1, int initialC = -1, int P = -1, RnnDirection direction = RnnDirection.Forward, RnnActivation[] activations = null, float[] activationAlpha = null, float[] activationBeta = null, float clip = float.MaxValue, bool inputForget = false, RnnLayout layout = RnnLayout.SequenceFirst)
-            : base(new[] { Y, Y_h, Y_c }, new[] { X, W, R, B, sequenceLens, initialH, initialC, P })
-        {
-            this.hiddenSize = hiddenSize;
-            this.direction = direction;
-            this.activations = new RnnActivation[3 * NumDirections];
-            this.activationAlpha = new float[3 * NumDirections];
-            this.activationBeta = new float[3 * NumDirections];
-            for (var i = 0; i < 3 * NumDirections; i++)
-            {
-                this.activations[i] = i % 3 == 0 ? RnnActivation.Sigmoid : RnnActivation.Tanh;
-                if (activations != null && i < activations.Length)
-                    this.activations[i] = activations[i];
-                switch (this.activations[i])
-                {
-                    case RnnActivation.Affine:
-                        this.activationAlpha[i] = 1.0f;
-                        break;
-                    case RnnActivation.LeakyRelu:
-                        this.activationAlpha[i] = 0.01f;
-                        break;
-                    case RnnActivation.ThresholdedRelu:
-                        this.activationAlpha[i] = 1.0f;
-                        break;
-                    case RnnActivation.ScaledTanh:
-                        this.activationAlpha[i] = 1.0f;
-                        this.activationBeta[i] = 1.0f;
-                        break;
-                    case RnnActivation.HardSigmoid:
-                        this.activationAlpha[i] = 0.2f;
-                        this.activationBeta[i] = 0.5f;
-                        break;
-                    case RnnActivation.Elu:
-                        this.activationAlpha[i] = 1.0f;
-                        break;
-                }
-                if (activationAlpha != null && i < activationAlpha.Length)
-                    this.activationAlpha[i] = activationAlpha[i];
-                if (activationBeta != null && i < activationBeta.Length)
-                    this.activationBeta[i] = activationBeta[i];
-            }
-
-            this.clip = clip;
-            this.inputForget = inputForget;
-            this.layout = layout;
-        }
+        internal override int OutputCount => 3;
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -198,7 +152,7 @@ namespace Unity.InferenceEngine.Layers
 
             P?.shape.DeclareRank(2);
 
-            var numDirectionsDim = DynamicTensorDim.Int(NumDirections);
+            var numDirectionsDim = DynamicTensorDim.Int(direction == RnnDirection.Bidirectional ? 2 : 1);
             var hiddenSizeDim = DynamicTensorDim.Int(hiddenSize);
 
             if (layout == RnnLayout.SequenceFirst)
@@ -235,13 +189,5 @@ namespace Unity.InferenceEngine.Layers
 
             ctx.backend.LSTM(X, W, R, B, sequenceLens, initialH, initialC, P, Y, Y_h, Y_c, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, outputs: [{string.Join(", ", outputs)}], hiddenSize: {hiddenSize}, direction: {direction}, activations: [{string.Join(", ", activations)}], activationAlpha: [{string.Join(", ", activationAlpha)}], activationBeta: [{string.Join(", ", activationBeta)}], clip: {clip}, inputForget: {inputForget}, layout: {layout}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

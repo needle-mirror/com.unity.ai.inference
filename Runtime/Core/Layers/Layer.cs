@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using SentisFlatBuffer;
+using Unity.InferenceEngine.Google.FlatBuffers;
+using Unity.InferenceEngine.Layers;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -8,10 +12,10 @@ namespace Unity.InferenceEngine
     /// Represents the base class for all model layers.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
+    [Inputs(names = new[] { "input" })]
+    [Outputs(names = new[] { "output" })]
     public abstract class Layer
     {
-        internal const string k_ProfilerMarkerPrefix = "InferenceEngine.Layer.";
-
         /// <summary>
         /// The indices to use for the input tensors for a layer.
         /// </summary>
@@ -26,6 +30,10 @@ namespace Unity.InferenceEngine
         /// ProfilerMarker for this layer
         /// </summary>
         public abstract ProfilerMarker profilerMarker { get; }
+
+        internal virtual int OutputCount => 1;
+
+        internal Layer() { }
 
         /// <summary>
         /// Initializes and returns a `Layer` from given arrays of input and output indices
@@ -54,6 +62,27 @@ namespace Unity.InferenceEngine
         /// </summary>
         public abstract string opName { get; }
 
+        internal abstract string category { get; }
+
+        /// <summary>
+        /// Whether the input tensor data is read on the CPU.
+        /// For example, the tensor elements are used as a shape for reshaping.
+        /// </summary>
+        internal virtual bool IsInputCPURead(int i) => false;
+
+        /// <summary>
+        /// Whether the output tensor doesn't depend on the input tensor data at all.
+        /// For example, this returns 'true' if only the shape or data type of the input tensor are used for calculating the output tensor.
+        /// </summary>
+        internal virtual bool IsInputNoDataDependency(int i) => false;
+        internal abstract string[] GetInputNames();
+        internal abstract string[] GetOutputNames();
+
+        /// <summary>
+        /// Whether the layer is the same as another layer (excluding inputs and outputs).
+        /// </summary>
+        internal abstract bool IsEquivalent(Layer layer);
+
         /// <summary>
         /// Returns a string that represents the `Layer`.
         /// </summary>
@@ -62,6 +91,8 @@ namespace Unity.InferenceEngine
         {
             return $"{opName} - index: {outputs[0]}, inputs: [{string.Join(", ", inputs)}]";
         }
+
+        internal abstract void SerializeFields(FlatBufferBuilder builder, List<Offset<EValue>> values);
     }
 }
 
@@ -89,9 +120,6 @@ namespace Unity.InferenceEngine.Layers
     {
         public FusableActivation fusedActivation;
 
-        protected FusedActivation(int[] outputs, int[] inputs)
-            : base(outputs, inputs) { }
-
         public override string ToString()
         {
             return $"{base.ToString()}, fusedActivation: {fusedActivation}";
@@ -101,11 +129,9 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents a base class for layers that apply an operation to input tensors using numpy-style broadcasting.
     /// </summary>
+    [Inputs(names = new[] { "a", "b" })]
     abstract class Broadcast : Layer
     {
-        protected Broadcast(int output, int a, int b)
-            : base(new[] { output }, new[] { a, b }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var a = getPartialTensor(0);

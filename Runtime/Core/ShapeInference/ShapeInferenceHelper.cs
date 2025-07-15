@@ -246,13 +246,14 @@ namespace Unity.InferenceEngine
         /// updates pad values so that output_shape[i] = input_shape[i] * strides[i]
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
-        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, Span<int> stride, AutoPad autopad, Span<int> outputPadding, Span<int> pads)
+        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, Span<int> stride, Span<int> dilations, AutoPad autopad, Span<int> outputPadding, Span<int> pads)
         {
             if (autopad == Layers.AutoPad.NotSet)
                 return;
 
             var numSpatialDims = stride.Length;
             Logger.AssertAreEqual(2 * numSpatialDims, pads.Length, "ComputeConvTransAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * numSpatialDims, pads.Length);
+            Logger.AssertAreEqual(numSpatialDims, dilations.Length, "ComputeConvTransAutoPadding.LengthError: incorrect length for dilation, expecting {0}, got {1}", numSpatialDims, dilations.Length);
 
             for (var i = 0; i < numSpatialDims; ++i)
             {
@@ -264,8 +265,7 @@ namespace Unity.InferenceEngine
                 }
 
                 var outputShape = shape[2 + i] * stride[i];
-                var dilation = 1;
-                var padAlongFeature = Math.Max(0, stride[i] * (shape[2 + i] - 1) + outputPadding[i] + (kernel[2 + i] - 1) * dilation + 1 - outputShape);
+                var padAlongFeature = Math.Max(0, stride[i] * (shape[2 + i] - 1) + outputPadding[i] + (kernel[2 + i] - 1) * dilations[i] + 1 - outputShape);
 
                 var padSmall = padAlongFeature / 2;
                 var padLarge = padAlongFeature - padSmall;
@@ -275,13 +275,14 @@ namespace Unity.InferenceEngine
             }
         }
 
-        public static TensorShape ApplyKernelInverse(TensorShape shape, TensorShape kernel, Span<int> stride, Span<int> pad, Span<int> outputAdjustment)
+        public static TensorShape ApplyKernelAsConvTranspose(TensorShape shape, TensorShape kernel, int groups, Span<int> stride, Span<int> pad, Span<int> dilations, Span<int> outputAdjustment)
         {
             Logger.AssertIsTrue(stride.Length != 0, "ApplyKernelInverse.LengthError: stride should not be an empty array");
+            Logger.AssertAreEqual(stride.Length, dilations.Length, "ApplyKernelInverse.LengthError: should have as much strides values as dilations values: strides: {0}, dilations: {1}", stride.Length, dilations.Length);
             Logger.AssertAreEqual(pad.Length, stride.Length * 2, "ApplyKernelInverse.LengthError incorrect length match between strides: {0} and pad: {1}", stride.Length, pad.Length);
 
-            int featureCount = stride.Length;
-            Logger.AssertAreEqual((shape.rank - 2), featureCount, "ApplyKernelInverse.LengthError incorrect length match between strides: {0} and shape: {1}", stride.Length, shape.rank);
+            int spatialDimsNum = stride.Length;
+            Logger.AssertAreEqual((shape.rank - 2), spatialDimsNum, "ApplyKernelInverse.LengthError incorrect length match between strides: {0} and input shape: {1}", stride.Length, shape.rank);
 
             // Based on ONNX (ConvTranspose)
             //        https://github.com/onnx/onnx/blob/master/docs/Operators.md
@@ -295,24 +296,32 @@ namespace Unity.InferenceEngine
             //   output_adj = (input_size + (pad_left + pad_right) - kernel_size) % stride
 
             var newShape = new TensorShape(shape);
-            for (var i = 0; i < stride.Length; ++i)
+            for (var i = 0; i < spatialDimsNum; ++i)
             {
-                newShape[2 + i] = (shape[2 + i] - 1) * stride[i] - (pad[i] + pad[stride.Length + i]) + kernel[2 + i] + outputAdjustment[i];
+                newShape[2 + i] = (shape[2 + i] - 1) * stride[i] + ((kernel[2 + i] - 1) * dilations[i] + 1) - (pad[i] + pad[spatialDimsNum + i]) + outputAdjustment[i];
             }
 
-            newShape[1] = kernel[1];
+            newShape[1] = kernel[1] * groups;
             return newShape;
         }
 
-        public static TensorShape ConvTranspose(TensorShape shapeX, TensorShape shapeW, Span<int> strides, Span<int> pads, Span<int> outputPadding)
+        public static TensorShape ConvTranspose(TensorShape shapeX, TensorShape shapeW, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputPadding)
         {
             Logger.AssertIsTrue(shapeX.rank >= 3, "ConvTranspose.RankError: incorrect rank for input, expecting >= 3, got {0}", shapeX.rank);
             Logger.AssertIsTrue(shapeW.rank >= 3, "ConvTranspose.RankError: incorrect rank for kernel, expecting >= 3, got {0}", shapeW.rank);
 
             Logger.AssertAreEqual(shapeX.rank - 2, strides.Length, "ConvTranspose.LengthError: incorrect length for stride, expecting rank-2, got {0}", strides.Length);
             Logger.AssertAreEqual((shapeX.rank - 2) * 2, pads.Length, "ConvTranspose.LengthError: incorrect length for pad, expecting (rank-2)*2, got {0}", pads.Length);
+            Logger.AssertAreEqual(shapeX.rank - 2, dilations.Length, "ConvTranspose.LengthError: incorrect length for dilations, expecting rank-2, got {0}", dilations.Length);
 
-            return ApplyKernelInverse(shapeX, shapeW, strides, pads, outputPadding);
+            Logger.AssertIsTrue(shapeX[1] % groups == 0, "ConvTranspose.ValueError: input channels {0} must be divisible by group count {1}", shapeX[1], groups);
+            // Logger.AssertIsTrue(shapeW[0] % groups == 0, "ConvTranspose.ValueError: output features {0} must be divisible by group count {1}", shapeW[0], groups);
+            // ...the later is subsumed by the fact that in conv transpose, shapeX[1] == shapeW[0] (as the input is "as if could be an output of a conv with same kernel)
+            // (Also, output shape [1] == shapeW[1] * groups).
+            //
+            Logger.AssertIsTrue(shapeX[1] == shapeW[0], "ConvTranspose.ValueError: kernel axis 0 size {0} must be equal to input's input channel axis (ie axis 1) size, here it is {1}", shapeW[0], shapeX[1]);
+
+            return ApplyKernelAsConvTranspose(shapeX, shapeW, groups, strides, pads, dilations, outputPadding);
         }
 
         public static TensorShape Dense(TensorShape X, TensorShape W, TensorShape B)

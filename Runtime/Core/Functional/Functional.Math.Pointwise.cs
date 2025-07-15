@@ -12,7 +12,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Abs(FunctionalTensor input)
         {
-            return FromLayer(new Layers.Abs(-1, -1), input);
+            return FromLayer(new Layers.Abs(), input);
         }
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Acos(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Acos(-1, -1), input);
+            return FromLayer(new Layers.Acos(), input);
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Acosh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Acosh(-1, -1), input);
+            return FromLayer(new Layers.Acosh(), input);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Add(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Add(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Add(), new[] { input, other });
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Asin(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Asin(-1, -1), input);
+            return FromLayer(new Layers.Asin(), input);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Asinh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Asinh(-1, -1), input);
+            return FromLayer(new Layers.Asinh(), input);
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Atan(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Atan(-1, -1), input);
+            return FromLayer(new Layers.Atan(), input);
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Atanh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Atanh(-1, -1), input);
+            return FromLayer(new Layers.Atanh(), input);
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Int)
                 return input;
-            return FromLayer(new Layers.Ceil(-1, -1), input);
+            return FromLayer(new Layers.Ceil(), input);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Clamp(FunctionalTensor input, float min, float max)
         {
             input = input.Float();
-            return FromLayer(new Layers.Clip(-1, -1, -1, -1), new[] { input, Constant(min), Constant(max) });
+            return FromLayer(new Layers.Clip(), new[] { input, Constant(min), Constant(max) });
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Float)
                 return Clamp(input, (float)min, max);
-            return FromLayer(new Layers.Clip(-1, -1, -1, -1), new[] { input, Constant(min), Constant(max) });
+            return FromLayer(new Layers.Clip(), new[] { input, Constant(min), Constant(max) });
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Cos(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Cos(-1, -1), input);
+            return FromLayer(new Layers.Cos(), input);
         }
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Cosh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Cosh(-1, -1), input);
+            return FromLayer(new Layers.Cosh(), input);
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ namespace Unity.InferenceEngine
         {
             // TODO support rounding mode: string roundingMode
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Div(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Div(), new[] { input, other });
         }
 
         /// <summary>
@@ -185,7 +185,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Erf(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Erf(-1, -1), input);
+            return FromLayer(new Layers.Erf(), input);
         }
 
         /// <summary>
@@ -196,7 +196,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Exp(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Exp(-1, -1), input);
+            return FromLayer(new Layers.Exp(), input);
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace Unity.InferenceEngine
         {
             input = input.Float();
             exponent = exponent.Float();
-            return FromLayer(new Layers.Pow(-1, -1, -1), new[] { input, exponent });
+            return FromLayer(new Layers.Pow(), new[] { input, exponent });
         }
 
         /// <summary>
@@ -221,7 +221,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Int)
                 return input;
-            return FromLayer(new Layers.Floor(-1, -1), input);
+            return FromLayer(new Layers.Floor(), input);
         }
 
         /// <summary>
@@ -244,7 +244,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor FMod(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Mod(-1, -1, -1, true), new[] { input, other });
+            return FromLayer(new Layers.Mod(true), new[] { input, other });
         }
 
         /// <summary>
@@ -282,7 +282,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Log(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Log(-1, -1), input);
+            return FromLayer(new Layers.Log(), input);
         }
 
         /// <summary>
@@ -335,7 +335,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LogicalAnd(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FromLayer(new Layers.And(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.And(), new[] { input, other });
         }
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LogicalNot(FunctionalTensor input)
         {
             DeclareType(DataType.Int, input);
-            return FromLayer(new Layers.Not(-1, -1), input);
+            return FromLayer(new Layers.Not(), input);
         }
 
         /// <summary>
@@ -358,7 +358,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LogicalOr(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FromLayer(new Layers.Or(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Or(), new[] { input, other });
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LogicalXor(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FromLayer(new Layers.Xor(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Xor(), new[] { input, other });
         }
 
         /// <summary>
@@ -382,7 +382,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Mul(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Mul(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Mul(), new[] { input, other });
         }
 
         /// <summary>
@@ -392,7 +392,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Neg(FunctionalTensor input)
         {
-            return FromLayer(new Layers.Neg(-1, -1), input);
+            return FromLayer(new Layers.Neg(), input);
         }
 
         /// <summary>
@@ -414,7 +414,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Pow(FunctionalTensor input, FunctionalTensor exponent)
         {
             input = input.Float();
-            return FromLayer(new Layers.Pow(-1, -1, -1), new[] { input, exponent });
+            return FromLayer(new Layers.Pow(), new[] { input, exponent });
         }
 
         /// <summary>
@@ -426,7 +426,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Pow(FunctionalTensor input, float exponent)
         {
             input = input.Float();
-            return FromLayer(new Layers.Pow(-1, -1, -1), new[] { input, Constant(exponent) });
+            return FromLayer(new Layers.Pow(), new[] { input, Constant(exponent) });
         }
 
         /// <summary>
@@ -447,7 +447,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Reciprocal(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Reciprocal(-1, -1), input);
+            return FromLayer(new Layers.Reciprocal(), input);
         }
 
         /// <summary>
@@ -459,7 +459,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Remainder(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Mod(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Mod(false), new[] { input, other });
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace Unity.InferenceEngine
             // TODO implement 'decimals' arg
             if (input.dataType == DataType.Int)
                 return input;
-            return FromLayer(new Layers.Round(-1, -1), input);
+            return FromLayer(new Layers.Round(), input);
         }
 
         /// <summary>
@@ -492,7 +492,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Sign(FunctionalTensor input)
         {
-            return FromLayer(new Layers.Sign(-1, -1), input);
+            return FromLayer(new Layers.Sign(), input);
         }
 
         /// <summary>
@@ -503,7 +503,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Sin(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Sin(-1, -1), input);
+            return FromLayer(new Layers.Sin(), input);
         }
 
         /// <summary>
@@ -514,7 +514,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Sinh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Sinh(-1, -1), input);
+            return FromLayer(new Layers.Sinh(), input);
         }
 
         /// <summary>
@@ -525,7 +525,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Sqrt(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Sqrt(-1, -1), input);
+            return FromLayer(new Layers.Sqrt(), input);
         }
 
         /// <summary>
@@ -535,7 +535,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Square(FunctionalTensor input)
         {
-            return FromLayer(new Layers.Square(-1, -1), input);
+            return FromLayer(new Layers.Square(), input);
         }
 
         /// <summary>
@@ -547,7 +547,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Sub(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Sub(-1, -1, -1), new[] { input, other });
+            return FromLayer(new Layers.Sub(), new[] { input, other });
         }
 
         /// <summary>
@@ -558,7 +558,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Tan(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Tan(-1, -1), input);
+            return FromLayer(new Layers.Tan(), input);
         }
 
         /// <summary>
@@ -569,7 +569,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Tanh(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Tanh(-1, -1), input);
+            return FromLayer(new Layers.Tanh(), input);
         }
 
         /// <summary>

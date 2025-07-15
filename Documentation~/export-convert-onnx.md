@@ -13,12 +13,12 @@ To export files in ONNX format from common machine learning frameworks, refer to
 - [Exporting a model from PyTorch to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html) on the PyTorch website.
 - [Convert TensorFlow, Keras, Tensorflow.js and Tflite models to ONNX](https://github.com/onnx/tensorflow-onnx) on the ONNX GitHub repository.
 
-> [!NOTE] 
+> [!NOTE]
 > To ensure compatibility with Inference Engine, set the ONNX opset version to `15` during export. For more information about ONNX compatibility, refer to [import a model file](import-a-model-file.md).
 
 ## Convert TensorFlow files to ONNX
 
-TensorFlow uses two primary file types for saving models: SavedModel and Checkpoints. 
+TensorFlow uses two primary file types for saving models: SavedModel and Checkpoints.
 
 The following sections explain each file type and how to convert them to the ONNX format.
 

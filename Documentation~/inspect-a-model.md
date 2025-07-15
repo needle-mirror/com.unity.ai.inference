@@ -71,6 +71,7 @@ To open an ONNX model as a graph, follow these steps:
 
 ## Additional resources
 
+- [Inspect models with the visualizer](visualizer.md)
 - [Profile a model](profile-a-model.md)
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Supported ONNX operators](supported-operators.md)

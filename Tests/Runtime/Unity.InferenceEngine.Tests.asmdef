@@ -4,8 +4,7 @@
     "references": [
         "Unity.InferenceEngine",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "Unity.InferenceEngine.TestsUtils"
+        "UnityEditor.TestRunner"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

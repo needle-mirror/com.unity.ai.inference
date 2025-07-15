@@ -69,7 +69,8 @@ namespace Unity.InferenceEngine
                         var newIndex = model.GetUniqueIndex();
                         Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Short, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
                         model.constants[index] = quantizedConstant;
-                        model.layers.Insert(i, new Cast(constant.index, newIndex, DataType.Float));
+                        var castLayer = new Cast(DataType.Float).SetInputs(newIndex).SetOutputs(constant.index);
+                        model.layers.Insert(i, castLayer);
                         i++;
                     }
                     else if (m_QuantizationType == QuantizationType.Uint8)
@@ -105,7 +106,8 @@ namespace Unity.InferenceEngine
                         var newIndex = model.GetUniqueIndex();
                         Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Byte, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
                         model.constants[index] = quantizedConstant;
-                        model.layers.Insert(i, new DequantizeUint8(constant.index, newIndex, scale, zeroPoint));
+                        var dequantizeLayer = new DequantizeUint8(scale, zeroPoint).SetInputs(newIndex).SetOutputs(constant.index);
+                        model.layers.Insert(i, dequantizeLayer);
                         i++;
                     }
                 }

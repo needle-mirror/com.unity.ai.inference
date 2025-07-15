@@ -3,9 +3,12 @@
 #pragma kernel ScalarBroadcastPRelu SCALARBROADCAST PRELU
 #pragma kernel BroadcastPRelu BROADCAST PRELU
 #pragma kernel ElementwisePRelu ELEMENTWISE PRELU
-#pragma kernel ScalarBroadcastPowFloat SCALARBROADCAST POWFLOAT
-#pragma kernel BroadcastPowFloat BROADCAST POWFLOAT
-#pragma kernel ElementwisePowFloat ELEMENTWISE POWFLOAT
+#pragma kernel ScalarBroadcastPowFloatFloat SCALARBROADCAST POWFLOATFLOAT
+#pragma kernel BroadcastPowFloatFloat BROADCAST POWFLOATFLOAT
+#pragma kernel ElementwisePowFloatFloat ELEMENTWISE POWFLOATFLOAT
+#pragma kernel ScalarBroadcastPowFloatInt SCALARBROADCAST POWFLOATINT YINT
+#pragma kernel BroadcastPowFloatInt BROADCAST POWFLOATINT YINT
+#pragma kernel ElementwisePowFloatInt ELEMENTWISE POWFLOATINT YINT
 #pragma kernel ScalarBroadcastAddFloat SCALARBROADCAST ADDFLOAT
 #pragma kernel BroadcastAddFloat BROADCAST ADDFLOAT
 #pragma kernel ElementwiseAddFloat ELEMENTWISE ADDFLOAT
@@ -33,9 +36,12 @@
 #pragma kernel ScalarBroadcastFModFloat SCALARBROADCAST FMODFLOAT
 #pragma kernel BroadcastFModFloat BROADCAST FMODFLOAT
 #pragma kernel ElementwiseFModFloat ELEMENTWISE FMODFLOAT
-#pragma kernel ScalarBroadcastPowInt SCALARBROADCAST POWINT YINT
-#pragma kernel BroadcastPowInt BROADCAST POWINT YINT
-#pragma kernel ElementwisePowInt ELEMENTWISE POWINT YINT
+#pragma kernel ScalarBroadcastPowIntFloat SCALARBROADCAST POWINTFLOAT XINT OINT
+#pragma kernel BroadcastPowIntFloat BROADCAST POWINTFLOAT XINT OINT
+#pragma kernel ElementwisePowIntFloat ELEMENTWISE POWINTFLOAT XINT OINT
+#pragma kernel ScalarBroadcastPowIntInt SCALARBROADCAST POWINTINT XINT YINT OINT
+#pragma kernel BroadcastPowIntInt BROADCAST POWINTINT XINT YINT OINT
+#pragma kernel ElementwisePowIntInt ELEMENTWISE POWINTINT XINT YINT OINT
 #pragma kernel ScalarBroadcastAddInt SCALARBROADCAST ADDINT XINT YINT OINT
 #pragma kernel BroadcastAddInt BROADCAST ADDINT XINT YINT OINT
 #pragma kernel ElementwiseAddInt ELEMENTWISE ADDINT XINT YINT OINT
@@ -199,10 +205,10 @@ void ElementwisePRelu(uint3 dispatchThreadID : SV_DispatchThreadID)
 #endif
 #endif
 
-#ifdef POWFLOAT
+#ifdef POWFLOATFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+void ScalarBroadcastPowFloatFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
     uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
     #if !defined(SHADER_API_D3D11)
@@ -239,7 +245,7 @@ void ScalarBroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 group
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+void BroadcastPowFloatFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
     uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
     #if !defined(SHADER_API_D3D11)
@@ -276,7 +282,7 @@ void BroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : S
 
 #ifdef ELEMENTWISE
 [numthreads(64, 1, 1)]
-void ElementwisePowFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ElementwisePowFloatFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
     if (threadIdx >= unrolledDispatchArgs.y)
@@ -291,6 +297,103 @@ void ElementwisePowFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     float x = Xptr[indexX];
     float y = Bptr[indexY];
+    Optr[threadIdx] = SignedPow(x, y);
+}
+#endif
+#endif
+
+#ifdef POWFLOATINT
+#ifdef SCALARBROADCAST
+[numthreads(64, 1, 1)]
+void ScalarBroadcastPowFloatInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if !defined(SHADER_API_D3D11)
+    idx = min(idx, MaxIndexO);
+    #endif
+
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int y = Bptr[0];
+    float4 O = SignedPow(x, y);
+
+    #if !defined(SHADER_API_D3D11)
+    if (idx.x <= MaxIndexO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= MaxIndexO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= MaxIndexO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= MaxIndexO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= MaxIndexO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= MaxIndexO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= MaxIndexO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= MaxIndexO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}
+#endif
+
+#ifdef BROADCAST
+[numthreads(64, 1, 1)]
+void BroadcastPowFloatInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if !defined(SHADER_API_D3D11)
+    idx = min(idx, MaxIndexO);
+    #endif
+
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = SignedPow(x, y);
+
+    #if !defined(SHADER_API_D3D11)
+    if (idx.x <= MaxIndexO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= MaxIndexO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= MaxIndexO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= MaxIndexO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= MaxIndexO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= MaxIndexO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= MaxIndexO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= MaxIndexO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}
+#endif
+
+#ifdef ELEMENTWISE
+[numthreads(64, 1, 1)]
+void ElementwisePowFloatInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if (threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    uint indexX = 0; uint indexY = 0;
+    for (int axis = (SHAPE_MAXRANK - 1); axis > rank; axis--)
+    {
+        indexX += (((threadIdx / stridesO[axis]) % shapeO[axis]) % shapeX[axis]) * stridesX[axis];
+        indexY += (((threadIdx / stridesO[axis]) % shapeO[axis]) % shapeY[axis]) * stridesY[axis];
+    }
+
+    float x = Xptr[indexX];
+    int y = Bptr[indexY];
     Optr[threadIdx] = SignedPow(x, y);
 }
 #endif
@@ -1169,19 +1272,19 @@ void ElementwiseFModFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #endif
 #endif
 
-#ifdef POWINT
+#ifdef POWINTFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+void ScalarBroadcastPowIntFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
     uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
     #if !defined(SHADER_API_D3D11)
     idx = min(idx, MaxIndexO);
     #endif
 
-    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
-    int y = Bptr[0];
-    float4 O = SignedPow(x, y);
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float y = Bptr[0];
+    int4 O = SignedPow(x, y);
 
     #if !defined(SHADER_API_D3D11)
     if (idx.x <= MaxIndexO)
@@ -1209,16 +1312,16 @@ void ScalarBroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+void BroadcastPowIntFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
     uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
     #if !defined(SHADER_API_D3D11)
     idx = min(idx, MaxIndexO);
     #endif
 
-    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
-    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
-    float4 O = SignedPow(x, y);
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = SignedPow(x, y);
 
     #if !defined(SHADER_API_D3D11)
     if (idx.x <= MaxIndexO)
@@ -1246,7 +1349,7 @@ void BroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_
 
 #ifdef ELEMENTWISE
 [numthreads(64, 1, 1)]
-void ElementwisePowInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ElementwisePowIntFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
     if (threadIdx >= unrolledDispatchArgs.y)
@@ -1259,9 +1362,106 @@ void ElementwisePowInt(uint3 dispatchThreadID : SV_DispatchThreadID)
         indexY += (((threadIdx / stridesO[axis]) % shapeO[axis]) % shapeY[axis]) * stridesY[axis];
     }
 
-    float x = Xptr[indexX];
-    int y = Bptr[indexY];
+    int x = Xptr[indexX];
+    float y = Bptr[indexY];
     Optr[threadIdx] = SignedPow(x, y);
+}
+#endif
+#endif
+
+#ifdef POWINTINT
+#ifdef SCALARBROADCAST
+[numthreads(64, 1, 1)]
+void ScalarBroadcastPowIntInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if !defined(SHADER_API_D3D11)
+    idx = min(idx, MaxIndexO);
+    #endif
+
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int y = Bptr[0];
+    int4 O = SignedPowInt(x, y);
+
+    #if !defined(SHADER_API_D3D11)
+    if (idx.x <= MaxIndexO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= MaxIndexO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= MaxIndexO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= MaxIndexO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= MaxIndexO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= MaxIndexO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= MaxIndexO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= MaxIndexO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}
+#endif
+
+#ifdef BROADCAST
+[numthreads(64, 1, 1)]
+void BroadcastPowIntInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if !defined(SHADER_API_D3D11)
+    idx = min(idx, MaxIndexO);
+    #endif
+
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = SignedPowInt(x, y);
+
+    #if !defined(SHADER_API_D3D11)
+    if (idx.x <= MaxIndexO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= MaxIndexO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= MaxIndexO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= MaxIndexO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= MaxIndexO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= MaxIndexO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= MaxIndexO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= MaxIndexO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}
+#endif
+
+#ifdef ELEMENTWISE
+[numthreads(64, 1, 1)]
+void ElementwisePowIntInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if (threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    uint indexX = 0; uint indexY = 0;
+    for (int axis = (SHAPE_MAXRANK - 1); axis > rank; axis--)
+    {
+        indexX += (((threadIdx / stridesO[axis]) % shapeO[axis]) % shapeX[axis]) * stridesX[axis];
+        indexY += (((threadIdx / stridesO[axis]) % shapeO[axis]) % shapeY[axis]) * stridesY[axis];
+    }
+
+    int x = Xptr[indexX];
+    int y = Bptr[indexY];
+    Optr[threadIdx] = SignedPowInt(x, y);
 }
 #endif
 #endif

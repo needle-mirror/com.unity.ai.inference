@@ -1,5 +1,6 @@
 using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Unity.InferenceEngine
 {
@@ -14,7 +15,6 @@ namespace Unity.InferenceEngine
         static ComputeShader k_RNN = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/RNN");
         static ComputeShader k_LogicalOps = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/LogicalOps");
         static ComputeShader k_CompareOps = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/CompareOps");
-        static ComputeShader k_GroupConv = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/GroupConv");
         static ComputeShader k_ConvGeneric = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/ConvGeneric");
         static ComputeShader k_DepthwiseConv = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/DepthwiseConv");
         static ComputeShader k_Dense = Resources.Load<ComputeShader>("InferenceEngine/ComputeShaders/Dense");
@@ -78,12 +78,6 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_LessOrEqualInt = new ComputeFunction(k_CompareOps, "LessOrEqualInt");
         public static ComputeFunction k_EqualFloat = new ComputeFunction(k_CompareOps, "EqualFloat");
         public static ComputeFunction k_EqualInt = new ComputeFunction(k_CompareOps, "EqualInt");
-        public static ComputeFunction k_GroupedConv3D = new ComputeFunction(k_GroupConv, "GroupedConv3D");
-        public static ComputeFunction k_GroupedConv2D = new ComputeFunction(k_GroupConv, "GroupedConv2D");
-        public static ComputeFunction k_GroupedConv1D = new ComputeFunction(k_GroupConv, "GroupedConv1D");
-        public static ComputeFunction k_GroupedConv3D_AlignsTo64 = new ComputeFunction(k_GroupConv, "GroupedConv3D_AlignsTo64");
-        public static ComputeFunction k_GroupedConv2D_AlignsTo64 = new ComputeFunction(k_GroupConv, "GroupedConv2D_AlignsTo64");
-        public static ComputeFunction k_GroupedConv1D_AlignsTo64 = new ComputeFunction(k_GroupConv, "GroupedConv1D_AlignsTo64");
 
         public static ComputeFunction k_Conv3D_Generic = new ComputeFunction(k_ConvGeneric, "Conv3D_Generic");
         public static ComputeFunction k_Conv2D_Generic = new ComputeFunction(k_ConvGeneric, "Conv2D_Generic");
@@ -95,10 +89,10 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_ConvTranspose3D_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose3D_Generic");
         public static ComputeFunction k_ConvTranspose2D_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose2D_Generic");
         public static ComputeFunction k_ConvTranspose1D_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose1D_Generic");
-        //Not tested yet:
-        //public static ComputeFunction k_ConvTranspose3D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose3D_1x1_Generic");
-        //public static ComputeFunction k_ConvTranspose2D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose2D_1x1_Generic");
-        //public static ComputeFunction k_ConvTranspose1D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose1D_1x1_Generic");
+
+        public static ComputeFunction k_ConvTranspose3D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose3D_1x1_Generic");
+        public static ComputeFunction k_ConvTranspose2D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose2D_1x1_Generic");
+        public static ComputeFunction k_ConvTranspose1D_1x1_Generic = new ComputeFunction(k_ConvGeneric, "ConvTranspose1D_1x1_Generic");
 
         public static ComputeFunction k_DepthwiseConv2DDirect = new ComputeFunction(k_DepthwiseConv, "DepthwiseConv2DDirect");
         public static ComputeFunction k_DepthwiseConv2DWinograd = new ComputeFunction(k_DepthwiseConv, "DepthwiseConv2DWinograd");
@@ -181,12 +175,18 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_ScalarBroadcastPRelu = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPRelu");
         public static ComputeFunction k_BroadcastPRelu = new ComputeFunction(k_BroadcastGen, "BroadcastPRelu");
         public static ComputeFunction k_ElementwisePRelu = new ComputeFunction(k_BroadcastGen, "ElementwisePRelu");
-        public static ComputeFunction k_ScalarBroadcastPowFloat = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowFloat");
-        public static ComputeFunction k_BroadcastPowFloat = new ComputeFunction(k_BroadcastGen, "BroadcastPowFloat");
-        public static ComputeFunction k_ElementwisePowFloat = new ComputeFunction(k_BroadcastGen, "ElementwisePowFloat");
-        public static ComputeFunction k_ScalarBroadcastPowInt = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowInt");
-        public static ComputeFunction k_BroadcastPowInt = new ComputeFunction(k_BroadcastGen, "BroadcastPowInt");
-        public static ComputeFunction k_ElementwisePowInt = new ComputeFunction(k_BroadcastGen, "ElementwisePowInt");
+        public static ComputeFunction k_ScalarBroadcastPowFloatFloat = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowFloatFloat");
+        public static ComputeFunction k_BroadcastPowFloatFloat = new ComputeFunction(k_BroadcastGen, "BroadcastPowFloatFloat");
+        public static ComputeFunction k_ElementwisePowFloatFloat = new ComputeFunction(k_BroadcastGen, "ElementwisePowFloatFloat");
+        public static ComputeFunction k_ScalarBroadcastPowFloatInt = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowFloatInt");
+        public static ComputeFunction k_BroadcastPowFloatInt = new ComputeFunction(k_BroadcastGen, "BroadcastPowFloatInt");
+        public static ComputeFunction k_ElementwisePowFloatInt = new ComputeFunction(k_BroadcastGen, "ElementwisePowFloatInt");
+        public static ComputeFunction k_ScalarBroadcastPowIntFloat = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowIntFloat");
+        public static ComputeFunction k_BroadcastPowIntFloat = new ComputeFunction(k_BroadcastGen, "BroadcastPowIntFloat");
+        public static ComputeFunction k_ElementwisePowIntFloat = new ComputeFunction(k_BroadcastGen, "ElementwisePowIntFloat");
+        public static ComputeFunction k_ScalarBroadcastPowIntInt = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastPowIntInt");
+        public static ComputeFunction k_BroadcastPowIntInt = new ComputeFunction(k_BroadcastGen, "BroadcastPowIntInt");
+        public static ComputeFunction k_ElementwisePowIntInt = new ComputeFunction(k_BroadcastGen, "ElementwisePowIntInt");
         public static ComputeFunction k_ScalarBroadcastAddFloat = new ComputeFunction(k_BroadcastGen, "ScalarBroadcastAddFloat");
         public static ComputeFunction k_BroadcastAddFloat = new ComputeFunction(k_BroadcastGen, "BroadcastAddFloat");
         public static ComputeFunction k_ElementwiseAddFloat = new ComputeFunction(k_BroadcastGen, "ElementwiseAddFloat");
@@ -381,6 +381,71 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_BitonicSortStep = new ComputeFunction(k_BitonicSort, "BitonicSortStep");
         public static ComputeFunction k_BitonicSortKeyStep = new ComputeFunction(k_BitonicSort, "BitonicSortKeyStep");
         public static ComputeFunction k_RoiAlign = new ComputeFunction(k_RoiAlignShader, "RoiAlign");
+
+        // ConvGeneric variants
+        enum ConvNumOutChannelPerGroupMinDivKeyword
+        {
+            NoGroups = -1,
+            LowerThanAnyVariants = 0,
+            //MinDivEqual2, // MinDivEqual2, not available for now
+            //MinDivEqual4, // MinDivEqual4, not available for now
+            //MinDivEqual8, // MinDivEqual8, not available for now
+            //MinDivEqual16,// MinDivEqual16, not available for now
+            //MinDivEqual32,// MinDivEqual32, not available for now
+            MinDivEqual64,
+        }
+        static int[] k_AvailableMinDivVariants = new int[]
+        {
+            1,            // GROUP_OC_PER_GROUP_LT_ANYVARIANTS
+            //int.MaxValue, // MinDivEqual2, not available for now
+            //int.MaxValue, // MinDivEqual4, not available for now
+            //int.MaxValue, // MinDivEqual8, not available for now
+            //int.MaxValue, // MinDivEqual16, not available for now
+            //int.MaxValue, // MinDivEqual32, not available for now
+            64, // MinDivEqual64
+        };
+
+        static LocalKeyword[] k_ConvGroupSizeBoundKeywords = new LocalKeyword[]
+        {
+                new(k_ConvGeneric, "GROUP_OC_PER_GROUP_LT_ANYVARIANTS"),
+                //new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_2"),
+                //new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_4"),
+                //new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_8"),
+                //new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_16"),
+                //new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_32"),
+                new(k_ConvGeneric, "GROUP_OC_PER_GROUP_MINDIV_64"),
+        };
+
+        static ConvNumOutChannelPerGroupMinDivKeyword GroupedConvGenericGroupGetMinDivVariant(uint numOcPerGroup)
+        {
+            // maxval is used for an absent variant
+
+            int i = k_AvailableMinDivVariants.Length - 1;
+            for (; i >= 0; i--)
+            {
+                if (k_AvailableMinDivVariants[i] <= numOcPerGroup && (numOcPerGroup % k_AvailableMinDivVariants[i]) == 0)
+                    break;
+            }
+            // i will be -1 only if numOcPerGroup == 0, which means no groups,
+            // 1 means LowerThanAnyVariants, pick default variant, etc.
+            var keywEnum = (ConvNumOutChannelPerGroupMinDivKeyword)(i);
+            return keywEnum;
+        }
+
+        static void GroupedConvGenericSetGroupMinDivVariantKeyword(CommandBuffer cb, ConvNumOutChannelPerGroupMinDivKeyword variant)
+        {
+            cb.SetKeyword(k_ConvGeneric, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.LowerThanAnyVariants], ConvNumOutChannelPerGroupMinDivKeyword.LowerThanAnyVariants == variant);
+            // Re-enable those as needed when more variants are defined
+            //cb.SetKeyword(sh, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual2], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual2 == variant);
+            //cb.SetKeyword(sh, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual4], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual4 == variant);
+            //cb.SetKeyword(sh, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual8], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual8 == variant);
+            //cb.SetKeyword(sh, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual16], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual16 == variant);
+            //cb.SetKeyword(sh, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual32], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual32 == variant);
+            cb.SetKeyword(k_ConvGeneric, k_ConvGroupSizeBoundKeywords[(int)ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual64], ConvNumOutChannelPerGroupMinDivKeyword.MinDivEqual64 == variant);
+        }
+
+        public static void GroupedConvGenericSetGroupMinDivVariantKeyword(CommandBuffer cb, int numOutputChannelsPerGroup) => GroupedConvGenericSetGroupMinDivVariantKeyword(cb, GroupedConvGenericGroupGetMinDivVariant((uint)numOutputChannelsPerGroup));
+        public static void GroupedConvGenericDisableGroups(CommandBuffer cb) => GroupedConvGenericSetGroupMinDivVariantKeyword(cb, ConvNumOutChannelPerGroupMinDivKeyword.NoGroups);
     }
 
     class ComputeFunction

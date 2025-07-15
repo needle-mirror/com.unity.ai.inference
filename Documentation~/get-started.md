@@ -3,7 +3,7 @@
 Use the following topics to get started with Inference Engine.
 
 > [!TIP]
-> If you're new to Inference Engine or just getting started with machine learning models, start with a [sample project](package-samples.md#sample-projects). This lets you to understand the full Inference Engine workflow and explore its key use cases. 
+> If you're new to Inference Engine or just getting started with machine learning models, start with a [sample project](package-samples.md#sample-projects). This lets you to understand the full Inference Engine workflow and explore its key use cases.
 
 |Page|Description|
 |-|-|

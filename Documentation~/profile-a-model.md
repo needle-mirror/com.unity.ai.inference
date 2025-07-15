@@ -23,7 +23,7 @@ When a layer implements methods that include **Download** or **Upload**, Inferen
 If your model runs slower than you expect, refer to the following links:
 
 - For information about how the complexity of a model might affect performance, refer to [Understand models in Inference Engine](models-concept.md).
-- For information about different types of worker, refer to [Create an engine to run a model](create-an-engine.md). 
+- For information about different types of worker, refer to [Create an engine to run a model](create-an-engine.md).
 
 ## Additional resources
 

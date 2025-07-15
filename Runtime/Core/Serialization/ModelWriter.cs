@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using SentisFlatBuffer;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Unity.InferenceEngine.Google.FlatBuffers;
 
@@ -20,7 +19,7 @@ namespace Unity.InferenceEngine
         const int k_WeightsFlatBufferOverhead = 32;
         // The maximum size of a FlatBuffer is int.MaxValue bytes, subtract the overhead to get the maximum size for a single constant
         const long k_MaxConstantSize = int.MaxValue - k_WeightsFlatBufferOverhead;
-        internal const int version = 5;
+        internal const int version = 6;
 
         /// <summary>
         /// Serializes and saves the model description and weights to a file.
@@ -202,85 +201,11 @@ namespace Unity.InferenceEngine
                     layerInputs[k] = (input == -1) ? -1 : indexMapping[input];
                 }
 
-                var layerAttributesInputs = new List<int>();
-                var fields = layer.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                foreach (var field in fields)
-                {
-                    var name = field.Name;
-                    if (name == "name" || name == "inputs" || name == "outputs")
-                        continue;
-
-                    var value = field.GetValue(layer);
-                    switch (value)
-                    {
-                        case bool bv:
-                        {
-                            var val = Bool.CreateBool(builder, bv);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.Bool, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case float fv:
-                        {
-                            var val = Float.CreateFloat(builder, fv);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.Float, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case int iv:
-                        {
-                            var val = Int.CreateInt(builder, iv);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.Int, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case byte bytev:
-                        {
-                            var val = Int.CreateInt(builder, (int)bytev);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.Int, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case int[] ia:
-                        {
-                            var item = IntList.CreateItemsVector(builder, ia);
-                            var val = IntList.CreateIntList(builder, item);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.IntList, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case float[] fa:
-                        {
-                            var item = FloatList.CreateItemsVector(builder, fa);
-                            var val = FloatList.CreateFloatList(builder, item);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.FloatList, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case string s:
-                        {
-                            var item = builder.CreateString(s);
-                            var val = SentisFlatBuffer.String.CreateString(builder, item);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.String, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case Enum:
-                        {
-                            int e = (int)Convert.ChangeType(value, Enum.GetUnderlyingType(value.GetType()));
-                            var val = Int.CreateInt(builder, e);
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.Int, val.Value));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        }
-                        case null:
-                            values.Add(EValue.CreateEValue(builder, KernelTypes.NONE));
-                            layerAttributesInputs.Add(values.Count - 1);
-                            break;
-                        default:
-                            continue;
-                    }
-                }
+                var prevValuesCount = values.Count;
+                layer.SerializeFields(builder, values);
+                var layerAttributesInputs = new int[values.Count - prevValuesCount];
+                for (var j = 0; j < layerAttributesInputs.Length; j++)
+                    layerAttributesInputs[j] = prevValuesCount + j;
 
                 var layerOutputs = new List<int>(); // TODO layer outputs
 
@@ -328,7 +253,7 @@ namespace Unity.InferenceEngine
                 var layerInputVector = ExecutionPlan.CreateInputsVector(builder, layerInputs);
                 var layerOutputVector = ExecutionPlan.CreateOutputsVector(builder, layerOutputs.ToArray());
                 // attributes
-                var layerAttributesVector = ExecutionPlan.CreateInputsVector(builder, layerAttributesInputs.ToArray());
+                var layerAttributesVector = ExecutionPlan.CreateInputsVector(builder, layerAttributesInputs);
                 var kernelCall = KernelCall.CreateKernelCall(builder, operatorNames[layer.opName], layerAttributesVector);
                 Instruction.StartInstruction(builder);
                 Instruction.AddInstrArgsType(builder, InstructionArguments.KernelCall);

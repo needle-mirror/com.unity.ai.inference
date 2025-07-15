@@ -1,6 +1,5 @@
 using System;
 using Unity.Collections;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -8,14 +7,10 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an element-wise `ScaleBias` normalization layer: f(x, s, b) = x * s + b.
     /// </summary>
-    class ScaleBias : Layer
+    [Operator(category = "Normalization")]
+    [Inputs(names = new[] { "input", "scale", "bias" })]
+    partial class ScaleBias : Layer
     {
-        static readonly string k_OpName = "ScaleBias";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public ScaleBias(int output, int input, int scale, int bias)
-            : base(new[] { output }, new[] { input, scale, bias }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -51,27 +46,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.ScaleBias(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `InstanceNormalization` normalization layer. This computes the mean variance on the spatial dims of the input tensor and normalizes them according to `scale` and `bias` tensors.
     /// </summary>
-    class InstanceNormalization : Layer
+    [Operator(category = "Normalization")]
+    [Inputs(names = new[] { "input", "scale", "bias" })]
+    partial class InstanceNormalization : Layer
     {
-        static readonly string k_OpName = "InstanceNormalization";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
-
-        public InstanceNormalization(int output, int input, int scale, int bias, float epsilon = 1e-5f)
-            : base(new[] { output }, new[] { input, scale, bias })
-        {
-            if (epsilon == 0)
-                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
-            this.epsilon = epsilon;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -109,32 +93,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.InstanceNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, epsilon);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, epsilon: {epsilon}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `LayerNormalization` normalization layer. This computes the mean variance on the last dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
-    class LayerNormalization : Layer
+    [Operator(category = "Normalization")]
+    [Inputs(names = new[] { "input", "scale", "bias" })]
+    partial class LayerNormalization : Layer
     {
-        static readonly string k_OpName = "LayerNormalization";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
-
-        public LayerNormalization(int output, int input, int scale, int bias = -1, float epsilon = 1e-5f)
-            : base(new[] { output }, new[] { input, scale, bias })
-        {
-            if (epsilon == 0)
-                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
-            this.epsilon = epsilon;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -170,32 +138,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.LayerNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, epsilon);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, epsilon: {epsilon}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `RMSNormalization` normalization layer. This computes the mean square variance on the last dimension of the input tensor and normalizes it according to `scale` tensor.
     /// </summary>
-    class RMSNormalization : Layer
+    [Operator(category = "Normalization")]
+    [Inputs(names = new[] { "input", "scale" })]
+    partial class RMSNormalization : Layer
     {
-        static readonly string k_OpName = "RMSNormalization";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
-
-        public RMSNormalization(int output, int input, int scale, float epsilon = 1e-5f)
-            : base(new[] { output }, new[] { input, scale })
-        {
-            if (epsilon == 0)
-                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
-            this.epsilon = epsilon;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -228,30 +180,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.RMSNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, O, epsilon);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, epsilon: {epsilon}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `BatchNormalization` normalization layer. This computes the mean variance on the second dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
-    class BatchNormalization : Layer
+    [Operator(category = "Normalization")]
+    [Inputs(names = new[] { "input", "scale", "bias", "mean", "variance" })]
+    partial class BatchNormalization : Layer
     {
-        static readonly string k_OpName = "BatchNormalization";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
-
-        public BatchNormalization(int output, int input, int scale, int bias, int mean, int variance, float epsilon = 1e-5f)
-            : base(new[] { output }, new[] { input, scale, bias, mean, variance })
-        {
-            this.epsilon = epsilon;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -294,36 +232,18 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.BatchNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, ctx.storage.GetTensor(inputs[3]) as Tensor<float>, ctx.storage.GetTensor(inputs[4]) as Tensor<float>, O, epsilon);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, epsilon: {epsilon}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `LRN` local response normalization layer. This normalizes the input tensor over local input regions.
     /// </summary>
-    class LRN : Layer
+    [Operator(category = "Normalization")]
+    partial class LRN : Layer
     {
-        static readonly string k_OpName = "LRN";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
         public float beta;
         public float bias;
         public int count;
-
-        public LRN(int output, int input, float alpha, float beta, float bias, int count)
-            : base(new[] { output }, new[] { input })
-        {
-            this.alpha = alpha;
-            this.beta = beta;
-            this.bias = bias;
-            this.count = count;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -384,13 +304,5 @@ namespace Unity.InferenceEngine.Layers
             }
             O.dataOnBackend.Upload(arrayO, arrayO.Length);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, alpha: {alpha}, beta: {beta}, bias: {bias}, count: {count}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

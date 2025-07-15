@@ -16,6 +16,8 @@ namespace Unity.InferenceEngine
     /// </summary>
     struct PartialTensorElement<T> where T : unmanaged
     {
+        const string k_UnknownName = "?";
+
         ElementType m_ElementType;
         byte m_Param;
         T m_Value;
@@ -98,6 +100,17 @@ namespace Unity.InferenceEngine
                 ElementType.Unknown => "?",
                 ElementType.Value => value.ToString(),
                 ElementType.Param => param.ToString(),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        internal string ToString(Func<byte, string> SymbolicDimNaming)
+        {
+            return m_ElementType switch
+            {
+                ElementType.Unknown => k_UnknownName,
+                ElementType.Value => value.ToString(),
+                ElementType.Param => SymbolicDimNaming(param),
                 _ => throw new ArgumentOutOfRangeException()
             };
         }

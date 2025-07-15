@@ -12,7 +12,8 @@ namespace Unity.InferenceEngine
     {
         internal static FunctionalTensor[] FromLayerMultiOutput(Layer layer, FunctionalTensor[] inputs)
         {
-            Assert.AreEqual(layer.inputs.Length, inputs.Length);
+            layer.inputs = new int[inputs.Length];
+            layer.outputs = new int[layer.OutputCount];
             var node = new LayerNode(inputs, layer);
             return node.CreateOutputs();
         }

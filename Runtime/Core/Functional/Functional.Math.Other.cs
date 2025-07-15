@@ -66,7 +66,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor BroadcastTo(this FunctionalTensor input, int[] shape)
         {
-            return FromLayer(new Layers.Expand(-1, -1, -1), new[] { input, Constant(shape) });
+            return FromLayer(new Layers.Expand(), new[] { input, Constant(shape) });
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Clone(this FunctionalTensor input)
         {
-            return FromLayer(new Layers.Identity(-1, -1), input);
+            return FromLayer(new Layers.Identity(), input);
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor CumSum(FunctionalTensor input, int dim)
         {
-            return FromLayer(new Layers.CumSum(-1, -1, -1, false, false), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.CumSum(false, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Einsum(string equation, params FunctionalTensor[] operands)
         {
-            return FromLayer(new Layers.Einsum(-1, new int[operands.Length], equation), operands);
+            return FromLayer(new Layers.Einsum(equation), operands);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Unity.InferenceEngine
                 steps[i] = -1;
             }
 
-            return FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), new[] { input, Constant(starts), Constant(ends), Constant(dims), Constant(steps) });
+            return FromLayer(new Layers.Slice(), new[] { input, Constant(starts), Constant(ends), Constant(dims), Constant(steps) });
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriL(FunctionalTensor input, int diagonal = 0)
         {
-            return FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Lower), new[] { input, Constant(diagonal) });
+            return FromLayer(new Layers.Trilu(Layers.TriluMode.Lower), new[] { input, Constant(diagonal) });
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriU(FunctionalTensor input, int diagonal = 0)
         {
-            return FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Upper), new[] { input, Constant(diagonal) });
+            return FromLayer(new Layers.Trilu(Layers.TriluMode.Upper), new[] { input, Constant(diagonal) });
         }
     }
 }

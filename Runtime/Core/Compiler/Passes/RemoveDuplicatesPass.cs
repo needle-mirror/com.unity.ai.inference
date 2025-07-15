@@ -1,78 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Collections;
 using Unity.InferenceEngine.Layers;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
     class RemoveDuplicateLayersPass : IModelPass
     {
-        long GetHashCode(Layer layer, Dictionary<int, int> duplicateConstants)
+        static int GetHashCode(Layer layer, Dictionary<int, int> duplicateConstants)
         {
-            long seed = 0;
-            HashHelper.HashCombine(ref seed, layer.GetType());
+            var hashCode = layer.GetHashCode();
             foreach (var input in layer.inputs)
             {
                 var remappedInput = duplicateConstants.GetValueOrDefault(input, input);
-                HashHelper.HashCombine(ref seed, remappedInput);
+                hashCode = HashCode.Combine(hashCode, remappedInput);
             }
 
-            return seed;
-        }
-
-        List<object> GetComparableFields(Layer layer)
-        {
-            var infos = new List<object>();
-            var fields = layer.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            foreach (var field in fields)
-            {
-                var name = field.Name;
-                if (name == "outputs" || name == "inputs")
-                    continue;
-                infos.Add(field.GetValue(layer));
-            }
-            return infos;
-        }
-
-        bool AllEqual(List<object> l0, List<object> l1)
-        {
-            if (l0.Count != l1.Count)
-                return false;
-
-            for (int i = 0; i < l0.Count; i++)
-            {
-                var f0 = l0[i];
-                var f1 = l1[i];
-
-                if ((f0 is IList a0) && (f1 is IList a1))
-                {
-                    if (a0.Count != a1.Count)
-                        return false;
-
-                    for (int j = 0; j < a0.Count; j++)
-                    {
-                        var e0 = a0[j]; var e1 = a1[j];
-                        if (!Equals(e0, e1))
-                            return false;
-                    }
-                }
-                else if (!Equals(f0, f1))
-                    return false;
-            }
-
-            return true;
-        }
-
-        List<object> GetComparableFields(ref Dictionary<int, List<object>> comparableFieldsByLayer, Layer layer)
-        {
-            if (!comparableFieldsByLayer.TryGetValue(layer.outputs[0], out var layerFields))
-            {
-                layerFields = GetComparableFields(layer);
-                comparableFieldsByLayer.Add(layer.outputs[0], layerFields);
-            }
-
-            return layerFields;
+            return hashCode;
         }
 
         public void Run(ref Model model)
@@ -106,13 +49,10 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     continue;
                 }
 
-                var layerFields = GetComparableFields(ref comparableFieldsByLayer, layer);
                 bool removed = false;
                 foreach (var similarLayer in collisionLayers)
                 {
-                    List<object> fields = GetComparableFields(ref comparableFieldsByLayer, similarLayer);
-
-                    if (!AllEqual(layerFields, fields))
+                    if (!layer.IsEquivalent(similarLayer))
                         continue;
 
                     if (layer is RandomLayer { hasSeed: false })
@@ -166,16 +106,15 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
     {
         static long GetHashCode(Constant constant)
         {
-            long seed = 0;
-            HashHelper.HashCombine(ref seed, constant.shape);
+            var hashCode = constant.shape.GetHashCode();
 
             if (constant.shape.HasZeroDims())
-                return seed;
+                return hashCode;
 
-            for (int i = 0; i < constant.shape.length; i++)
-                HashHelper.HashCombine(ref seed, constant.weights.Get<int>(i));
+            for (var i = 0; i < constant.shape.length; i++)
+                hashCode = HashCode.Combine(hashCode, constant.weights.Get<int>(i));
 
-            return seed;
+            return hashCode;
         }
 
         static bool AreEqual(Constant c0, Constant c1)

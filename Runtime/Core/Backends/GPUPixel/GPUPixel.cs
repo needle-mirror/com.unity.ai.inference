@@ -542,12 +542,13 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
                 throw new NotImplementedException();
             }
+            var numSpatialDims = X.shape.rank - 2;
 
             var func = new PixelFunc("Hidden/InferenceEngine/ConvTranspose");
 
@@ -561,7 +562,7 @@ namespace Unity.InferenceEngine
             }
             var pinO = TextureTensorData.Pin(O, 1);
 
-            var numSpatialDims = X.shape.rank - 2;
+            Span<int> lcmOfDilationStride = stackalloc int[numSpatialDims];
 
             if (numSpatialDims == 1)
                 func.EnableKeyword("CONVTRANSPOSE1D");
@@ -570,18 +571,46 @@ namespace Unity.InferenceEngine
             else
                 func.EnableKeyword("CONVTRANSPOSE3D");
 
-            func.SetInt(k_ID_O_channelsDiv4, pinO.dimAxisDiv4);
+            int numOutputChannelsPerGroup = pinK.shape[1]; // should be == O.shape[1] / groups
+            func.SetInt(k_ID_O_channelsPerGroup, numOutputChannelsPerGroup);
+            {
+                int numInputChannelsPerGroup = X.shape[1] / groups;
+                func.SetInt(k_ID_X_channelsPerGroupDiv4Floor, numInputChannelsPerGroup / 4);
+                func.SetInt(k_ID_X_channelsPerGroup, numInputChannelsPerGroup);
+            }
+            if (groups > 1)
+                func.EnableKeyword("GROUPS_ENABLED");
+
+            func.SetInt(k_ID_O_channelsDiv4, pinO.dimAxisDiv4); // ceil(pinK.shape[1]/4)
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetInt(k_ID_X_channels, pinX.dimAxis);
             func.SetInt(k_ID_X_channelsDiv4, pinX.dimAxisDiv4);
             func.SetTensor(k_TensorPropertiesK, pinK);
-            func.SetInt(k_ID_K_mDivGroup, pinK.shape[1]);
 
             func.SetInt(k_ID_K_width, pinK.shape[-1]);
-            func.SetInt(k_ID_O_width, pinO.shape[-1]);
             func.SetInt(k_ID_X_width, pinX.shape[-1]);
-            func.SetInt(k_ID_PadX, W.shape[-1] - pads[numSpatialDims - 1] - 1);
+            func.SetInt(k_ID_O_width, pinO.shape[-1]);
             func.SetInt(k_ID_StrideX, strides[numSpatialDims - 1]);
+            func.SetInt(k_ID_PadX, dilations[numSpatialDims - 1] * (W.shape[-1] - 1) + 1 - pads[numSpatialDims - 1] - 1);
+            func.SetInt(k_ID_PadOrigX, pads[numSpatialDims - 1]);
+            func.SetInt(k_ID_DilationX, dilations[numSpatialDims - 1]);
+
+            if (dilations[numSpatialDims - 1] > 1)
+            {
+                var gcdTmp = ComputeHelper.GCD(dilations[numSpatialDims - 1], strides[numSpatialDims - 1]);
+                lcmOfDilationStride[numSpatialDims - 1] = Math.Abs(dilations[numSpatialDims - 1] * strides[numSpatialDims - 1]) /gcdTmp;
+
+                if (dilations[numSpatialDims - 1] > strides[numSpatialDims - 1])
+                    func.EnableKeyword("DILATIONX_GT_STRIDE");
+                else
+                    func.EnableKeyword("DILATIONX_GT_ONE_LTE_STRIDE");
+            }
+            else
+            {
+                lcmOfDilationStride[numSpatialDims - 1] = 1;
+            }
+            func.SetInt(k_ID_LCMOfStrideDilationDivStrideX, lcmOfDilationStride[numSpatialDims - 1] / strides[numSpatialDims - 1]);
+            func.SetInt(k_ID_LCMOfStrideDilationX, lcmOfDilationStride[numSpatialDims - 1]);
 
             if (numSpatialDims > 1)
             {
@@ -589,7 +618,26 @@ namespace Unity.InferenceEngine
                 func.SetInt(k_ID_X_height, pinX.shape[-2]);
                 func.SetInt(k_ID_O_height, pinO.shape[-2]);
                 func.SetInt(k_ID_StrideY, strides[numSpatialDims - 2]);
-                func.SetInt(k_ID_PadY, W.shape[-2] - pads[numSpatialDims - 2] - 1);
+                func.SetInt(k_ID_PadY, dilations[numSpatialDims - 2] * (W.shape[-2] - 1) + 1 - pads[numSpatialDims - 2] - 1);
+                func.SetInt(k_ID_PadOrigY, pads[numSpatialDims - 2]);
+                func.SetInt(k_ID_DilationY, dilations[numSpatialDims - 2]);
+
+                if (dilations[numSpatialDims - 2] > 1)
+                {
+                    var gcdTmp = ComputeHelper.GCD(dilations[numSpatialDims - 2], strides[numSpatialDims - 2]);
+                    lcmOfDilationStride[numSpatialDims - 2] = Math.Abs(dilations[numSpatialDims - 2] * strides[numSpatialDims - 2]) / gcdTmp;
+
+                    if (dilations[numSpatialDims - 2] > strides[numSpatialDims - 2])
+                        func.EnableKeyword("DILATIONY_GT_STRIDE");
+                    else
+                        func.EnableKeyword("DILATIONY_GT_ONE_LTE_STRIDE");
+                }
+                else
+                {
+                    lcmOfDilationStride[numSpatialDims - 2] = 1;
+                }
+                func.SetInt(k_ID_LCMOfStrideDilationDivStrideY, lcmOfDilationStride[numSpatialDims - 2] / strides[numSpatialDims - 2]);
+                func.SetInt(k_ID_LCMOfStrideDilationY, lcmOfDilationStride[numSpatialDims - 2]);
             }
 
             if (numSpatialDims > 2)
@@ -598,8 +646,28 @@ namespace Unity.InferenceEngine
                 func.SetInt(k_ID_X_depth, pinX.shape[-3]);
                 func.SetInt(k_ID_O_depth, pinO.shape[-3]);
                 func.SetInt(k_ID_StrideZ, strides[numSpatialDims - 3]);
-                func.SetInt(k_ID_PadZ, W.shape[-3] - pads[numSpatialDims - 3] - 1);
+                func.SetInt(k_ID_PadZ, dilations[numSpatialDims - 3] * (W.shape[-3] - 1) + 1 - pads[numSpatialDims - 3] - 1);
+                func.SetInt(k_ID_PadOrigZ, pads[numSpatialDims - 3]);
+                func.SetInt(k_ID_DilationZ, dilations[numSpatialDims - 3]);
+
+                if (dilations[numSpatialDims - 3] > 1)
+                {
+                    var gcdTmp = ComputeHelper.GCD(dilations[numSpatialDims - 3], strides[numSpatialDims - 3]);
+                    lcmOfDilationStride[numSpatialDims - 3] = Math.Abs(dilations[numSpatialDims - 3] * strides[numSpatialDims - 3]) / gcdTmp;
+
+                    if (dilations[numSpatialDims - 3] > strides[numSpatialDims - 3])
+                        func.EnableKeyword("DILATIONZ_GT_STRIDE");
+                    else
+                        func.EnableKeyword("DILATIONZ_GT_ONE_LTE_STRIDE");
+                }
+                else
+                {
+                    lcmOfDilationStride[numSpatialDims - 3] = 1;
+                }
+                func.SetInt(k_ID_LCMOfStrideDilationDivStrideZ, lcmOfDilationStride[numSpatialDims - 3] / strides[numSpatialDims - 3]);
+                func.SetInt(k_ID_LCMOfStrideDilationZ, lcmOfDilationStride[numSpatialDims - 3]);
             }
+
 
             if (fusedActivation == Layers.FusableActivation.Relu)
                 func.EnableKeyword("RELU");
@@ -1145,13 +1213,25 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Pow(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
-            Broadcast(A, B, O, "Pow");
+            Broadcast(A, B, O, "PowFloatFloat");
         }
 
         /// <inheritdoc/>
         public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
         {
-            Broadcast(A, B, O, "PowInt");
+            Broadcast(A, B, O, "PowFloatInt");
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<int> A, Tensor<float> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "PowIntFloat");
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "PowIntInt");
         }
 
         /// <inheritdoc/>
@@ -1912,6 +1992,8 @@ namespace Unity.InferenceEngine
             var pinO = PinBlockAny(O, false);
 
             var func = new PixelFunc("Hidden/InferenceEngine/GatherND");
+            func.SetKeyword("GatherInt", X.dataType == DataType.Int);
+
             func.SetInt(k_ID_iStart, TensorShape.maxRank - pinO.shape.rank);
             func.SetInt(k_ID_iEndIndices, TensorShape.maxRank - pinO.shape.rank + pinB.shape.rank - 1);
             func.SetInt(k_ID_iEndX, TensorShape.maxRank - pinO.shape.rank + batchDims);

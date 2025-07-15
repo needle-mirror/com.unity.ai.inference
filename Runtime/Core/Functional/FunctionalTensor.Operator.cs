@@ -462,7 +462,7 @@ namespace Unity.InferenceEngine
         static FunctionalTensor ScalarMad(FunctionalTensor input, float s, float b)
         {
             input = input.Float();
-            return Functional.FromLayer(new Layers.ScalarMad(-1, -1, s, b), new[] { input });
+            return Functional.FromLayer(new Layers.ScalarMad(DataType.Float, s, b, 0, 0), new[] { input });
         }
 
         // helper for operators with int values, type promotion to floats if needed
@@ -470,7 +470,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Float)
                 return ScalarMad(input, (float)s, b);
-            return Functional.FromLayer(new Layers.ScalarMad(-1, -1, s, b), new[] { input });
+            return Functional.FromLayer(new Layers.ScalarMad(DataType.Int, 0, 0, s, b), new[] { input });
         }
     }
 }

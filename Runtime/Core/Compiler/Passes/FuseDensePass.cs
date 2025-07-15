@@ -82,7 +82,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                         }
                         if (allEqual)
                         {
-                            model.layers[addLayerIndex] = new Layers.DenseBatched(addLayer.outputs[0], layer.inputs[0], layer.inputs[1], biasIndex);
+                            model.layers[addLayerIndex] = new Layers.DenseBatched(Layers.FusableActivation.None).SetInputs(layer.inputs[0], layer.inputs[1], biasIndex).SetOutputs(addLayer.outputs[0]);
                             removeLayers.Add(layer.outputs[0]);
                         }
                     }
@@ -127,7 +127,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                             model.constants.Add(new Constant(weightsIndex, transposed.shape, transposed.DownloadToArray()));
                         }
 
-                        model.layers[l] = new Layers.Dense(layer.outputs[0], layer.inputs[0], weightsIndex, biasIndex);
+                        model.layers[l] = new Layers.Dense(Layers.FusableActivation.None).SetInputs(layer.inputs[0], weightsIndex, biasIndex).SetOutputs(layer.outputs[0]);
                         remap[addLayer.outputs[0]] = layer.outputs[0];
                     }
                 }

@@ -364,7 +364,7 @@ namespace Unity.InferenceEngine
 
             if (groups != 1)
             {
-                GroupedConv(X, K, B, O, groups, strides, pads, dilations, fusedActivation);
+                GroupedConvGeneric(X, K, B, O, groups, strides, pads, dilations, fusedActivation);
                 return;
             }
 
@@ -532,10 +532,7 @@ namespace Unity.InferenceEngine
                 cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
 
-            if (unitStrides)
-                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"));
-            else
-                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"));
+            cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"), unitStrides);
 
             cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
             cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
@@ -553,16 +550,29 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
+            bool forceGenericKernel = (groups > 1 || !ComputeInfo.IsDirect3DAPI || X.shape.rank > 4);
+            if (!forceGenericKernel)
+            {
+                for (int i = 0; i < dilations.Length; i++)
+                {
+                    if (dilations[i] != 1)
+                    {
+                        forceGenericKernel = true;
+                        break;
+                    }
+                }
+            }
+
             if (X.shape.rank > 5)
             {
                 throw new NotImplementedException();
             }
 
-            if (!ComputeInfo.IsDirect3DAPI || X.shape.rank > 4)
+            if (forceGenericKernel)
             {
-                ConvTransposeGeneric(X, W, B, O, strides, pads, outputPadding, fusedActivation);
+                ConvTransposeGeneric(X, W, B, O, groups, strides, pads, dilations, outputPadding, fusedActivation);
                 return;
             }
 
@@ -625,7 +635,7 @@ namespace Unity.InferenceEngine
             cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
-        void ConvTransposeGeneric(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputAdjustment, Layers.FusableActivation fusedActivation)
+        void ConvTransposeGeneric(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputAdjustment, Layers.FusableActivation fusedActivation)
         {
             ComputeFunction fn;
 
@@ -639,23 +649,30 @@ namespace Unity.InferenceEngine
             if (numSpatialDims == 1)
             {
                 fn = ComputeFunctions.k_ConvTranspose1D_Generic;
-                paddings[0] = W.shape[-1] - pads[numSpatialDims - 1] - 1;
+                if (W.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_ConvTranspose1D_1x1_Generic;
+
+                paddings[0] = dilations[0] * (W.shape[-1] - 1) + 1 - pads[numSpatialDims - 1] - 1;
             }
             else if (numSpatialDims == 2)
             {
                 fn = ComputeFunctions.k_ConvTranspose2D_Generic;
-                paddings[0] = W.shape[-2] - pads[numSpatialDims - 2] - 1;
-                paddings[1] = W.shape[-1] - pads[numSpatialDims - 1] - 1;
+                if (W.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_ConvTranspose2D_1x1_Generic;
+
+                paddings[0] = dilations[0] * (W.shape[-2] - 1) + 1 - pads[numSpatialDims - 2] - 1;
+                paddings[1] = dilations[1] * (W.shape[-1] - 1) + 1 - pads[numSpatialDims - 1] - 1;
             }
             else
             {
                 fn = ComputeFunctions.k_ConvTranspose3D_Generic;
-                paddings[0] = W.shape[-3] - pads[numSpatialDims - 3] - 1;
-                paddings[1] = W.shape[-2] - pads[numSpatialDims - 2] - 1;
-                paddings[2] = W.shape[-1] - pads[numSpatialDims - 1] - 1;
-            }
+                if (W.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_ConvTranspose3D_1x1_Generic;
 
-            Span<int> dilations = stackalloc int[4] { 1, 1, 1, 1 };
+                paddings[0] = dilations[0] * (W.shape[-3] - 1) + 1 - pads[numSpatialDims - 3] - 1;
+                paddings[1] = dilations[1] * (W.shape[-2] - 1) + 1 - pads[numSpatialDims - 2] - 1;
+                paddings[2] = dilations[2] * (W.shape[-1] - 1) + 1 - pads[numSpatialDims - 1] - 1;
+            }
 
             cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
             cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
@@ -665,9 +682,14 @@ namespace Unity.InferenceEngine
             cb.SetInt4(fn, k_ID__Stride, strides);
             cb.SetInt4(fn, k_ID__Dilation, dilations);
 
+            cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
             cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[-1]);
             cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[-1]);
             cb.SetComputeIntParam(fn.shader, k_ID_K_width, W.shape[-1]);
+            //TODO
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideX, X.shape.Length(2));
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideO, O.shape.Length(2));
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideK, K.shape.Length(2));
 
             bool unitStrides = strides[0] == 1;
 
@@ -700,10 +722,17 @@ namespace Unity.InferenceEngine
                 cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
 
-            if (unitStrides)
-                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"));
-            else
-                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"));
+            cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"), unitStrides);
+
+            if (groups > 1)
+            {
+                int numOutputChannelsPerGroup = O.shape[1] / groups;
+                int numInputChannelsPerGroup = X.shape[1] / groups;
+                ComputeFunctions.GroupedConvGenericSetGroupMinDivVariantKeyword(cb, numOutputChannelsPerGroup);
+                cb.SetComputeIntParam(fn.shader, k_ID__Groups, groups);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_channelsPerGroup, numInputChannelsPerGroup);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_channelsPerGroup, numOutputChannelsPerGroup);
+            }
 
             cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
             cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
@@ -712,6 +741,10 @@ namespace Unity.InferenceEngine
             int threadsNeededOutputChannels = ComputeHelper.IDivC(O.shape[1], outputChannelIndexPerThread);
             int threadsNeededBatches = O.shape[0];
             cb.Dispatch(fn, threadsNeededSpatialDims, threadsNeededOutputChannels, threadsNeededBatches);
+
+            // Cleanup keyword state:
+            if (groups > 1)
+                ComputeFunctions.GroupedConvGenericDisableGroups(cb);
         }
 
         /// <inheritdoc/>
@@ -1127,22 +1160,29 @@ namespace Unity.InferenceEngine
             }
         }
 
-        void GroupedConv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        void GroupedConvGeneric(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
-            var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
+            int numOutputChannelsPerGroup = O.shape[1] / groups;
+            int numInputChannelsPerGroup = X.shape[1] / groups;
 
-            int outputGroupedChannels = Otmp.shape[1] / groups;
+            bool unitStrides;
 
-            bool outputChannelsAlignTo64 = (Otmp.shape[1] % 64 == 0) && (outputGroupedChannels >= 64);
+            int spatialIndexPerThread = 4;
+            int outputChannelIndexPerThread = 8;
 
             ComputeFunction fn;
 
             if (X.shape.rank == 5)
             {
-                fn = (outputChannelsAlignTo64 == false) ? ComputeFunctions.k_GroupedConv3D : ComputeFunctions.k_GroupedConv3D_AlignsTo64;
-                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, Otmp.shape[2]);
-                cb.SetComputeIntParam(fn.shader, k_ID_O_height, Otmp.shape[3]);
-                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[4]);
+                unitStrides = strides[0] * strides[1] * strides[2] == 1;
+
+                fn = ComputeFunctions.k_Conv3D_Generic;
+                if (K.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_Conv3D_1x1_Generic;
+
+                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[4]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_depth, X.shape[2]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[3]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[4]);
@@ -1152,9 +1192,14 @@ namespace Unity.InferenceEngine
             }
             else if (X.shape.rank == 4)
             {
-                fn = (outputChannelsAlignTo64 == false) ? ComputeFunctions.k_GroupedConv2D : ComputeFunctions.k_GroupedConv2D_AlignsTo64;
-                cb.SetComputeIntParam(fn.shader, k_ID_O_height, Otmp.shape[2]);
-                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[3]);
+                unitStrides = strides[0] * strides[1] == 1;
+
+                fn = ComputeFunctions.k_Conv2D_Generic;
+                if (K.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_Conv2D_1x1_Generic;
+
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[3]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[2]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[3]);
                 cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[2]);
@@ -1162,45 +1207,60 @@ namespace Unity.InferenceEngine
             }
             else
             {
-                fn = (outputChannelsAlignTo64 == false) ? ComputeFunctions.k_GroupedConv1D : ComputeFunctions.k_GroupedConv1D_AlignsTo64;
-                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[2]);
+                unitStrides = strides[0] == 1;
+
+                fn = ComputeFunctions.k_Conv1D_Generic;
+                if (K.shape.Length(2) == 1)
+                    fn = ComputeFunctions.k_Conv1D_1x1_Generic;
+
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[2]);
                 cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[2]);
                 cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[2]);
             }
+
+            ComputeFunctions.GroupedConvGenericSetGroupMinDivVariantKeyword(cb, numOutputChannelsPerGroup);
 
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(K));
             if (B != null)
             {
-                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
             }
             else
             {
                 cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(Otmp));
+
+            cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"), unitStrides);
+
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
             cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
             cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+
             cb.SetInt4(fn, k_ID__Stride, strides);
             cb.SetInt4(fn, k_ID__Pad, pads);
             cb.SetInt4(fn, k_ID__Dilation, dilations);
+
             cb.SetComputeIntParam(fn.shader, k_ID__Groups, groups);
-            cb.SetComputeIntParam(fn.shader, k_ID_strideX, X.shape.Length(2));
-            cb.SetComputeIntParam(fn.shader, k_ID_strideO, Otmp.shape.Length(2));
-            cb.SetComputeIntParam(fn.shader, k_ID_strideK, K.shape.Length(2));
-            cb.SetComputeIntParam(fn.shader, k_ID_inputGroupedChannels, X.shape[1] / groups);
-            cb.SetComputeIntParam(fn.shader, k_ID_outputGroupedChannels, Otmp.shape[1] / groups);
-            cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
+            //TODO precompute those and use them directly
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideX, X.shape.Length(2));
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideO, O.shape.Length(2));
+            //cb.SetComputeIntParam(fn.shader, k_ID_strideK, K.shape.Length(2));
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channelsPerGroup, numInputChannelsPerGroup);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_channelsPerGroup, numOutputChannelsPerGroup);
 
-            cb.Dispatch(fn, ComputeHelper.IDivC(Otmp.shape[1], 4), ComputeHelper.IDivC(Otmp.shape.Length(2), 4), Otmp.shape[0]);
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
-            if (fusedActivation != Layers.FusableActivation.None)
-            {
-                ApplyFusedActivation(Otmp, O, fusedActivation);
-                ReleaseTensorFloat(Otmp);
-            }
+            int threadsNeededSpatialDims = ComputeHelper.IDivC(O.shape.Length(2), spatialIndexPerThread);
+            int threadsNeededOutputChannels = ComputeHelper.IDivC(O.shape[1], outputChannelIndexPerThread);
+            cb.Dispatch(fn, threadsNeededSpatialDims, threadsNeededOutputChannels, O.shape[0]);
+
+            // Cleanup:
+            ComputeFunctions.GroupedConvGenericDisableGroups(cb);
         }
+
 
         void DepthwiseConv2D(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int group, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {

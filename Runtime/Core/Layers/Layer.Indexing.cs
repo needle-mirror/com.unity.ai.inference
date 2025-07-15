@@ -1,6 +1,5 @@
 using System;
 using Unity.Collections;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -41,14 +40,6 @@ namespace Unity.InferenceEngine.Layers
         public bool keepdims;
         public bool selectLastIndex;
 
-        protected ArgReduce(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
-            : base(new[] { output }, new[] { input })
-        {
-            this.axis = axis;
-            this.keepdims = keepdims;
-            this.selectLastIndex = selectLastIndex;
-        }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var shapeX = getPartialTensor(0).shape;
@@ -74,14 +65,9 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an `ArgMax` layer. This computes the indices of the maximum elements of the input tensor along a given axis.
     /// </summary>
-    class ArgMax : ArgReduce
+    [Operator(category = "Indexing")]
+    partial class ArgMax : ArgReduce
     {
-        static readonly string k_OpName = "ArgMax";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public ArgMax(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
-            : base(output, input, axis, keepdims, selectLastIndex) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -94,27 +80,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.ArgMax(X as Tensor<float>, O, axis, selectLastIndex);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `ArgMin` layer. This computes the indices of the minimum elements of the input tensor along a given axis.
     /// </summary>
-    class ArgMin : ArgReduce
+    [Operator(category = "Indexing")]
+    partial class ArgMin : ArgReduce
     {
-        static readonly string k_OpName = "ArgMin";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public ArgMin(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
-            : base(output, input, axis, keepdims, selectLastIndex) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -127,30 +100,16 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.ArgMin(X as Tensor<float>, O, axis, selectLastIndex);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Gather` layer. This takes values from the input tensor indexed by the indices tensor along a given axis and concatenates them.
     /// </summary>
-    class Gather : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "indices" })]
+    partial class Gather : Layer
     {
-        static readonly string k_OpName = "Gather";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public Gather(int output, int input, int indices, int axis)
-            : base(new[] { output }, new[] { input, indices })
-        {
-            this.axis = axis;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -215,30 +174,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Gather(X, indices, O, axis);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `GatherElements` layer. This takes values from the input tensor indexed by the `indices` tensor along a given axis.
     /// </summary>
-    class GatherElements : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "indices" })]
+    partial class GatherElements : Layer
     {
-        static readonly string k_OpName = "GatherElements";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public GatherElements(int output, int input, int indices, int axis)
-            : base(new[] { output }, new[] { input, indices })
-        {
-            this.axis = axis;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -266,30 +211,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.GatherElements(X, indices, O, axis);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `GatherND` layer. This takes slices of values from the batched input tensor indexed by the `indices` tensor.
     /// </summary>
-    class GatherND : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "indices" })]
+    partial class GatherND : Layer
     {
-        static readonly string k_OpName = "GatherND";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int batchDims;
-
-        public GatherND(int output, int input, int indices, int batchDims)
-            : base(new[] { output }, new[] { input, indices })
-        {
-            this.batchDims = batchDims;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -334,22 +265,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.GatherND(X, indices, O, batchDims);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `NonZero` layer. This returns the indices of the elements of the input tensor that are not zero.
     /// </summary>
-    class NonZero : Layer
+    [Operator(category = "Indexing")]
+    partial class NonZero : Layer
     {
-        static readonly string k_OpName = "NonZero";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public NonZero(int output, int input)
-            : base(new[] { output }, new[] { input }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -429,9 +352,6 @@ namespace Unity.InferenceEngine.Layers
                 O.dataOnBackend.Upload(arrayO, arrayO.Length);
             }
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -439,19 +359,12 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// `ScatterElements` updates the values depending on the reduction mode used.
     /// </summary>
-    class ScatterElements : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "indices", "updates" })]
+    partial class ScatterElements : Layer
     {
-        static readonly string k_OpName = "ScatterElements";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public ScatterReductionMode reduction;
-
-        public ScatterElements(int output, int input, int indices, int updates, int axis, ScatterReductionMode reduction)
-            : base(new[] { output }, new[] { input, indices, updates })
-        {
-            this.axis = axis;
-            this.reduction = reduction;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -505,14 +418,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.ScatterElements(X, indices, updates, O, axis, reduction);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}, reduction: {reduction}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -520,17 +425,11 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// `ScatterND` updates the values depending on the reduction mode used.
     /// </summary>
-    class ScatterND : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "indices", "updates" })]
+    partial class ScatterND : Layer
     {
-        static readonly string k_OpName = "ScatterND";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public ScatterReductionMode reduction;
-
-        public ScatterND(int output, int input, int indices, int updates, ScatterReductionMode reduction)
-            : base(new[] { output }, new[] { input, indices, updates })
-        {
-            this.reduction = reduction;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -570,14 +469,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.ScatterND(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<int>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O as Tensor<float>, reduction);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, reduction: {reduction}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -585,21 +476,16 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This layer calculates both the values tensor of the top-K elements and the indices tensor of the top-K elements as outputs.
     /// </summary>
-    class TopK : Layer
+    [Operator(category = "Indexing")]
+    [Inputs(names = new[] { "input", "k" }, inputCPURead = new[] { 1 })]
+    [Outputs(names = new[] { "values", "indices" })]
+    partial class TopK : Layer
     {
-        static readonly string k_OpName = "TopK";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public bool largest;
         public bool sorted;
 
-        public TopK(int values, int indices, int input, int k, int axis, bool largest, bool sorted)
-            : base(new[] { values, indices }, new[] { input, k })
-        {
-            this.axis = axis;
-            this.largest = largest;
-            this.sorted = sorted;
-        }
+        internal override int OutputCount => 2;
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -644,8 +530,5 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.TopK(X as Tensor<float>, values as Tensor<float>, indices, k, axis, largest);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

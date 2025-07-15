@@ -1,22 +1,14 @@
 using System;
-using Unity.Profiling;
 
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
     /// Represents a `LogSoftmax` activation layer along an axis: f(x, axis) = log(Softmax(x, axis)).
     /// </summary>
-    class LogSoftmax : Activation
+    [Operator(category = "ActivationNonLinear")]
+    partial class LogSoftmax : Activation
     {
-        static readonly string k_OpName = "LogSoftmax";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public LogSoftmax(int output, int input, int axis = -1)
-            : base(output, input)
-        {
-            this.axis = axis;
-        }
 
         internal override void Execute(ExecutionContext ctx)
         {
@@ -26,30 +18,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.LogSoftmax(X, O, axis);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Softmax` activation layer along an axis: f(x, axis) = exp(X) / ReduceSum(exp(X), axis).
     /// </summary>
-    class Softmax : Activation
+    [Operator(category = "ActivationNonLinear")]
+    partial class Softmax : Activation
     {
-        static readonly string k_OpName = "Softmax";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public Softmax(int output, int input, int axis = -1)
-            : base(output, input)
-        {
-            this.axis = axis;
-        }
 
         internal override void Execute(ExecutionContext ctx)
         {
@@ -59,13 +36,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Softmax(X, O, axis);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

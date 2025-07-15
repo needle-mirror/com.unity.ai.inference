@@ -101,6 +101,10 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             {
                 return new LayerNode<Pow>(a, b);
             }
+            public static INode Pow(INode a, int b)
+            {
+                return new LayerNode<Pow>(a, b);
+            }
             public static INode Sqrt(INode a)
             {
                 return new LayerNode<Sqrt>(a);
@@ -257,13 +261,16 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
         // value: layer to spawn, layersInPattern is all the layers that match the expression
         Dictionary<Func<InputNode, INode>, Func<Layer, List<int>, List<Constant>, Layer>> remappingRules = new Dictionary<Func<InputNode, INode>, Func<Layer, List<int>, List<Constant>, Layer>>()
         {
-            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.outputs[0], iLayers[0]) },
-            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.outputs[0], iLayers[0]) },
-            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity(y.outputs[0], iLayers[0]) },
-            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square(y.outputs[0], iLayers[0]) },
-            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish(y.outputs[0], iLayers[0]) },
-            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu(y.outputs[0], iLayers[0]) },
-            { x => (x * 0.5f) * (INode.Tanh((x + (INode.Pow(x, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f) + 1),  (y, iLayers, iConstants) => new GeluFast(y.outputs[0], iLayers[0]) },
+            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, -1),                                         (y, iLayers, iConstants) => new Reciprocal().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, 1),                                          (y, iLayers, iConstants) => new Identity().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => INode.Pow(x, 2),                                          (y, iLayers, iConstants) => new Square().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => (x * 0.5f) * (INode.Tanh((x + (INode.Pow(x, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f) + 1), (y, iLayers, iConstants) => new GeluFast().SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
             { x => {
                 var mean = INode.ReduceMean(x, -1);
                 var y = x - mean;
@@ -275,7 +282,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 return v * scale + bias; },
                     (y, iLayers, iConstants) => {
                     float epsilon = iConstants[0].weights.Get<float>(0);
-                    return new LayerNormalization(y.outputs[0], iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
+                    return new LayerNormalization(epsilon).SetInputs(iLayers[iLayers.Count - 1], iLayers[1], iLayers[0]).SetOutputs(y.outputs[0]);
                 }
             },
             {
@@ -294,22 +301,22 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 (y, iLayers, iConstants) =>
                 {
                     float epsilon = iConstants[0].weights.Get<float>(0);
-                    return new RMSNormalization(y.outputs[0], iLayers[1], iLayers[2], epsilon);
+                    return new RMSNormalization(epsilon).SetInputs(iLayers[1], iLayers[2]).SetOutputs(y.outputs[0]);
                 }
             },
-            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0.0f) },
-            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0.0f) },
-            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0.0f) },
-            { x => x + new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, iConstants[0].weights.Get<int>(0)) },
-            { x => new VariableScalarInt() + x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, iConstants[0].weights.Get<int>(0)) },
-            { x => x - new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, -iConstants[0].weights.Get<int>(0)) },
-            { x => new VariableScalarInt() - x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], -1, iConstants[0].weights.Get<int>(0)) },
-            { x => x * new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<int>(0), 0) },
-            { x => new VariableScalarInt() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<int>(0), 0) },
+            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(DataType.Float, 1.0f, iConstants[0].weights.Get<float>(0), 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(DataType.Float, 1.0f, iConstants[0].weights.Get<float>(0), 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(DataType.Float, 1.0f, -iConstants[0].weights.Get<float>(0), 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(DataType.Float, -1.0f, iConstants[0].weights.Get<float>(0), 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(DataType.Float, iConstants[0].weights.Get<float>(0), 0.0f, 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(DataType.Float, iConstants[0].weights.Get<float>(0), 0.0f, 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(DataType.Float, 1.0f / iConstants[0].weights.Get<float>(0), 0.0f, 0, 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x + new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, 1, iConstants[0].weights.Get<int>(0)).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarInt() + x, (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, 1, iConstants[0].weights.Get<int>(0)).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x - new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, 1, -iConstants[0].weights.Get<int>(0)).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarInt() - x, (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, -1, iConstants[0].weights.Get<int>(0)).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => x * new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, iConstants[0].weights.Get<int>(0), 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
+            { x => new VariableScalarInt() * x, (y, iLayers, iConstants) => new ScalarMad(DataType.Int, 0, 0, iConstants[0].weights.Get<int>(0), 0).SetInputs(iLayers[0]).SetOutputs(y.outputs[0]) },
         };
 
         bool Validate(INode root, Layer input)

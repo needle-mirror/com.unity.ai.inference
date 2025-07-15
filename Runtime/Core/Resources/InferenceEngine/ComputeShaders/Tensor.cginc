@@ -36,6 +36,26 @@ float4 SignedPow(float4 A, float4 B)
     return O;
 }
 
+int SignedPowInt(int f, int e)
+{
+    // handle negative f
+    float v = pow(abs(f), e);
+    float s = (abs(e % 2) == 1) ?
+        sign(f):    // exponent is odd  => sign(f) * pow(abs(f), e)
+        1;          // exponent is even => pow(abs(f), e)
+    return round(v * s);
+}
+
+int4 SignedPowInt(int4 A, int4 B)
+{
+    int4 O;
+    O.x = SignedPowInt(A.x, B.x);
+    O.y = SignedPowInt(A.y, B.y);
+    O.z = SignedPowInt(A.z, B.z);
+    O.w = SignedPowInt(A.w, B.w);
+    return O;
+}
+
 // @TODO: move all code below into a separate and appropriately named file(s)
 //
 #define FLT_MAX asfloat(0x7F7FFFFF) //  3.402823466 E + 38

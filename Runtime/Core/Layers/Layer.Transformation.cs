@@ -1,5 +1,4 @@
 using System;
-using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -164,17 +163,10 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an element-wise `Cast` layer: f(x) = (float)x or f(x) = (int)x depending on the value of `toType`.
     /// </summary>
-    class Cast : Layer
+    [Operator(category = "Transformation")]
+    partial class Cast : Layer
     {
-        static readonly string k_OpName = "Cast";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType toType;
-
-        public Cast(int output, int input, DataType toType)
-            : base(new[] { output }, new[] { input })
-        {
-            this.toType = toType;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -199,22 +191,15 @@ namespace Unity.InferenceEngine.Layers
             else
                 throw new NotImplementedException();
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `CastLike` layer: f(x) = (float)x or f(x) = (int)x depending on the data type of the targetType tensor.
     /// </summary>
-    class CastLike : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "targetType" }, inputNoDataDependency = new[] { 1 })]
+    partial class CastLike : Layer
     {
-        static readonly string k_OpName = "CastLike";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public CastLike(int output, int input, int targetType)
-            : base(new[] { output }, new[] { input, targetType }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var toType = getPartialTensor(1).dataType;
@@ -240,25 +225,16 @@ namespace Unity.InferenceEngine.Layers
             else
                 throw new NotImplementedException();
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Concat` concatenation layer. The layer computes the output tensor by concatenating the input tensors along a given axis.
     /// </summary>
-    class Concat : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(isVariadic = true)]
+    partial class Concat : Layer
     {
-        static readonly string k_OpName = "Concat";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public Concat(int output, int[] inputs, int axis)
-            : base(new[] { output }, inputs)
-        {
-            this.axis = axis;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -353,32 +329,16 @@ namespace Unity.InferenceEngine.Layers
                 start += length;
             }
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `DepthToSpace` layer. The layer computes the output tensor by permuting data from depth into blocks of spatial data.
     /// </summary>
-    class DepthToSpace : Layer
+    [Operator(category = "Transformation")]
+    partial class DepthToSpace : Layer
     {
-        static readonly string k_OpName = "DepthToSpace";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int blocksize;
         public DepthToSpaceMode mode;
-
-        public DepthToSpace(int output, int input, int blocksize, DepthToSpaceMode mode)
-            : base(new[] { output }, new[] { input })
-        {
-            this.blocksize = blocksize;
-            this.mode = mode;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -396,27 +356,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.DepthToSpace(X, O, blocksize, mode);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, blocksize: {string.Join(", ", blocksize)}, mode: {mode}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `Expand` layer. The layer computes the output tensor by broadcasting the input tensor into a given shape.
     /// </summary>
-    class Expand : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "shape" }, inputCPURead = new[] { 1 })]
+    partial class Expand : Layer
     {
-        static readonly string k_OpName = "Expand";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Expand(int output, int input, int shape)
-            : base(new[] { output }, new[] { input, shape }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -433,25 +381,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Expand(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Flatten` layer. The layer computes the output tensor by reshaping the input tensor into a 2D matrix according to the given axis.
     /// </summary>
-    class Flatten : Layer
+    [Operator(category = "Transformation")]
+    partial class Flatten : Layer
     {
-        static readonly string k_OpName = "Flatten";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
-
-        public Flatten(int output, int input, int axis = 1)
-            : base(new[] { output }, new[] { input })
-        {
-            this.axis = axis;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -490,34 +428,18 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Reshape(X, O);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `GridSample` layer. The layer computes the output tensor by sampling the input tensor with coordinates given by the grid tensor.
     /// </summary>
-    class GridSample : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "grid" })]
+    partial class GridSample : Layer
     {
-        static readonly string k_OpName = "GridSample";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public InterpolationMode mode;
         public PaddingMode paddingMode;
         public bool alignCorners;
-
-        public GridSample(int output, int input, int grid, InterpolationMode mode, PaddingMode paddingMode, bool alignCorners)
-            : base(new[] { output }, new[] { input, grid })
-        {
-            this.mode = mode;
-            this.paddingMode = paddingMode;
-            this.alignCorners = alignCorners;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -553,27 +475,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.GridSample(X, grid, O, mode, paddingMode, alignCorners);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, mode: {mode}, paddingMode: {paddingMode}, alignCorners: {alignCorners}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `Identity` layer. The output tensor is a copy of the input tensor.
     /// </summary>
-    class Identity : Layer
+    [Operator(category = "Transformation")]
+    partial class Identity : Layer
     {
-        static readonly string k_OpName = "Identity";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Identity(int output, int input)
-            : base(new[] { output }, new[] { input }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             setPartialTensor(0, getPartialTensor(0));
@@ -587,9 +496,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.MemCopy(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -597,20 +503,11 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// Other dimensions of input that are not explicitly moved remain in their original order and appear at the positions not specified in destination.
     /// </summary>
-    class MoveDim : Layer
+    [Operator(category = "Transformation")]
+    partial class MoveDim : Layer
     {
-        static readonly string k_OpName = "MoveDim";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int[] source;
         public int[] destination;
-
-        public MoveDim(int output, int input, int[] source, int[] destination)
-            : base(new[] { output }, new[] { input })
-        {
-            Logger.AssertIsTrue(source.Length == destination.Length, "MoveDim.ValueError: source and destination arrays must be same length");
-            this.source = source;
-            this.destination = destination;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -666,27 +563,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Transpose(X, O, permutations);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, source: [{string.Join(", ", source)}], destination: [{string.Join(", ", destination)}]";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Narrow` layer. The layer calculates the output tensor by slicing the input tensor along a given dim with a given start and length.
     /// </summary>
-    class Narrow : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "dim", "start", "length" }, inputCPURead = new[] { 1, 2, 3 })]
+    partial class Narrow : Layer
     {
-        static readonly string k_OpName = "Narrow";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Narrow(int output, int input, int dim, int start, int length)
-            : base(new[] { output }, new[] { input, dim, start, length }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -736,25 +621,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Split(X, O, dim, start);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Pad` layer. The layer calculates the output tensor by adding padding to the input tensor according to the given padding values and mode.
     /// </summary>
-    class Pad : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "data", "pads", "constantValue", "axes" }, inputCPURead = new[] { 1, 2, 3 })]
+    partial class Pad : Layer
     {
-        static readonly string k_OpName = "Pad";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public PadMode padMode;
-
-        public Pad(int output, int data, int pads, int constantValue = -1, int axes = -1, PadMode mode = PadMode.Constant)
-            : base(new[] { output }, new[] { data, pads, constantValue, axes })
-        {
-            padMode = mode;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -849,9 +725,6 @@ namespace Unity.InferenceEngine.Layers
                     ctx.backend.Pad(X as Tensor<int>, O as Tensor<int>, pads, padMode, constantValue);
             }
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -859,17 +732,11 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// Only one of the elements of the shape can be -1. The layer infers the size of this dimension from the remaining dimensions and the length of the input tensor.
     /// </summary>
-    class Reshape : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "shape" }, inputCPURead = new[] { 1 })]
+    partial class Reshape : Layer
     {
-        static readonly string k_OpName = "Reshape";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool allowZero;
-
-        public Reshape(int output, int input, int shape, bool allowZero = false)
-            : base(new[] { output }, new[] { input, shape })
-        {
-            this.allowZero = allowZero;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -939,38 +806,20 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Reshape(X, O);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, allowZero: {allowZero}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Resize` layer. The layer calculates the output tensor by resampling the input tensor along the spatial dimensions to a given shape.
     /// </summary>
-    class Resize : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "scalesOrSizes" }, inputCPURead = new[] { 1 })]
+    partial class Resize : Layer
     {
-        static readonly string k_OpName = "Resize";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public ScaleMode scaleMode;
         public CoordTransformMode coordTransformMode;
         public InterpolationMode mode;
         public NearestMode nearestMode;
         public int[] axes;
-
-        public Resize(int output, int input, int scalesOrSizes, ScaleMode scaleMode, InterpolationMode mode, CoordTransformMode coordTransformMode, NearestMode nearestMode, int[] axes)
-            : base(new[] { output }, new[] { input, scalesOrSizes })
-        {
-            this.scaleMode = scaleMode;
-            this.coordTransformMode = coordTransformMode;
-            this.mode = mode;
-            this.nearestMode = nearestMode;
-            this.axes = axes;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -1041,27 +890,15 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.Resize(X, O, scales, mode, nearestMode, coordTransformMode);
             }
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, mode: {mode}, coordTransformMode: {coordTransformMode}, nearestMode: {nearestMode}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Select` layer. The layer calculates the output tensor by slicing the input tensor along a given dim with a given index, the sliced dim is removed from the output.
     /// </summary>
-    class Select : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "dim", "selectIndex" }, inputCPURead = new[] { 1, 2 })]
+    partial class Select : Layer
     {
-        static readonly string k_OpName = "Select";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Select(int output, int input, int dim, int selectIndex)
-            : base(new[] { output }, new[] { input, dim, selectIndex }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -1105,22 +942,15 @@ namespace Unity.InferenceEngine.Layers
             ctx.backend.Reshape(unsqueezed, O);
             ctx.storage.Dispose(unsqueezed);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Slice` layer. The layer calculates the output tensor by slicing the input tensor along given axes with given starts, ends and steps.
     /// </summary>
-    class Slice : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "starts", "ends", "axes", "steps" }, inputCPURead = new[] { 1, 2, 3, 4 })]
+    partial class Slice : Layer
     {
-        static readonly string k_OpName = "Slice";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Slice(int output, int input, int starts, int ends, int axes = -1, int steps = -1)
-            : base(new[] { output }, new[] { input, starts, ends, axes, steps }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var data = getPartialTensor(0);
@@ -1206,19 +1036,12 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Slice(X, O, startsSpan, axesSpan, stepsSpan);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
-    class SliceSet : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "values", "starts", "ends", "axes", "steps" }, inputCPURead = new[] { 2, 3, 4, 5 })]
+    partial class SliceSet : Layer
     {
-        static readonly string k_OpName = "SliceSet";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public SliceSet(int output, int input, int values, int starts, int ends, int axes = -1, int steps = -1)
-            : base(new[] { output }, new[] { input, values, starts, ends, axes, steps }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -1278,25 +1101,15 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.SliceSet(X, values, O, startsSpan, axesSpan, stepsSpan);
             }
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `SpaceToDepth` layer. The layer computes the output tensor by permuting data from blocks of spatial data into depth.
     /// </summary>
-    class SpaceToDepth : Layer
+    [Operator(category = "Transformation")]
+    partial class SpaceToDepth : Layer
     {
-        static readonly string k_OpName = "SpaceToDepth";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int blocksize;
-
-        public SpaceToDepth(int output, int input, int blocksize)
-            : base(new[] { output }, new[] { input })
-        {
-            this.blocksize = blocksize;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -1313,33 +1126,20 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.SpaceToDepth(X, O, blocksize);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, blocksize: {blocksize}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Split` layer. The layer computes the output tensors by splitting the input tensor along a single given axis.
     /// </summary>
-    class Split : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "split" }, inputCPURead = new[] { 1 })]
+    [Outputs(isVariadic = true)]
+    partial class Split : Layer
     {
-        static readonly string k_OpName = "Split";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public int numOutputs;
 
-        public Split(int[] outputs, int input, int split = -1, int axis = 0, int numOutputs = 0)
-            : base(outputs, new[] { input, split })
-        {
-            Logger.AssertIsTrue(outputs.Length >= 1, "Split.InputError: output array must have length at least 1");
-            this.axis = axis;
-            this.numOutputs = numOutputs;
-        }
+        internal override int OutputCount => numOutputs;
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -1401,27 +1201,15 @@ namespace Unity.InferenceEngine.Layers
                 start = end;
             }
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}, numOutputs: {numOutputs}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Squeeze` layer. The layer computes the output tensor by reshaping the input tensor by removing dimensions of size 1.
     /// </summary>
-    class Squeeze : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "axes" }, inputCPURead = new[] { 1 })]
+    partial class Squeeze : Layer
     {
-        static readonly string k_OpName = "Squeeze";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Squeeze(int output, int input, int axes = -1)
-            : base(new[] { output }, new[] { input, axes }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -1450,22 +1238,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Tile` layer. The layer computes the output tensor by repeating the input layer a given number of times along each axis.
     /// </summary>
-    class Tile : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "repeats" }, inputCPURead = new[] { 1 })]
+    partial class Tile : Layer
     {
-        static readonly string k_OpName = "Tile";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Tile(int output, int input, int repeats)
-            : base(new[] { output }, new[] { input, repeats }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var dataType = getPartialTensor(0).dataType;
@@ -1502,25 +1283,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Tile(X, O, repeats);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Transpose` layer. The layer computes the output tensor by permuting the axes and data of the input tensor according to the given permutations.
     /// </summary>
-    class Transpose : Layer
+    [Operator(category = "Transformation")]
+    partial class Transpose : Layer
     {
-        static readonly string k_OpName = "Transpose";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int[] permutations;
-
-        public Transpose(int output, int input, int[] permutations)
-            : base(new[] { output }, new[] { input })
-        {
-            this.permutations = permutations;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -1579,33 +1350,16 @@ namespace Unity.InferenceEngine.Layers
                 return;
             }
         }
-
-        public override string ToString()
-        {
-            if (permutations == null)
-                return base.ToString();
-            else
-                return $"{base.ToString()}, permutations: [{string.Join(", ", permutations)}]";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Trilu` layer. The layer computes the output tensor by retaining the upper or lower triangular values from an input matrix or matrix batch and setting the other values to zero.
     /// </summary>
-    class Trilu : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "k" }, inputCPURead = new[] { 1 })]
+    partial class Trilu : Layer
     {
-        static readonly string k_OpName = "Trilu";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public TriluMode mode;
-
-        public Trilu(int output, int input, int k = -1, TriluMode mode = TriluMode.Upper)
-            : base(new[] { output }, new[] { input, k })
-        {
-            this.mode = mode;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -1625,27 +1379,15 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Tril(X, O, k);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, mode: {mode}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an `Unsqueeze` layer. The layer computes the output tensor by reshaping the input tensor by adding dimensions of size 1 at the given axes.
     /// </summary>
-    class Unsqueeze : Layer
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "axes" }, inputCPURead = new[] { 1 })]
+    partial class Unsqueeze : Layer
     {
-        static readonly string k_OpName = "Unsqueeze";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Unsqueeze(int output, int input, int axes)
-            : base(new[] { output }, new[] { input, axes }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -1663,8 +1405,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

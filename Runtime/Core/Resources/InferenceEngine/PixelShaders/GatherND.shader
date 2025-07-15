@@ -11,6 +11,7 @@ Shader "Hidden/InferenceEngine/GatherND"
         Pass
         {
             CGPROGRAM
+            #pragma multi_compile_local _ GatherInt
             #pragma vertex vert
             #pragma fragment frag
 
@@ -19,9 +20,18 @@ Shader "Hidden/InferenceEngine/GatherND"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
+            #ifdef GatherInt
+            #define DTYPE int
+            #define DTYPE4 int4
+            DECLARE_TENSOR(X, int);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, int)
+            #else
+            #define DTYPE float
+            #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
-            DECLARE_TENSOR(B, int);
             DECLARE_TENSOR_BLOCK_STRIDE(X, float)
+            #endif
+            DECLARE_TENSOR(B, int);
             DECLARE_TENSOR_BLOCK_STRIDE(B, int)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
@@ -36,7 +46,7 @@ Shader "Hidden/InferenceEngine/GatherND"
 
             uint iStart, iEndIndices, iEndX, iStartB, iEndB;
 
-            float4 frag(v2f j, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f j, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint4 indexO4 = GetIndexO(screenPos);
                 uint4 itIndices = 0;

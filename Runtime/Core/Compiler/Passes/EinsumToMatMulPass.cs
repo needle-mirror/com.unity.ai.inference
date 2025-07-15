@@ -68,7 +68,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             if (isPermuted)
             {
                 var inputTransposeIndex = uniqueIndex++;
-                var transposeLayer = new Transpose(inputTransposeIndex, inputIndex, inversePermutation);
+                var transposeLayer = new Transpose(inversePermutation).SetInputs(inputIndex).SetOutputs(inputTransposeIndex);
                 inputIndex = inputTransposeIndex;
                 model.layers.Insert(insertLayerIndex, transposeLayer);
                 insertLayerIndex++;
@@ -79,7 +79,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 var shapeConstant = new Constant(uniqueIndex++, new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
                 model.AddConstant(shapeConstant);
                 var inputReshapeIndex = uniqueIndex++;
-                var reshapeLayer = new Reshape(inputReshapeIndex, inputIndex, shapeConstant.index);
+                var reshapeLayer = new Reshape(false).SetInputs(inputIndex, shapeConstant.index).SetOutputs(inputReshapeIndex);
                 inputIndex = inputReshapeIndex;
                 model.layers.Insert(insertLayerIndex, reshapeLayer);
             }
@@ -114,7 +114,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             if (isPermuted)
             {
                 var outputTransposeIndex = uniqueIndex++;
-                var transposeLayer = new Transpose(outputIndex, outputTransposeIndex, inversePermutation);
+                var transposeLayer = new Transpose(inversePermutation).SetInputs(outputTransposeIndex).SetOutputs(outputIndex);
                 outputIndex = outputTransposeIndex;
                 model.layers.Insert(insertLayerIndex, transposeLayer);
             }
@@ -125,12 +125,12 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 var shapeConstant = new Constant(constantIndex, new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
                 model.AddConstant(shapeConstant);
                 var outputReshapeIndex = uniqueIndex++;
-                var reshapeLayer = new Reshape(outputIndex, outputReshapeIndex, shapeConstant.index);
+                var reshapeLayer = new Reshape(false).SetInputs(outputReshapeIndex, shapeConstant.index).SetOutputs(outputIndex);
                 outputIndex = outputReshapeIndex;
                 model.layers.Insert(insertLayerIndex, reshapeLayer);
             }
 
-            einsumLayer.outputs = new[] { outputIndex };
+            einsumLayer.SetOutputs(outputIndex);
             return true;
         }
 
@@ -264,7 +264,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 if (!InsertInversePermuteReshapeLayers(model, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.outputs[0]).shape, ref uniqueIndex))
                     break;
 
-                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul(einsumLayer.outputs[0], einsumLayer.inputs[0], einsumLayer.inputs[1]);
+                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul().SetInputs(einsumLayer.inputs[0], einsumLayer.inputs[1]).SetOutputs(einsumLayer.outputs[0]);
             }
         }
     }

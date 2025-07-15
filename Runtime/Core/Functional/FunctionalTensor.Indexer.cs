@@ -27,7 +27,7 @@ namespace Unity.InferenceEngine
 
                 axis++;
             }
-            var c = Functional.FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), new[] { this, src, Functional.Constant(starts.ToArray()), Functional.Constant(ends.ToArray()), Functional.Constant(axes.ToArray()), null });
+            var c = Functional.FromLayer(new Layers.SliceSet(), new[] { this, src, Functional.Constant(starts.ToArray()), Functional.Constant(ends.ToArray()), Functional.Constant(axes.ToArray()), null });
             m_PartialTensor = c.partialTensor.Copy();
             m_Source = c.source;
             m_OutputIndex = c.outputIndex;
@@ -60,7 +60,7 @@ namespace Unity.InferenceEngine
             var startsArray = starts.ToArray();
             var endsArray = ends.ToArray();
             var axesArray = axes.ToArray();
-            var slice = Functional.FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), new[] { this, Functional.Constant(startsArray), Functional.Constant(endsArray), Functional.Constant(axesArray), null });
+            var slice = Functional.FromLayer(new Layers.Slice(), new[] { this, Functional.Constant(startsArray), Functional.Constant(endsArray), Functional.Constant(axesArray), null });
             if (squeezeAxes.Count > 0)
                 slice = slice.Squeeze(squeezeAxes.ToArray());
             return slice;

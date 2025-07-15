@@ -43,3 +43,5 @@ Inference Engine supports most models in Open Neural Network Exchange (ONNX) for
 - [Understand the Inference Engine workflow](understand-inference-engine-workflow.md)
 - [Understand models in Inference Engine](models-concept.md)
 - [Tensor fundamentals in Inference Engine](tensor-fundamentals.md)
+- [The AI menu](https://docs.unity3d.com/Manual/ai-menu.html) in Unity Editor
+- [Unity Dashboard AI settings](https://docs.unity.com/en-us/ai)

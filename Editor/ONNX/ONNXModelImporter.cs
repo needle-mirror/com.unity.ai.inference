@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
     /// <summary>
     /// Represents an importer for Open Neural Network Exchange (ONNX) files.
     /// </summary>
-    [ScriptedImporter(67, new[] { "onnx" })]
+    [ScriptedImporter(69, new[] { "onnx" })]
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.ai.inference@latest/index.html")]
     class ONNXModelImporter : ScriptedImporter
     {

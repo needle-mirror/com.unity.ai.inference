@@ -43,7 +43,7 @@ namespace Unity.InferenceEngine
                     if (input == -1)
                         continue;
 
-                    if (IsInputCPURead(layer, j))
+                    if (layer.IsInputCPURead(j))
                         layerCPUFallback.Add(input);
                 }
             }
@@ -68,55 +68,12 @@ namespace Unity.InferenceEngine
                     if (input == -1)
                         continue;
 
-                    if (IsInputDataDependency(layer, j))
+                    if (!layer.IsInputNoDataDependency(j))
                         layerCPUFallback.Add(input);
                 }
             }
 
             return layerCPUFallback;
-        }
-
-        static bool IsInputCPURead(Layer layer, int inputIndex)
-        {
-            return layer switch
-            {
-                Layers.BroadcastArgs => inputIndex is 0 or 1,
-                Layers.ConstantOfShape => inputIndex is 0,
-                Layers.OneHot => inputIndex is 1 or 2,
-                Layers.Range => inputIndex is 0 or 1 or 2,
-                Layers.TopK => inputIndex is 1,
-                Layers.Clip => inputIndex is 1 or 2,
-                Layers.CumSum => inputIndex is 1,
-                Layers.Reduce => inputIndex is 1,
-                Layers.NonMaxSuppression => inputIndex is 2 or 3 or 4,
-                Layers.Expand => inputIndex is 1,
-                Layers.Narrow => inputIndex is 1 or 2 or 3,
-                Layers.Pad => inputIndex is 1 or 2 or 3,
-                Layers.Reshape => inputIndex is 1,
-                Layers.Resize => inputIndex is 1,
-                Layers.Select => inputIndex is 1 or 2,
-                Layers.Slice => inputIndex is 1 or 2 or 3 or 4,
-                Layers.SliceSet => inputIndex is 2 or 3 or 4 or 5,
-                Layers.Split => inputIndex is 1,
-                Layers.Squeeze => inputIndex is 1,
-                Layers.Tile => inputIndex is 1,
-                Layers.Trilu => inputIndex is 1,
-                Layers.Unsqueeze => inputIndex is 1,
-                _ => false
-            };
-        }
-
-        static bool IsInputDataDependency(Layer layer, int inputIndex)
-        {
-            return layer switch
-            {
-                Layers.Shape => false,
-                Layers.Size => false,
-                Layers.RandomNormalLike => false,
-                Layers.RandomUniformLike => false,
-                Layers.CastLike => inputIndex is 0,
-                _ => true
-            };
         }
     }
 }

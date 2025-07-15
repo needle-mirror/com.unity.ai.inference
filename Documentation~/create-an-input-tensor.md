@@ -4,7 +4,7 @@ A model requires input tensors with certain shapes and data types. Use this info
 
 ## Understand the required input
 
-Before you can create input tensors for a model, inspect the model to understand the shape and data types of the model inputs. 
+Before you can create input tensors for a model, inspect the model to understand the shape and data types of the model inputs.
 For more information, refer to [Model inputs](models-concept.md#model-inputs).
 
 The [`TensorShape`](xref:Unity.InferenceEngine.TensorShape) of the [`Tensor`](xref:Unity.InferenceEngine.Tensor) you create must be compatible with the [`DynamicTensorShape`](xref:Unity.InferenceEngine.DynamicTensorShape), which defines the shape of the model input.
@@ -46,7 +46,7 @@ You can create a central processing unit (CPU) tensor with zero-initialized memo
 var tensor = new Tensor<int>(new TensorShape(1), clearOnInit: true);
 ```
 
-The `clearOnInit` parameter determines whether the resulting tensor memory might be zero-initialized. Set `clearOnInit` to `false` if initial data isn't important. 
+The `clearOnInit` parameter determines whether the resulting tensor memory might be zero-initialized. Set `clearOnInit` to `false` if initial data isn't important.
 
 ## Pass inputs to a worker
 

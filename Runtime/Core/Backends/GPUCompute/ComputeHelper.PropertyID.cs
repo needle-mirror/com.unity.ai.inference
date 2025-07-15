@@ -78,7 +78,6 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_O_int_ptr = Shader.PropertyToID("O_int_ptr");
         public static readonly int k_ID_K_width = Shader.PropertyToID("K_width");
         public static readonly int k_ID_K_channelsDivGroupDiv4 = Shader.PropertyToID("K_channelsDivGroupDiv4");
-        public static readonly int k_ID_K_mDivGroup = Shader.PropertyToID("K_mDivGroup");
         public static readonly int k_ID_Kptr = Shader.PropertyToID("Kptr");
         public static readonly int k_ID_O_batch = Shader.PropertyToID("O_batch");
         public static readonly int k_ID_O_channels = Shader.PropertyToID("O_channels");
@@ -250,6 +249,9 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_strideK = Shader.PropertyToID("strideK");
         public static readonly int k_ID_inputGroupedChannels = Shader.PropertyToID("inputGroupedChannels");
         public static readonly int k_ID_outputGroupedChannels = Shader.PropertyToID("outputGroupedChannels");
+        public static readonly int k_ID_X_channelsPerGroup = Shader.PropertyToID("X_channelsPerGroup");
+        public static readonly int k_ID_O_channelsPerGroup = Shader.PropertyToID("O_channelsPerGroup");
+        public static readonly int k_ID_X_channelsPerGroupDiv4Floor = Shader.PropertyToID("X_channelsPerGroupDiv4Floor");
         public static readonly int k_ID_memValueFloat = Shader.PropertyToID("memValueFloat");
         public static readonly int k_ID_memValueInt = Shader.PropertyToID("memValueInt");
         public static readonly int k_ID_xStride = Shader.PropertyToID("xStride");
@@ -280,6 +282,15 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_PadZ = Shader.PropertyToID("PadZ");
         public static readonly int k_ID_PadY = Shader.PropertyToID("PadY");
         public static readonly int k_ID_PadX = Shader.PropertyToID("PadX");
+        public static readonly int k_ID_PadOrigZ = Shader.PropertyToID("PadOrigZ");
+        public static readonly int k_ID_PadOrigY = Shader.PropertyToID("PadOrigY");
+        public static readonly int k_ID_PadOrigX = Shader.PropertyToID("PadOrigX");
+        public static readonly int k_ID_LCMOfStrideDilationX = Shader.PropertyToID("LCMOfStrideDilationX");
+        public static readonly int k_ID_LCMOfStrideDilationY = Shader.PropertyToID("LCMOfStrideDilationY");
+        public static readonly int k_ID_LCMOfStrideDilationZ = Shader.PropertyToID("LCMOfStrideDilationZ");
+        public static readonly int k_ID_LCMOfStrideDilationDivStrideX = Shader.PropertyToID("LCMOfStrideDilationDivStrideX");
+        public static readonly int k_ID_LCMOfStrideDilationDivStrideY = Shader.PropertyToID("LCMOfStrideDilationDivStrideY");
+        public static readonly int k_ID_LCMOfStrideDilationDivStrideZ = Shader.PropertyToID("LCMOfStrideDilationDivStrideZ");
         public static readonly int k_ID_PoolY = Shader.PropertyToID("PoolY");
         public static readonly int k_ID_PoolX = Shader.PropertyToID("PoolX");
         public static readonly int k_ID_DilationZ = Shader.PropertyToID("DilationZ");

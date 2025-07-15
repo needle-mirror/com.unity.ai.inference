@@ -1,5 +1,4 @@
 using System;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -9,14 +8,10 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// e.g. BroadcastArgs([1, 1, 2, 3], [5, 2, 1]) returns [1, 5, 2, 3]
     /// </summary>
-    class BroadcastArgs : Layer
+    [Operator(category = "Dimension")]
+    [Inputs(names = new[] { "a", "b" }, inputCPURead = new[] { 0, 1 })]
+    partial class BroadcastArgs : Layer
     {
-        static readonly string k_OpName = "BroadcastArgs";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public BroadcastArgs(int output, int a, int b)
-            : base(new[] { output }, new[] { a, b }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var a = getPartialTensor(0) as PartialTensor<int>;
@@ -48,27 +43,17 @@ namespace Unity.InferenceEngine.Layers
 
             ctx.cpuBackend.SetShape(O, shape);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Shape` layer. This computes the shape of an input tensor as a 1D `Tensor<int>`.
     /// </summary>
-    class Shape : Layer
+    [Operator(category = "Dimension")]
+    [Inputs(names = new[] { "input" }, inputNoDataDependency = new[] { 0 })]
+    partial class Shape : Layer
     {
-        static readonly string k_OpName = "Shape";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int start;
         public int end;
-
-        public Shape(int output, int input, int start = 0, int end = TensorShape.maxRank)
-            : base(new[] { output }, new[] { input })
-        {
-            this.start = start;
-            this.end = end;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -120,27 +105,15 @@ namespace Unity.InferenceEngine.Layers
                 shape[i - startX] = shapeX[i];
             ctx.cpuBackend.SetShape(O, shape);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, start: {start}, end: {end}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Size` layer. This computes the number of elements of an input tensor as a scalar `Tensor<int>`.
     /// </summary>
-    class Size : Layer
+    [Operator(category = "Dimension")]
+    [Inputs(names = new[] { "input" }, inputNoDataDependency = new[] { 0 })]
+    partial class Size : Layer
     {
-        static readonly string k_OpName = "Size";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Size(int output, int input)
-            : base(new[] { output }, new[] { input }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -159,8 +132,5 @@ namespace Unity.InferenceEngine.Layers
 
             ctx.cpuBackend.MemSet(O, shapeX.length);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

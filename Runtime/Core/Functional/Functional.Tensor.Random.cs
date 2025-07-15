@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Bernoulli(FunctionalTensor input, DataType dataType = DataType.Int, int? seed = null)
         {
-            return FromLayer(new Layers.Bernoulli(-1, -1, dataType, seed), input);
+            return FromLayer(new Layers.Bernoulli(dataType, seed.HasValue, seed.GetValueOrDefault()), input);
         }
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace Unity.InferenceEngine
         {
             // TODO add replacement arg
             input = input.Float();
-            return FromLayer(new Layers.Multinomial(-1, -1, numSamples, seed), input);
+            return FromLayer(new Layers.Multinomial(numSamples, seed.HasValue, seed.GetValueOrDefault()), input);
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace Unity.InferenceEngine
             var shape = new TensorShape(size);
             if (shape.HasZeroDims())
                 return Zeros(size, input.dataType);
-            var inputSize = FromLayer(new Layers.Size(-1, -1), input);
+            var inputSize = FromLayer(new Layers.Size(), input);
             var index = Int(Floor(inputSize * Rand(new[] { shape.length }, seed)));
             return Gather(input, 0, index).Reshape(size);
         }
@@ -77,7 +77,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Normal(float mean, float std, int[] size, int? seed = null)
         {
-            return FromLayer(new Layers.RandomNormal(-1, size, mean, std, seed), Array.Empty<FunctionalTensor>());
+            return FromLayer(new Layers.RandomNormal(mean, std, size, seed.HasValue, seed.GetValueOrDefault()), Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor NormalLike(float mean, float std, FunctionalTensor input, int? seed = null)
         {
-            return FromLayer(new Layers.RandomNormalLike(-1, -1, mean, std, seed), input);
+            return FromLayer(new Layers.RandomNormalLike(mean, std, seed.HasValue, seed.GetValueOrDefault()), input);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Rand(int[] size, int? seed = null)
         {
-            return FromLayer(new Layers.RandomUniform(-1, size, 0, 1, seed), Array.Empty<FunctionalTensor>());
+            return FromLayer(new Layers.RandomUniform(0, 1, size, seed.HasValue, seed.GetValueOrDefault()), Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandLike(FunctionalTensor input, int? seed = null)
         {
-            return FromLayer(new Layers.RandomUniformLike(-1, -1, 0, 1, seed), input);
+            return FromLayer(new Layers.RandomUniformLike(0, 1, seed.HasValue, seed.GetValueOrDefault()), input);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandInt(int[] size, int low, int high, int? seed = null)
         {
-            return Floor(FromLayer(new Layers.RandomUniform(-1, size, low, high, seed), Array.Empty<FunctionalTensor>())).Int();
+            return Floor(FromLayer(new Layers.RandomUniform(low, high, size, seed.HasValue, seed.GetValueOrDefault()), Array.Empty<FunctionalTensor>())).Int();
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandIntLike(FunctionalTensor input, int low, int high, int? seed = null)
         {
-            return Floor(FromLayer(new Layers.RandomUniformLike(-1, -1, low, high, seed), input)).Int();
+            return Floor(FromLayer(new Layers.RandomUniformLike(low, high, seed.HasValue, seed.GetValueOrDefault()), input)).Int();
         }
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandN(int[] size, int? seed = null)
         {
-            return FromLayer(new Layers.RandomNormal(-1, size, 0, 1, seed), Array.Empty<FunctionalTensor>());
+            return FromLayer(new Layers.RandomNormal(0, 1, size, seed.HasValue, seed.GetValueOrDefault()), Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -160,7 +160,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandNLike(FunctionalTensor input, int? seed = null)
         {
-            return FromLayer(new Layers.RandomNormalLike(-1, -1, 0, 1, seed), input);
+            return FromLayer(new Layers.RandomNormalLike(0, 1, seed.HasValue, seed.GetValueOrDefault()), input);
         }
     }
 }

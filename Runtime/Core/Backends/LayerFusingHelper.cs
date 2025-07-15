@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq; // ToArray(), ToDictionary()
+using System.Linq;
 using UnityEngine;
 
 namespace Unity.InferenceEngine
@@ -139,9 +139,9 @@ namespace Unity.InferenceEngine
 
                 Layer lmerged;
                 if (rightSub)
-                    lmerged = new Layers.Add(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                    lmerged = new Layers.Add().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
                 else
-                    lmerged = new Layers.Sub(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                    lmerged = new Layers.Sub().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if (rightSub)
                     constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
@@ -169,9 +169,9 @@ namespace Unity.InferenceEngine
 
                 Layer lmerged;
                 if (rightSub)
-                    lmerged = new Layers.Add(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                    lmerged = new Layers.Add().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
                 else
-                    lmerged = new Layers.Sub(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                    lmerged = new Layers.Sub().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if (rightSub)
                     constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
@@ -193,7 +193,7 @@ namespace Unity.InferenceEngine
                 else
                     bias = m_Ops.Add(bias0 as Tensor<float>, bias1 as Tensor<float>);
 
-                Layer lmerged = new Layers.Add(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                Layer lmerged = new Layers.Add().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if (constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
@@ -215,9 +215,9 @@ namespace Unity.InferenceEngine
                 else
                     scale = m_Ops.Mul(scale0 as Tensor<float>, scale1 as Tensor<float>);
 
-                Layer lmerged = new Layers.Mul(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                Layer lmerged = new Layers.Mul().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
-                if(constTensors.ContainsKey(lmerged.inputs[0]))
+                if (constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(scale);
                 else
                     constTensors[lmerged.inputs[1]].TensorToDataSet(scale);
@@ -234,7 +234,7 @@ namespace Unity.InferenceEngine
                 using Tensor<float> scale1 = constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
                 using Tensor<float> bias1 = constTensors[l1.inputs[2]].WeightsToTensor() as Tensor<float>;
 
-                Layer lmerged = new Layers.ScaleBias(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2]);
+                Layer lmerged = new Layers.ScaleBias().SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
 
                 // s1*(s0*x + b0)+b1 = s1*s0*x + s1*b0+b1
                 using Tensor<float> scale = m_Ops.Mul(scale1, scale0);
@@ -255,7 +255,7 @@ namespace Unity.InferenceEngine
                 using Tensor<float> weights1 = constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
                 using Tensor<float> bias1 = constTensors[l1.inputs[2]].WeightsToTensor() as Tensor<float>;
 
-                Layer lmerged = new Layers.Dense(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2]);
+                Layer lmerged = new Layers.Dense((l1 as Layers.Dense).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
 
                 // b = W1 x b0 + b1``
                 bias0.Reshape(new TensorShape(1, bias0.shape[0]));
@@ -278,7 +278,7 @@ namespace Unity.InferenceEngine
                 using Tensor<float> kernel1 = constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
                 using Tensor<float> bias1 = (l1.inputs[2] != -1) ? constTensors[l1.inputs[2]].WeightsToTensor() as Tensor<float> : new Tensor<float>(new TensorShape(kernel1.shape[0]));
 
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2], (l1 as Layers.Conv).group, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l1 as Layers.Conv).autoPad, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).group, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).kernelShape, (l1 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
                 // k = k * s
                 using Tensor<float> kernel = m_Ops.Mul(kernel1, scale0);
 
@@ -296,7 +296,7 @@ namespace Unity.InferenceEngine
                 using Tensor<float> scale1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].WeightsToTensor() as Tensor<float> : constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
                 int biasIndex = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
 
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l0 as Layers.Conv).autoPad, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).group, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).kernelShape, (l0 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], biasIndex).SetOutputs(l0.outputs[0]);
 
                 // k = s1*k0
                 using Tensor<float> kernel = m_Ops.Mul(scale1, kernel0);
@@ -314,7 +314,7 @@ namespace Unity.InferenceEngine
 
                 using Tensor<float> kernel1 = constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
 
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2], (l1 as Layers.Conv).group, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l1 as Layers.Conv).autoPad, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).group, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).kernelShape, (l1 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
 
                 // k = k
                 // b = Sum_k[wk * beta] + b
@@ -352,7 +352,7 @@ namespace Unity.InferenceEngine
 
                 using Tensor<float> bias1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].WeightsToTensor() as Tensor<float> : constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
                 var biasIndex = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l0 as Layers.Conv).autoPad, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).group, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).kernelShape, (l0 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], biasIndex).SetOutputs(l0.outputs[0]);
 
                 // b = b0+b1
                 using Tensor<float> bias = m_Ops.Add(bias0, bias1);
@@ -383,7 +383,7 @@ namespace Unity.InferenceEngine
                 bias.Reshape(new TensorShape(bias.shape.length));
 
                 var nameIndex = convHasBias ? l0.inputs[2] : l1.inputs[2];
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], nameIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l0 as Layers.Conv).autoPad, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).group, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).kernelShape, (l0 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], nameIndex).SetOutputs(l0.outputs[0]);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(kernel);
                 constTensors[lmerged.inputs[2]].TensorToDataSet(bias);
@@ -397,7 +397,7 @@ namespace Unity.InferenceEngine
 
                 using Tensor<float> kernel1 = constTensors[l1.inputs[1]].WeightsToTensor() as Tensor<float>;
 
-                Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2], (l1 as Layers.Conv).group, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).autoPad);
+                Layer lmerged = new Layers.Conv((l1 as Layers.Conv).autoPad, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).group, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).kernelShape, (l1 as Layers.Conv).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
 
                 // k = k * s
                 using Tensor<float> kernel = new Tensor<float>(kernel1.shape);
@@ -446,7 +446,7 @@ namespace Unity.InferenceEngine
                 using Tensor<float> bias = m_Ops.Dense(bias0, weights1, bias1);
                 bias.Reshape(new TensorShape(bias.shape[1]));
 
-                Layer lmerged = new Layers.Dense(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2]);
+                Layer lmerged = new Layers.Dense((l1 as Layers.Dense).fusedActivation).SetInputs(l0.inputs[0], l0.inputs[1], l0.inputs[2]).SetOutputs(l0.outputs[0]);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(weights);
                 constTensors[lmerged.inputs[2]].TensorToDataSet(bias);
@@ -459,8 +459,8 @@ namespace Unity.InferenceEngine
                 var madLayer1 = l1 as Layers.ScalarMad;
 
                 if (madLayer0.dataType == DataType.Int)
-                    return new Layers.ScalarMad(l0.outputs[0], l0.inputs[0], madLayer1.sInt * madLayer0.sInt, madLayer1.sInt * madLayer0.bInt + madLayer1.bInt);
-                return new Layers.ScalarMad(l0.outputs[0], l0.inputs[0], madLayer1.sFloat * madLayer0.sFloat, madLayer1.sFloat * madLayer0.bFloat + madLayer1.bFloat);
+                    return new Layers.ScalarMad(DataType.Int, 0, 0, madLayer1.sInt * madLayer0.sInt, madLayer1.sInt * madLayer0.bInt + madLayer1.bInt).SetInputs(l0.inputs[0]).SetOutputs(l0.outputs[0]);
+                return new Layers.ScalarMad(DataType.Float, madLayer1.sFloat * madLayer0.sFloat, madLayer1.sFloat * madLayer0.bFloat + madLayer1.bFloat, 0, 0).SetInputs(l0.inputs[0]).SetOutputs(l0.outputs[0]);
             });
             Add((typeof(Layers.ScalarMad), typeof(Layers.Mul)), (l0, l1, constTensors) =>
             {
@@ -471,7 +471,7 @@ namespace Unity.InferenceEngine
                 Tensor scale;
                 scale = m_Ops.ScalarMad(scale1 as Tensor<float>, scale0, 0);
 
-                Layer lmerged = new Layers.Mul(l0.outputs[0], l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]);
+                Layer lmerged = new Layers.Mul().SetInputs(l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(scale);
 
@@ -488,7 +488,7 @@ namespace Unity.InferenceEngine
                 Tensor scale;
                 scale = m_Ops.ScalarMad(scale0 as Tensor<float>, scale1, 0);
 
-                Layer lmerged = new Layers.Mul(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                Layer lmerged = new Layers.Mul().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if(constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(scale);
@@ -508,7 +508,7 @@ namespace Unity.InferenceEngine
                 Tensor bias;
                 bias = m_Ops.ScalarMad(bias1 as Tensor<float>, 1, bias0);
 
-                Layer lmerged = new Layers.Add(l0.outputs[0], l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]);
+                Layer lmerged = new Layers.Add().SetInputs(l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
 
@@ -525,7 +525,7 @@ namespace Unity.InferenceEngine
                 Tensor bias;
                 bias = m_Ops.ScalarMad(bias0 as Tensor<float>, 1, bias1);
 
-                Layer lmerged = new Layers.Add(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                Layer lmerged = new Layers.Add().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if(constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
@@ -546,7 +546,7 @@ namespace Unity.InferenceEngine
                 Tensor bias;
                 bias = m_Ops.ScalarMad(bias1 as Tensor<float>, 1, constTensors.ContainsKey(l1.inputs[0]) ? -bias0 : bias0);
 
-                Layer lmerged = constTensors.ContainsKey(l1.inputs[0]) ? new Layers.Sub(l0.outputs[0], l1.inputs[0], l0.inputs[0]) : new Layers.Sub(l0.outputs[0], l0.inputs[0], l1.inputs[1]);
+                Layer lmerged = constTensors.ContainsKey(l1.inputs[0]) ? new Layers.Sub().SetInputs(l1.inputs[0], l0.inputs[0]).SetOutputs(l0.outputs[0]) : new Layers.Sub().SetInputs(l0.inputs[0], l1.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if(constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
@@ -567,7 +567,7 @@ namespace Unity.InferenceEngine
                 Tensor bias;
                 bias = m_Ops.ScalarMad(bias0 as Tensor<float>, 1, bias1);
 
-                Layer lmerged = new Layers.Sub(l0.outputs[0], l0.inputs[0], l0.inputs[1]);
+                Layer lmerged = new Layers.Sub().SetInputs(l0.inputs[0], l0.inputs[1]).SetOutputs(l0.outputs[0]);
 
                 if(constTensors.ContainsKey(lmerged.inputs[0]))
                     constTensors[lmerged.inputs[0]].TensorToDataSet(bias);

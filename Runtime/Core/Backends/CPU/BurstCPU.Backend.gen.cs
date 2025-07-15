@@ -74,7 +74,31 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Pow(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
-            var job = new PowFloatJob();
+            var job = new PowFloatFloatJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
+        {
+            var job = new PowFloatIntJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<int> A, Tensor<float> B, Tensor<int> O)
+        {
+            var job = new PowIntFloatJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new PowIntIntJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
             job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
         }
@@ -251,7 +275,6 @@ namespace Unity.InferenceEngine
         public void Abs(Tensor<float> X, Tensor<float> O)
         {
             var job = new AbsFloatJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -259,7 +282,6 @@ namespace Unity.InferenceEngine
         public void Abs(Tensor<int> X, Tensor<int> O)
         {
             var job = new AbsIntJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -267,7 +289,6 @@ namespace Unity.InferenceEngine
         public void Neg(Tensor<float> X, Tensor<float> O)
         {
             var job = new NegFloatJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -275,7 +296,6 @@ namespace Unity.InferenceEngine
         public void Neg(Tensor<int> X, Tensor<int> O)
         {
             var job = new NegIntJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -283,7 +303,6 @@ namespace Unity.InferenceEngine
         public void Square(Tensor<float> X, Tensor<float> O)
         {
             var job = new SquareFloatJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -291,7 +310,6 @@ namespace Unity.InferenceEngine
         public void Square(Tensor<int> X, Tensor<int> O)
         {
             var job = new SquareIntJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -299,7 +317,6 @@ namespace Unity.InferenceEngine
         public void Sign(Tensor<float> X, Tensor<float> O)
         {
             var job = new SignFloatJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -307,7 +324,6 @@ namespace Unity.InferenceEngine
         public void Sign(Tensor<int> X, Tensor<int> O)
         {
             var job = new SignIntJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -315,7 +331,6 @@ namespace Unity.InferenceEngine
         public void IsNaN(Tensor<float> X, Tensor<int> O)
         {
             var job = new IsNaNJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -323,7 +338,6 @@ namespace Unity.InferenceEngine
         public void Not(Tensor<int> X, Tensor<int> O)
         {
             var job = new NotJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -331,7 +345,6 @@ namespace Unity.InferenceEngine
         public void Ceil(Tensor<float> X, Tensor<float> O)
         {
             var job = new CeilJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -339,7 +352,6 @@ namespace Unity.InferenceEngine
         public void Floor(Tensor<float> X, Tensor<float> O)
         {
             var job = new FloorJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -347,7 +359,6 @@ namespace Unity.InferenceEngine
         public void Round(Tensor<float> X, Tensor<float> O)
         {
             var job = new RoundJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -355,7 +366,6 @@ namespace Unity.InferenceEngine
         public void Reciprocal(Tensor<float> X, Tensor<float> O)
         {
             var job = new ReciprocalJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -363,7 +373,6 @@ namespace Unity.InferenceEngine
         public void Sqrt(Tensor<float> X, Tensor<float> O)
         {
             var job = new SqrtJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -371,7 +380,6 @@ namespace Unity.InferenceEngine
         public void Exp(Tensor<float> X, Tensor<float> O)
         {
             var job = new ExpJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -379,7 +387,6 @@ namespace Unity.InferenceEngine
         public void Log(Tensor<float> X, Tensor<float> O)
         {
             var job = new LogJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -387,7 +394,6 @@ namespace Unity.InferenceEngine
         public void Acos(Tensor<float> X, Tensor<float> O)
         {
             var job = new AcosJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -395,7 +401,6 @@ namespace Unity.InferenceEngine
         public void Acosh(Tensor<float> X, Tensor<float> O)
         {
             var job = new AcoshJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -403,7 +408,6 @@ namespace Unity.InferenceEngine
         public void Asin(Tensor<float> X, Tensor<float> O)
         {
             var job = new AsinJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -411,7 +415,6 @@ namespace Unity.InferenceEngine
         public void Asinh(Tensor<float> X, Tensor<float> O)
         {
             var job = new AsinhJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -419,7 +422,6 @@ namespace Unity.InferenceEngine
         public void Atan(Tensor<float> X, Tensor<float> O)
         {
             var job = new AtanJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -427,7 +429,6 @@ namespace Unity.InferenceEngine
         public void Atanh(Tensor<float> X, Tensor<float> O)
         {
             var job = new AtanhJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -435,7 +436,6 @@ namespace Unity.InferenceEngine
         public void Cos(Tensor<float> X, Tensor<float> O)
         {
             var job = new CosJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -443,7 +443,6 @@ namespace Unity.InferenceEngine
         public void Cosh(Tensor<float> X, Tensor<float> O)
         {
             var job = new CoshJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -451,7 +450,6 @@ namespace Unity.InferenceEngine
         public void Sin(Tensor<float> X, Tensor<float> O)
         {
             var job = new SinJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -459,7 +457,6 @@ namespace Unity.InferenceEngine
         public void Sinh(Tensor<float> X, Tensor<float> O)
         {
             var job = new SinhJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -467,7 +464,6 @@ namespace Unity.InferenceEngine
         public void Tan(Tensor<float> X, Tensor<float> O)
         {
             var job = new TanJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -475,7 +471,6 @@ namespace Unity.InferenceEngine
         public void Tanh(Tensor<float> X, Tensor<float> O)
         {
             var job = new TanhJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -483,7 +478,6 @@ namespace Unity.InferenceEngine
         public void Relu(Tensor<float> X, Tensor<float> O)
         {
             var job = new ReluJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -491,7 +485,6 @@ namespace Unity.InferenceEngine
         public void Relu6(Tensor<float> X, Tensor<float> O)
         {
             var job = new Relu6Job();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -499,7 +492,6 @@ namespace Unity.InferenceEngine
         public void Mish(Tensor<float> X, Tensor<float> O)
         {
             var job = new MishJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -507,7 +499,6 @@ namespace Unity.InferenceEngine
         public void Softplus(Tensor<float> X, Tensor<float> O)
         {
             var job = new SoftplusJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -515,7 +506,6 @@ namespace Unity.InferenceEngine
         public void Swish(Tensor<float> X, Tensor<float> O)
         {
             var job = new SwishJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -523,7 +513,6 @@ namespace Unity.InferenceEngine
         public void Sigmoid(Tensor<float> X, Tensor<float> O)
         {
             var job = new SigmoidJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -531,7 +520,6 @@ namespace Unity.InferenceEngine
         public void Erf(Tensor<float> X, Tensor<float> O)
         {
             var job = new ErfJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -539,7 +527,6 @@ namespace Unity.InferenceEngine
         public void Softsign(Tensor<float> X, Tensor<float> O)
         {
             var job = new SoftsignJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -547,7 +534,6 @@ namespace Unity.InferenceEngine
         public void HardSwish(Tensor<float> X, Tensor<float> O)
         {
             var job = new HardSwishJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -1997,18 +1983,16 @@ namespace Unity.InferenceEngine
         public void Range(Tensor<float> O, float start, float delta)
         {
             var job = new RangeFloatJob();
-            job.alpha = start;
-            job.beta = delta;
-            job.length = O.shape.length;
+            job.start = start;
+            job.delta = delta;
             job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
         /// <inheritdoc/>
         public void Range(Tensor<int> O, int start, int delta)
         {
             var job = new RangeIntJob();
-            job.alphai = start;
-            job.betai = delta;
-            job.length = O.shape.length;
+            job.start = start;
+            job.delta = delta;
             job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
     }

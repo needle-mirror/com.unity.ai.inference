@@ -1,3 +1,14 @@
+# What's new in Inference Engine 2.3
+
+This is a summary of the changes from Inference Engine 2.2 to Inference Engine 2.3.
+
+## Added
+
+- Model Visualizer for inspecting models as node-based graphs inside the Unity Editor.
+- `GatherND` and `Pow` operators now support `Tensor<int>` inputs more widely.
+- `ConvTranspose` and `Constant` operators now support more input arguments.
+
+
 # What's new in Inference Engine 2.2
 
 Inference Engine is the new name for the [Sentis package](https://docs.unity3d.com/Packages/com.unity.sentis@latest/manual/index.html).

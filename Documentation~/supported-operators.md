@@ -1,6 +1,6 @@
 # Supported ONNX operators
 
-When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes an Inference Engine layer. An Inference Engine layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer. 
+When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes an Inference Engine layer. An Inference Engine layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer.
 
 For more information, refer to [How Inference Engine optimizes a model](models-concept.md#how-inference-engine-optimizes-a-model).
 
@@ -31,10 +31,10 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Clip](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Clip) | float, int | float, int | float, int | |
 |[Compress](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Compress) | float, int | Not supported | Not supported | |
 |[Concat](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Concat) | float, int | float, int | float, int | |
-|[Constant](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Constant) | - | - | - | The `sparse_value` parameter isn't supported. |
+|[Constant](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Constant) | - | - | - | The `sparse_value`, `value_string` and `value_strings` parameters aren't supported. |
 |[ConstantOfShape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConstantOfShape) | float, int | float, int | float, int | |
 |[Conv](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Conv) | float | float* | float | Supports 1D, 2D or 3D convolutions. |
-|[ConvTranspose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConvTranspose) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The `dilations`, `group` and `output_shape` parameters aren't supported. |
+|[ConvTranspose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConvTranspose) | float | float | float | Supports 1D, 2D or 3D convolutions. The `output_shape` parameter isn't supported. |
 |[Cos](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cos) | float | float | float | |
 |[Cosh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cosh) | float | float | float | |
 |[CumSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CumSum) | float, int | float, int | float, int | |

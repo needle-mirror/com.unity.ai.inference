@@ -79,15 +79,18 @@ namespace Unity.InferenceEngine
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct SetJob : IJobParallelFor, IJobResourceDeclarationO
+        unsafe struct SetJob : IParallelForBatch, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
 
             public int memValue;
 
-            public void Execute(int i)
+            public void Execute(int startIndex, int count)
             {
-                Optr[i] = memValue;
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = memValue;
+                }
             }
         }
 
@@ -104,57 +107,67 @@ namespace Unity.InferenceEngine
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct RandomNormalJob : IJobParallelFor, IJobResourceDeclarationO
+        unsafe struct RandomNormalJob : IParallelForBatch, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
             public uint seed;
             public float mean;
             public float scale;
 
-            public void Execute(int i)
+            public void Execute(int startIndex, int count)
             {
-                var random = JobMathematicsRandom(seed, i);
-                float u, v, s;
-                do {
-                    u = random.NextFloat() * 2 - 1;
-                    v = random.NextFloat() * 2 - 1;
-                    s = u * u + v * v;
-                } while (s >= 1 || s == 0);
-                float mul = Mathf.Sqrt(-2.0f * Mathf.Log(s) / s);
-                Optr[i] = mean + scale * u * mul;
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    var random = JobMathematicsRandom(seed, index);
+                    float u, v, s;
+                    do
+                    {
+                        u = random.NextFloat() * 2 - 1;
+                        v = random.NextFloat() * 2 - 1;
+                        s = u * u + v * v;
+                    } while (s >= 1 || s == 0);
+                    float mul = Mathf.Sqrt(-2.0f * Mathf.Log(s) / s);
+                    Optr[index] = mean + scale * u * mul;
+                }
             }
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct RandomUniformJob : IJobParallelFor, IJobResourceDeclarationO
+        unsafe struct RandomUniformJob : IParallelForBatch, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
             public uint seed;
             public float low;
             public float high;
 
-            public void Execute(int i)
+            public void Execute(int startIndex, int count)
             {
-                var random = JobMathematicsRandom(seed, i);
-                Optr[i] = low + (high - low) * random.NextFloat();
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    var random = JobMathematicsRandom(seed, index);
+                    Optr[index] = low + (high - low) * random.NextFloat();
+                }
             }
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct BernoulliJob : IJobParallelFor, IJobResourceDeclarationXO
+        unsafe struct BernoulliJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
             public ReadWriteMemResource O { get; set; }
             public uint seed;
             public DataType dataType;
 
-            public void Execute(int i)
+            public void Execute(int startIndex, int count)
             {
-                var random = JobMathematicsRandom(seed, i);
-                if (dataType == DataType.Float)
-                    ((float*)O.ptr)[i] = Xptr[i] > random.NextFloat() ? 1f : 0f;
-                else if (dataType == DataType.Int)
-                    ((int*)O.ptr)[i] = Xptr[i] > random.NextFloat() ? 1 : 0;
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    var random = JobMathematicsRandom(seed, index);
+                    if (dataType == DataType.Float)
+                        ((float*)O.ptr)[index] = Xptr[index] > random.NextFloat() ? 1f : 0f;
+                    else if (dataType == DataType.Int)
+                        ((int*)O.ptr)[index] = Xptr[index] > random.NextFloat() ? 1 : 0;
+                }
             }
         }
 
@@ -183,21 +196,6 @@ namespace Unity.InferenceEngine
                     accum += Xptr[n * innerLength + x];
                 }
                 Optr[i] = x - 1;
-            }
-        }
-
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct IsInfJob : IJobParallelFor, IJobResourceDeclarationXO
-        {
-            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
-            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-            public bool detectNegative;
-            public bool detectPositive;
-
-            public void Execute(int threadIdx)
-            {
-                float v = Xptr[threadIdx];
-                Optr[threadIdx] = (float.IsNegativeInfinity(v) && detectNegative || float.IsPositiveInfinity(v) && detectPositive) ? 1 : 0;
             }
         }
 
@@ -1642,112 +1640,338 @@ namespace Unity.InferenceEngine
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        unsafe struct ConvTransposeJob : IJobParallelFor, IJobResourceDeclarationXBO
+        public interface IConvTransposeJobCommon : IJobParallelFor, IJobResourceDeclarationXSBO
         {
-            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
-            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
-            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+            public const int k_MaxSpatialDims = 3;
 
-            public bool useBias;
-            const int k_MaxSpatialDims = 2;
+            public bool useBias { get; set; }
+            public int offsetO { get; set; }
+            public int offsetX { get; set; }
+            public int inputSpatialSize { get; set; }
+            public int kernelSpatialSize { get; set; }
+            public int outputSpatialSize { get; set; }
+            public void Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, int groupNum, int numOutputChannelsPerGroup, Span<int> stride, Span<int> pad, Span<int> dilations);
+        }
 
-            public int offsetO;
-            public int inputSize;
-            public int kernelSize;
-            public int outputSize;
-            fixed int inputShape[k_MaxSpatialDims];
-            fixed int kernelShape[k_MaxSpatialDims];
-            fixed int outputShape[k_MaxSpatialDims];
-            fixed int stride[k_MaxSpatialDims];
-            fixed int padLeft[k_MaxSpatialDims];
-            fixed int dilation[k_MaxSpatialDims];
-
-            public void Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, Span<int> stride, Span<int> pad)
+        public unsafe struct ConvTransCommon
+        {
+            public static void Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, int groupNum, int numOutputChannelsPerGroup, Span<int> stride, Span<int> pad, Span<int> dilations,
+                Span<int> inputSpatialShape, Span<int> kernelSpatialShape, Span<int> outputSpatialShape, Span<int> strideOut, Span<int> padLeftOut, Span<int> dilationOut)
             {
                 var spatialDims = shapeX.rank - 2;
 
-                // Implement ConvTranspose1D using the ConvTranspose2D path by unsqueezing the shapes.
+                // Implement ConvTranspose1D and ConvTranspose2D using the ConvTranspose3D path by unsqueezing the shapes.
                 if (spatialDims == 1)
                 {
-                    inputShape[0] = 1;
-                    inputShape[1] = shapeX[2];
-                    kernelShape[0] = 1;
-                    kernelShape[1] = shapeW[2];
-                    outputShape[0] = 1;
-                    outputShape[1] = shapeO[2];
-                    this.stride[0] = 1;
-                    this.stride[1] = stride[0];
-                    padLeft[0] = 0;
-                    padLeft[1] = pad[0];
+                    inputSpatialShape[0] = 1;
+                    inputSpatialShape[1] = 1;
+                    inputSpatialShape[2] = shapeX[2];
+                    kernelSpatialShape[0] = 1;
+                    kernelSpatialShape[1] = 1;
+                    kernelSpatialShape[2] = shapeW[2];
+                    outputSpatialShape[0] = 1;
+                    outputSpatialShape[1] = 1;
+                    outputSpatialShape[2] = shapeO[2];
+                    strideOut[0] = 1;
+                    strideOut[1] = 1;
+                    strideOut[2] = stride[0];
+                    padLeftOut[0] = 0;
+                    padLeftOut[1] = 0;
+                    padLeftOut[2] = pad[0];
+                    dilationOut[0] = 1;
+                    dilationOut[1] = 1;
+                    dilationOut[2] = dilations[0];
+                }
+                else if (spatialDims == 2)
+                {
+                    inputSpatialShape[0] = 1;
+                    inputSpatialShape[1] = shapeX[2];
+                    inputSpatialShape[2] = shapeX[3];
+                    kernelSpatialShape[0] = 1;
+                    kernelSpatialShape[1] = shapeW[2];
+                    kernelSpatialShape[2] = shapeW[3];
+                    outputSpatialShape[0] = 1;
+                    outputSpatialShape[1] = shapeO[2];
+                    outputSpatialShape[2] = shapeO[3];
+                    strideOut[0] = 1;
+                    strideOut[1] = stride[0];
+                    strideOut[2] = stride[1];
+                    padLeftOut[0] = 0;
+                    padLeftOut[1] = pad[0];
+                    padLeftOut[2] = pad[1];
+                    dilationOut[0] = 1;
+                    dilationOut[1] = dilations[0];
+                    dilationOut[2] = dilations[1];
                 }
                 else
                 {
-                    inputShape[0] = shapeX[2];
-                    inputShape[1] = shapeX[3];
-                    kernelShape[0] = shapeW[2];
-                    kernelShape[1] = shapeW[3];
-                    outputShape[0] = shapeO[2];
-                    outputShape[1] = shapeO[3];
-                    this.stride[0] = stride[0];
-                    this.stride[1] = stride[1];
-                    padLeft[0] = pad[0];
-                    padLeft[1] = pad[1];
+                    inputSpatialShape[0] = shapeX[2];
+                    inputSpatialShape[1] = shapeX[3];
+                    inputSpatialShape[2] = shapeX[4];
+                    kernelSpatialShape[0] = shapeW[2];
+                    kernelSpatialShape[1] = shapeW[3];
+                    kernelSpatialShape[2] = shapeW[4];
+                    outputSpatialShape[0] = shapeO[2];
+                    outputSpatialShape[1] = shapeO[3];
+                    outputSpatialShape[2] = shapeO[4];
+                    strideOut[0] = stride[0];
+                    strideOut[1] = stride[1];
+                    strideOut[2] = stride[2];
+                    padLeftOut[0] = pad[0];
+                    padLeftOut[1] = pad[1];
+                    padLeftOut[2] = pad[2];
+                    dilationOut[0] = dilations[0];
+                    dilationOut[1] = dilations[1];
+                    dilationOut[2] = dilations[2];
                 }
-                dilation[0] = 1;
-                dilation[1] = 1;
 
-                inputSize = inputShape[0] * inputShape[1];
-                kernelSize = kernelShape[0] * kernelShape[1];
-                outputSize = outputShape[0] * outputShape[1];
             }
 
-            public void Execute(int i)
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        unsafe struct ConvTransposeJob : IConvTransposeJobCommon
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public bool useBias { get; set; }
+            public int offsetO { get; set; }
+            public int offsetX { get; set; } // unused in this job, see when NoInnerProduct
+            public int inputSpatialSize { get; set; }
+            public int kernelSpatialSize { get; set; }
+            public int outputSpatialSize { get; set; }
+
+            int groupNum;
+            int outputAxis0Stride;
+            int inputAxis0Stride;
+            fixed int inputSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int kernelSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int outputSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int stride[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int padLeft[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int dilation[IConvTransposeJobCommon.k_MaxSpatialDims];
+
+            public void Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, int groupNum, int numOutputChannelsPerGroup, Span<int> stride, Span<int> pad, Span<int> dilations)
             {
-                float* Xp = Xptr + i * inputSize * kernelSize;
-                float* Bp = useBias ? Bptr + i : null;
-                float* Op = Optr + offsetO + i * outputSize;
+                fixed (int* inputSpatialShapePtr = inputSpatialShape, kernelSpatialShapePtr = kernelSpatialShape, outputSpatialShapePtr = outputSpatialShape, stridePtr = this.stride, padLeftPtr = padLeft, dilationPtr = dilation)
+                {
+                    ConvTransCommon.Prepare(shapeX, shapeW, shapeO, groupNum, numOutputChannelsPerGroup, stride, pad, dilations,
+                        new Span<int>(inputSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(kernelSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(outputSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims),
+                        new Span<int>(stridePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(padLeftPtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(dilationPtr, IConvTransposeJobCommon.k_MaxSpatialDims));
+                }
+
+                this.groupNum = groupNum;
+                inputSpatialSize = inputSpatialShape[0] * inputSpatialShape[1] * inputSpatialShape[2];
+                kernelSpatialSize = kernelSpatialShape[0] * kernelSpatialShape[1] * kernelSpatialShape[2];
+                outputSpatialSize = outputSpatialShape[0] * outputSpatialShape[1] * outputSpatialShape[2];
+                outputAxis0Stride = outputSpatialShape[1] * outputSpatialShape[2];
+                inputAxis0Stride = inputSpatialShape[0] * inputSpatialShape[1];
+            }
+
+            public void Execute(int xGroupOutChannelIdx)
+            {
+                // xGroupOutChannelIdx is the across-groups-numbered output channel index.
+                // ie if we have 2 groups with 3 out channels each, we can get xGroupOutChannelIdx from 0 to 5.
+                //
+                // Here X is what we call in ConvTranspose "columnBuffer" which when seen as a [output channel num * kernel spatial size x input spatial size] matrix
+                // contains: For every output channel (outermost, each group of "kernel spatial size" lines is an output channel),
+                // result of multiply-broadcasting each spatial input pixel (spatial index is the column) to all kernel spatial values (lines in an output channel group of lines),
+                // doing the inner product (sum) of all those broadcast along the corresponding input channels to sum.
+                // So what remains to be done si to gather the relevant kernel window (multiplied by those inputs) and sum them where they overlap.
+                float* Xp = Xptr + xGroupOutChannelIdx * inputSpatialSize * kernelSpatialSize;
+                float* Bp = useBias ? Bptr + xGroupOutChannelIdx : null;
+                float* Op = Optr + offsetO + xGroupOutChannelIdx * outputSpatialSize;
 
                 if (useBias)
                 {
                     // Initialize the output image with the channel bias.
-                    for (int ohw = 0; ohw < outputSize; ohw++)
+                    for (int ohw = 0; ohw < outputSpatialSize; ohw++)
                         Op[ohw] = Bp[0];
                 }
                 else
                 {
-                    UnsafeUtility.MemClear(destination: Op, size: outputSize * sizeof(float));
+                    UnsafeUtility.MemClear(destination: Op, size: outputSpatialSize * sizeof(float));
                 }
 
                 // Perform a col2im operation (see https://onnx.ai/onnx/operators/onnx__Col2Im.html).
                 // The column buffer has the format: [kernelHeight][kernelWidth][inputHeight][inputWidth].
                 // Walk over each column buffer element and accumulate into the output image.
-                for (int kh = 0; kh < kernelShape[0]; kh++)
+
+                // TODO: early continue in inner loops if >=...
+                for (int kd = 0; kd < kernelSpatialShape[0]; kd++)
                 {
-                    for (int kw = 0; kw < kernelShape[1]; kw++)
+                    for (int kh = 0; kh < kernelSpatialShape[1]; kh++)
                     {
-                        for (int ih = 0; ih < inputShape[0]; ih++)
+                        for (int kw = 0; kw < kernelSpatialShape[2]; kw++)
                         {
-                            int oh = ih * stride[0] + kh * dilation[0] - padLeft[0];
-
-                            if ((uint)oh < (uint)outputShape[0])
+                            for (int id = 0; id < inputSpatialShape[0]; id++)
                             {
-                                for (int iw = 0; iw < inputShape[1]; iw++)
+                                int od = id * stride[0] + kd * dilation[0] - padLeft[0];
+
+                                if ((uint)od < (uint)outputSpatialShape[0])
                                 {
-                                    int ow = iw * stride[1] + kw * dilation[1] - padLeft[1];
-
-                                    if ((uint)ow < (uint)outputShape[1])
+                                    for (int ih = 0; ih < inputSpatialShape[1]; ih++)
                                     {
-                                        Op[oh * outputShape[1] + ow] += Xp[0];
-                                    }
+                                        int oh = ih * stride[1] + kh * dilation[1] - padLeft[1];
 
-                                    Xp += 1;
+                                        if ((uint)oh < (uint)outputSpatialShape[1])
+                                        {
+                                            for (int iw = 0; iw < inputSpatialShape[2]; iw++)
+                                            {
+                                                int ow = iw * stride[2] + kw * dilation[2] - padLeft[2];
+
+                                                if ((uint)ow < (uint)outputSpatialShape[2])
+                                                {
+                                                    Op[od * outputAxis0Stride + oh * outputSpatialShape[2] + ow] += Xp[0];
+                                                }
+                                                Xp += 1;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Xp += inputSpatialShape[2];
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Xp += inputAxis0Stride;
                                 }
                             }
-                            else
+                        }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        unsafe struct ConvTransposeJobNoInnerProduct : IConvTransposeJobCommon
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public bool useBias { get; set; }
+            public int offsetO { get; set; }
+            public int offsetX { get; set; }
+            public int inputSpatialSize { get; set; }
+            public int kernelSpatialSize { get; set; }
+            public int outputSpatialSize { get; set; }
+
+            int groupNum;
+            int numOutputChannelsPerGroup;
+            int outputAxis0Stride;
+            int inputAxis0Stride;
+            fixed int inputSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int kernelSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int outputSpatialShape[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int stride[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int padLeft[IConvTransposeJobCommon.k_MaxSpatialDims];
+            fixed int dilation[IConvTransposeJobCommon.k_MaxSpatialDims];
+
+            void IConvTransposeJobCommon.Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, int groupNum, int numOutputChannelsPerGroup, Span<int> stride, Span<int> pad, Span<int> dilations)
+            {
+                fixed (int* inputSpatialShapePtr = inputSpatialShape, kernelSpatialShapePtr = kernelSpatialShape, outputSpatialShapePtr = outputSpatialShape, stridePtr = this.stride, padLeftPtr = padLeft, dilationPtr = dilation)
+                {
+                    ConvTransCommon.Prepare(shapeX, shapeW, shapeO, groupNum, numOutputChannelsPerGroup, stride, pad, dilations,
+                        new Span<int>(inputSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(kernelSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(outputSpatialShapePtr, IConvTransposeJobCommon.k_MaxSpatialDims),
+                        new Span<int>(stridePtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(padLeftPtr, IConvTransposeJobCommon.k_MaxSpatialDims), new Span<int>(dilationPtr, IConvTransposeJobCommon.k_MaxSpatialDims));
+                }
+
+                this.groupNum = groupNum;
+                this.numOutputChannelsPerGroup = numOutputChannelsPerGroup;
+                inputSpatialSize = inputSpatialShape[0] * inputSpatialShape[1] * inputSpatialShape[2];
+                kernelSpatialSize = kernelSpatialShape[0] * kernelSpatialShape[1] * kernelSpatialShape[2];
+                outputSpatialSize = outputSpatialShape[0] * outputSpatialShape[1] * outputSpatialShape[2];
+                outputAxis0Stride = outputSpatialShape[1] * outputSpatialShape[2];
+                inputAxis0Stride = inputSpatialShape[0] * inputSpatialShape[1];
+            }
+
+            public void Execute(int xGroupOutChannelIdx)
+            {
+                // Here in ConvTransposeJobNoInnerProduct, the number of input channels is 1,
+                // X is the actual input tensor and S is the kernel.
+                //
+                // xGroupOutChannelIdx is the across-groups-numbered output channel index.
+                // ie if we have 2 groups with 3 out channels each, we can get xGroupOutChannelIdx from 0 to 5.
+                int groupIdx = Math.DivRem(xGroupOutChannelIdx, numOutputChannelsPerGroup, out int rem);
+                int outputChannelIdx = rem;
+
+                // So what remains to be done si to gather the relevant kernel window values, multiply by the singe input-channel input data that overlaps them,
+                // and sum them where the kernel window overlap.
+                float* Xp = Xptr + offsetX + groupIdx * inputSpatialSize; // here in ConvTransposeJobNoInnerProduct, we have a single input channel per group.
+                // cf with other version: float* Xp = Xptr + xGroupOutChannelIdx * inputSpatialSize * kernelSpatialSize;
+                float* Bp = useBias ? Bptr + xGroupOutChannelIdx : null;
+                float* Op = Optr + offsetO + xGroupOutChannelIdx * outputSpatialSize;
+
+                float* Kp = Sptr + (groupIdx * numOutputChannelsPerGroup + outputChannelIdx) * kernelSpatialSize; // here Sptr is the kernel tensor
+
+                if (useBias)
+                {
+                    // Initialize the output image with the channel bias.
+                    for (int ohw = 0; ohw < outputSpatialSize; ohw++)
+                        Op[ohw] = Bp[0];
+                }
+                else
+                {
+                    UnsafeUtility.MemClear(destination: Op, size: outputSpatialSize * sizeof(float));
+                }
+
+                var XpSingleInputChannelGroupStart = Xp;
+                // Perform a col2im operation (see https://onnx.ai/onnx/operators/onnx__Col2Im.html).
+                // Walk over each kernel element modulate with appropriate single input value (no inner product) and accumulate into the output image.
+
+                // TODO: early continue in inner loops if >=...
+                for (int kd = 0; kd < kernelSpatialShape[0]; kd++)
+                {
+                    for (int kh = 0; kh < kernelSpatialShape[1]; kh++)
+                    {
+                        for (int kw = 0; kw < kernelSpatialShape[2]; kw++)
+                        {
+                            Xp = XpSingleInputChannelGroupStart;
+
+                            for (int id = 0; id < inputSpatialShape[0]; id++)
                             {
-                                Xp += inputShape[1];
+                                int od = id * stride[0] + kd * dilation[0] - padLeft[0];
+
+                                if ((uint)od < (uint)outputSpatialShape[0])
+                                {
+                                    for (int ih = 0; ih < inputSpatialShape[1]; ih++)
+                                    {
+                                        int oh = ih * stride[1] + kh * dilation[1] - padLeft[1];
+
+                                        if ((uint)oh < (uint)outputSpatialShape[1])
+                                        {
+                                            for (int iw = 0; iw < inputSpatialShape[2]; iw++)
+                                            {
+                                                int ow = iw * stride[2] + kw * dilation[2] - padLeft[2];
+
+                                                if ((uint)ow < (uint)outputSpatialShape[2])
+                                                {
+                                                    float kernelVal = Kp[0];
+                                                    Op[od * outputAxis0Stride + oh * outputSpatialShape[2] + ow] += Xp[0] * kernelVal;
+                                                }
+
+                                                Xp += 1;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Xp += inputSpatialShape[2];
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Xp += inputAxis0Stride;
+                                }
                             }
+
+                            Kp += 1;
                         }
                     }
                 }
@@ -1967,36 +2191,6 @@ namespace Unity.InferenceEngine
                     }
                     minOValue = math.min(direction * Vp[(k - 1) * innerLength], value);
                 }
-            }
-        }
-
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        internal unsafe struct CastHalfToFloatJob : IJobParallelFor, IJobResourceDeclarationXO
-        {
-            public ReadOnlyMemResource X { get; set; } ushort* Xptr => (ushort*)X.ptr;
-            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-
-            public void Execute(int index)
-            {
-                float v = Mathf.HalfToFloat(Xptr[index]);
-                // round denormal
-                if (float.IsSubnormal(v))
-                    v = 0;
-                Optr[index] = v;
-            }
-        }
-
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        internal unsafe struct DequantizeUint8Job : IJobParallelFor, IJobResourceDeclarationXO
-        {
-            public ReadOnlyMemResource X { get; set; } byte* Xptr => (byte*)X.ptr;
-            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-            public float scale;
-            public byte zeroPoint;
-
-            public void Execute(int index)
-            {
-                Optr[index] = (Xptr[index] - zeroPoint) * scale;
             }
         }
 

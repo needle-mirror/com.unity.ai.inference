@@ -15,7 +15,7 @@ Full sample projects are available on GitHub to demonstrate various Inference En
 
 To explore these projects:
 
-* Visit the [Inference Engine samples](https://github.com/Unity-Technologies/sentis-samples) GitHub repository. 
+* Visit the [Inference Engine samples](https://github.com/Unity-Technologies/sentis-samples) GitHub repository.
 * Each project includes setup instructions, and some feature a video walkthrough in the `README` file.
 
 ## Sample scripts
@@ -26,8 +26,8 @@ To find the sample scripts, follow these steps:
 
 1. Go to **Window** > **Package Manager**, and select **Inference Engine** from the package list.
 2. Select **Samples**.
-3. To import a sample folder into your project, select **Import**. 
-   
+3. To import a sample folder into your project, select **Import**.
+
    Unity creates a `Samples` folder in your project and adds the selected sample script.
 
 The following table describes the available samples:

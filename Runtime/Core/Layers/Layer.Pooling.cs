@@ -1,5 +1,4 @@
 using System;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -13,24 +12,6 @@ namespace Unity.InferenceEngine.Layers
         public int[] strides;
         public int[] pads;
         public AutoPad autopad;
-
-        protected LocalPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
-            : base(new[] { output }, new[] { input })
-        {
-            this.kernelShape = kernelShape;
-            this.strides = strides;
-            if (this.strides == null)
-            {
-                this.strides = new int[this.kernelShape.Length];
-                for (var i = 0; i < this.strides.Length; i++)
-                {
-                    this.strides[i] = 1;
-                }
-            }
-            this.pads = pads;
-            this.pads ??= new int[2 * this.kernelShape.Length];
-            this.autopad = autopad;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -65,9 +46,6 @@ namespace Unity.InferenceEngine.Layers
     /// </summary>
     abstract class GlobalPool : Layer
     {
-        protected GlobalPool(int output, int input)
-            : base(new[] { output }, new[] { input }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -95,14 +73,9 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an `AveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
-    class AveragePool : LocalPool
+    [Operator(category = "Pooling")]
+    partial class AveragePool : LocalPool
     {
-        static readonly string k_OpName = "AveragePool";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public AveragePool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
-            : base(output, input, kernelShape, strides, pads, autopad) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -112,22 +85,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.AveragePool(X, O, kernelShape, strides, pads);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `GlobalAveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
-    class GlobalAveragePool : GlobalPool
+    [Operator(category = "Pooling")]
+    partial class GlobalAveragePool : GlobalPool
     {
-        static readonly string k_OpName = "GlobalAveragePool";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public GlobalAveragePool(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -136,22 +101,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.GlobalAveragePool(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `GlobalMaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
-    class GlobalMaxPool : GlobalPool
+    [Operator(category = "Pooling")]
+    partial class GlobalMaxPool : GlobalPool
     {
-        static readonly string k_OpName = "GlobalMaxPool";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public GlobalMaxPool(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -160,22 +117,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.GlobalMaxPool(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `MaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
-    class MaxPool : LocalPool
+    [Operator(category = "Pooling")]
+    partial class MaxPool : LocalPool
     {
-        static readonly string k_OpName = "MaxPool";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public MaxPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
-            : base(output, input, kernelShape, strides, pads, autopad) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -185,8 +134,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.MaxPool(X, O, kernelShape, strides, pads);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

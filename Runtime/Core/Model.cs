@@ -246,5 +246,11 @@ namespace Unity.InferenceEngine
         {
             return shape.ToString(p => p < (symbolicDimNames?.Length ?? 0) ? symbolicDimNames[p] : "d" + p);
         }
+
+        // Returns a pretty string with the correct names for the dynamic dimensions.
+        internal string PartialTensorToString(PartialTensor partialTensor)
+        {
+            return partialTensor.ToString(p => p < (symbolicDimNames?.Length ?? 0) ? symbolicDimNames[p] : "d" + p);
+        }
     }
 }

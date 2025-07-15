@@ -95,11 +95,13 @@ namespace Unity.InferenceEngine
         /// <param name="W">The filter tensor.</param>
         /// <param name="B">The optional bias tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="groups">The number of groups that input channels and output channels are divided into.</param>
         /// <param name="strides">The stride value for each spatial dimension of the filter.</param>
         /// <param name="pads">The lower and upper padding values for each spatial dimension of the filter.</param>
+        /// <param name="dilations">The dilation value of each spatial dimension of the filter.</param>
         /// <param name="outputPadding">The output padding value for each spatial dimension in the filter.</param>
         /// <param name="fusedActivation">The fused activation type to apply after the convolution.</param>
-        void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation);
+        void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputPadding, Layers.FusableActivation fusedActivation);
 
         /// <summary>
         /// Calculates an output tensor by resampling the input tensor along the spatial dimensions with given scales.
@@ -879,6 +881,26 @@ namespace Unity.InferenceEngine
         /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O);
+
+        /// <summary>
+        /// Performs an element-wise `Pow` math operation: f(a, b) = pow(a, b).
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Pow(Tensor<int> A, Tensor<float> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `Pow` math operation: f(a, b) = pow(a, b).
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Pow(Tensor<int> A, Tensor<int> B, Tensor<int> O);
 
         /// <summary>
         /// Performs an element-wise `Min` math operation: f(a, b) = min(a, b).

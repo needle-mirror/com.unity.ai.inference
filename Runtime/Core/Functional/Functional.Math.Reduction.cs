@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ArgMax(FunctionalTensor input, int dim = 0, bool keepdim = false)
         {
-            return FromLayer(new Layers.ArgMax(-1, -1, dim, keepdim), input);
+            return FromLayer(new Layers.ArgMax(dim, keepdim, false), input);
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ArgMin(FunctionalTensor input, int dim = 0, bool keepdim = false)
         {
-            return FromLayer(new Layers.ArgMin(-1, -1, dim, keepdim), input);
+            return FromLayer(new Layers.ArgMin(dim, keepdim, false), input);
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceMax(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceMax(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceMax(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceMin(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceMin(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceMin(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceL1(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceL1(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceL1(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceL2(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceL2(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceL2(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor ReduceLogSumExp(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
             input = input.Float();
-            return FromLayer(new Layers.ReduceLogSumExp(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceLogSumExp(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -159,7 +159,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor ReduceMean(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
             input = input.Float();
-            return FromLayer(new Layers.ReduceMean(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceMean(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceProd(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceProd(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceProd(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -207,7 +207,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceSum(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceSum(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceSum(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>
@@ -231,7 +231,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceSumSquare(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FromLayer(new Layers.ReduceSumSquare(-1, -1, -1, keepdim), new[] { input, Constant(dim) });
+            return FromLayer(new Layers.ReduceSumSquare(keepdim, false), new[] { input, Constant(dim) });
         }
 
         /// <summary>

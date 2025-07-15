@@ -1,5 +1,4 @@
 using System;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -8,19 +7,11 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a dequantize layer where four uint8 values are packed per int value.
     /// The final float values are calculated as y = (x - zeroPoint) * scale.
     /// </summary>
-    class DequantizeUint8 : Layer
+    [Operator(category = "Quantization")]
+    partial class DequantizeUint8 : Layer
     {
-        static readonly string k_OpName = "DequantizeUint8";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float scale;
         public byte zeroPoint;
-
-        public DequantizeUint8(int output, int input, float scale, byte zeroPoint)
-            : base(new[] { output }, new[] { input })
-        {
-            this.scale = scale;
-            this.zeroPoint = zeroPoint;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -36,13 +27,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.DequantizeLinear(X, O, scale, zeroPoint);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, scale: {scale}, zeroPoint: {zeroPoint}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Google.Protobuf;
 using Onnx;
+using Unity.Mathematics;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.EditorTests")]
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.ONNX.Editor")]
@@ -106,103 +107,137 @@ namespace Unity.InferenceEngine.ONNX.Editor
             var opType = node.OperatorType;
             if (opType == "Constant")
             {
-                node.UnsupportedAttribute("sparse_value");
-                var constant = ONNXConstantsLoader.LoadConstant(node.GetRequiredTensor("value"), m_DirectoryPath);
-                constant.index = AppendName(node.Name);
-                model.AddConstant(constant);
+                if (node.HasAttribute("value"))
+                {
+                    var constant = ONNXConstantsLoader.LoadConstant(node.GetRequiredTensor("value"), m_DirectoryPath);
+                    constant.index = AppendName(node.Name);
+                    model.AddConstant(constant);
+                }
+                else if (node.HasAttribute("value_float"))
+                {
+                    var value = node.GetRequiredFloat("value_float");
+                    var constant = new Constant(AppendName(node.Name), new TensorShape(), new[] { value });
+                    model.AddConstant(constant);
+                }
+                else if (node.HasAttribute("value_floats"))
+                {
+                    var values = node.GetRequiredFloatArray("value_floats");
+                    var constant = new Constant(AppendName(node.Name), new TensorShape(values.Length), values);
+                    model.AddConstant(constant);
+                }
+                else if (node.HasAttribute("value_int"))
+                {
+                    var value = node.GetRequiredInt("value_int");
+                    var constant = new Constant(AppendName(node.Name), new TensorShape(), new[] { value });
+                    model.AddConstant(constant);
+                }
+                else if (node.HasAttribute("value_ints"))
+                {
+                    var values = node.GetRequiredIntArray("value_ints");
+                    var constant = new Constant(AppendName(node.Name), new TensorShape(values.Length), values);
+                    model.AddConstant(constant);
+                }
+                else
+                {
+                    node.UnsupportedAttribute("sparse_value");
+                    node.UnsupportedAttribute("value_string");
+                    node.UnsupportedAttribute("value_strings");
+                    Warn(WarningType.Error, $"<b>{opType}</b>: Required attribute `<b>value</b>`, `<b>value_int(s)</b>` or `<b>value_float(s)</b>`");
+                    Debug.LogError(Warnings.Last().Message);
+                }
             }
             // Layer.Activation
             else if (opType == "Celu")
             {
                 var alpha = node.GetOptionalFloat("alpha", 1f);
-                model.AddLayer(new Layers.Celu(AppendName(node.Name), NameToIndex(node.Input0), alpha));
+                model.AddLayer(new Layers.Celu(alpha).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Elu")
             {
                 var alpha = node.GetOptionalFloat("alpha", 1f);
-                model.AddLayer(new Layers.Elu(AppendName(node.Name), NameToIndex(node.Input0), alpha));
+                model.AddLayer(new Layers.Elu(alpha).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Erf")
             {
-                model.AddLayer(new Layers.Erf(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Erf().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Gelu")
             {
                 var approximate = node.GetOptionalString("approximate", "none");
                 if (approximate.Equals("tanh"))
-                    model.AddLayer(new Layers.GeluFast(AppendName(node.Name), NameToIndex(node.Input0)));
+                    model.AddLayer(new Layers.GeluFast().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
                 else
-                    model.AddLayer(new Layers.Gelu(AppendName(node.Name), NameToIndex(node.Input0)));
+                    model.AddLayer(new Layers.Gelu().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Hardmax")
             {
                 var axis = node.GetOptionalInt("axis", -1);
-                model.AddLayer(new Layers.Hardmax(AppendName(node.Name), NameToIndex(node.Input0), axis));
+                model.AddLayer(new Layers.Hardmax(axis).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "HardSigmoid")
             {
                 var alpha = node.GetOptionalFloat("alpha", 0.2f);
                 var beta = node.GetOptionalFloat("beta", 0.5f);
-                model.AddLayer(new Layers.HardSigmoid(AppendName(node.Name), NameToIndex(node.Input0), alpha, beta));
+                model.AddLayer(new Layers.HardSigmoid(alpha, beta).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "HardSwish")
             {
-                model.AddLayer(new Layers.HardSwish(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.HardSwish().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "LeakyRelu")
             {
                 var alpha = node.GetOptionalFloat("alpha", 0.01f);
-                model.AddLayer(new Layers.LeakyRelu(AppendName(node.Name), NameToIndex(node.Input0), alpha));
+                model.AddLayer(new Layers.LeakyRelu(alpha).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Mish")
             {
-                model.AddLayer(new Layers.Mish(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Mish().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "PRelu")
             {
-                model.AddLayer(new Layers.PRelu(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.PRelu().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Relu")
             {
-                model.AddLayer(new Layers.Relu(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Relu().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Selu")
             {
                 var alpha = node.GetOptionalFloat("alpha", defaultOpsetVersion < 6 ? 1.6732f : 1.67326319f);
                 var gamma = node.GetOptionalFloat("gamma", defaultOpsetVersion < 6 ? 1.0507f : 1.05070102f);
-                model.AddLayer(new Layers.Selu(AppendName(node.Name), NameToIndex(node.Input0), alpha, gamma));
+                model.AddLayer(new Layers.Selu(alpha, gamma).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sigmoid")
             {
-                model.AddLayer(new Layers.Sigmoid(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Sigmoid().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Softplus")
             {
-                model.AddLayer(new Layers.Softplus(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Softplus().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Softsign")
             {
-                model.AddLayer(new Layers.Softsign(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Softsign().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Tanh")
             {
-                model.AddLayer(new Layers.Tanh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Tanh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ThresholdedRelu")
             {
                 var alpha = node.GetOptionalFloat("alpha", 1f);
-                model.AddLayer(new Layers.ThresholdedRelu(AppendName(node.Name), NameToIndex(node.Input0), alpha));
+                model.AddLayer(new Layers.ThresholdedRelu(alpha).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.ActivationNonLinear
             else if (opType == "LogSoftmax")
             {
                 var axis = node.GetOptionalInt("axis", -1);
-                model.AddLayer(new Layers.LogSoftmax(AppendName(node.Name), NameToIndex(node.Input0), axis));
+                model.AddLayer(new Layers.LogSoftmax(axis).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Softmax")
             {
                 var axis = node.GetOptionalInt("axis", -1);
-                model.AddLayer(new Layers.Softmax(AppendName(node.Name), NameToIndex(node.Input0), axis));
+                model.AddLayer(new Layers.Softmax(axis).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Convolution
             else if (opType == "Conv")
@@ -210,13 +245,13 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 // Conv-1, Conv-11
 
                 var autoPad = node.AutoPadMode();
-                var kernelShape = node.GetOptionalIntArray("kernel_shape", null);
-                var dilations = node.GetOptionalIntArray("dilations", null);
+                var dilations = node.GetOptionalIntArray("dilations", new[] { 1, 1, 1, 1, 1, 1 });
                 var group = node.GetOptionalInt("group", 1);
-                var pads = node.GetOptionalIntArray("pads", null);
-                var strides = node.GetOptionalIntArray("strides", null);
+                var pads = node.GetOptionalIntArray("pads", new int[12]);
+                var strides = node.GetOptionalIntArray("strides", new[] { 1, 1, 1, 1, 1, 1 });
+                var kernelShape = node.GetOptionalIntArray("kernel_shape", null);
 
-                model.AddLayer(new Layers.Conv(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2)), group, strides, pads, dilations, autoPad, kernelShape));
+                model.AddLayer(new Layers.Conv(autoPad, dilations, group, pads, strides, kernelShape, Layers.FusableActivation.None).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2))).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ConvTranspose")
             {
@@ -224,15 +259,15 @@ namespace Unity.InferenceEngine.ONNX.Editor
 
                 node.UnsupportedAttribute("output_shape", "null");
 
-                var outputPadding = node.GetOptionalIntArray("output_padding", null);
+                var outputPadding = node.GetOptionalIntArray("output_padding", new[] { 0, 0, 0, 0, 0, 0 });
                 var autoPad = node.AutoPadMode();
                 var kernelShape = node.GetOptionalIntArray("kernel_shape", null);
-                node.UnsupportedAttribute("dilations", "null");
-                node.UnsupportedAttribute("group", 1);
-                var pads = node.GetOptionalIntArray("pads", null);
-                var strides = node.GetOptionalIntArray("strides", null);
+                var dilations = node.GetOptionalIntArray("dilations", new[] { 1, 1, 1, 1, 1, 1 });
+                var group = node.GetOptionalInt("group", 1);
+                var pads = node.GetOptionalIntArray("pads", new int[12]);
+                var strides = node.GetOptionalIntArray("strides", new[] { 1, 1, 1, 1, 1, 1 });
 
-                model.AddLayer(new Layers.ConvTranspose(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2)), strides, pads, autoPad, outputPadding, kernelShape));
+                model.AddLayer(new Layers.ConvTranspose(autoPad, dilations, group, outputPadding, pads, strides, kernelShape, Layers.FusableActivation.None).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2))).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Dimension
             else if (opType == "Shape")
@@ -240,12 +275,12 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 // Shape-1, Shape-13, Shape-15
                 var start = node.GetOptionalInt("start", 0);
                 var end = node.GetOptionalInt("end", TensorShape.maxRank);
-                model.AddLayer(new Layers.Shape(AppendName(node.Name), NameToIndex(node.Input0), start, end));
+                model.AddLayer(new Layers.Shape(start, end).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Size")
             {
                 // Size-1, Size-13
-                model.AddLayer(new Layers.Size(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Size().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Generator
             else if (opType == "ConstantOfShape")
@@ -254,7 +289,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
 
                 if (!node.HasAttribute("value"))
                 {
-                    model.AddLayer(new Layers.ConstantOfShape(AppendName(node.Name), NameToIndex(node.Input0), 0.0f));
+                    model.AddLayer(new Layers.ConstantOfShape(DataType.Float, 0.0f, 0).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
                     return;
                 }
 
@@ -262,25 +297,25 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 if (constant.dataType == DataType.Int)
                 {
                     var value = constant.weights.Get<int>(0);
-                    model.AddLayer(new Layers.ConstantOfShape(AppendName(node.Name), NameToIndex(node.Input0), value));
+                    model.AddLayer(new Layers.ConstantOfShape(DataType.Int, 0f, value).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     var value = constant.weights.Get<float>(0);
-                    model.AddLayer(new Layers.ConstantOfShape(AppendName(node.Name), NameToIndex(node.Input0), value));
+                    model.AddLayer(new Layers.ConstantOfShape(DataType.Float, value, 0).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
                 }
                 constant.weights.Dispose();
             }
             else if (opType == "Range")
             {
-                model.AddLayer(new Layers.Range(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)));
+                model.AddLayer(new Layers.Range().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "OneHot")
             {
                 // OneHot-9, OneHot-11
                 var axis = node.GetOptionalInt("axis", -1);
                 var allowNegativeIndexes = true;
-                model.AddLayer(new Layers.OneHot(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), axis, allowNegativeIndexes));
+                model.AddLayer(new Layers.OneHot(axis, allowNegativeIndexes).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Indexing
             else if (opType == "ArgMax")
@@ -288,39 +323,39 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var axis = node.GetOptionalInt("axis", 0);
                 var keepdims = node.GetOptionalInt("keepdims", 1) == 1;
                 var selectLastIndex = node.GetOptionalInt("select_last_index", 0) == 1;
-                model.AddLayer(new Layers.ArgMax(AppendName(node.Name), NameToIndex(node.Input0), axis, keepdims, selectLastIndex));
+                model.AddLayer(new Layers.ArgMax(axis, keepdims, selectLastIndex).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ArgMin")
             {
                 var axis = node.GetOptionalInt("axis", 0);
                 var keepdims = node.GetOptionalInt("keepdims", 1) == 1;
                 var selectLastIndex = node.GetOptionalInt("select_last_index", 0) == 1;
-                model.AddLayer(new Layers.ArgMin(AppendName(node.Name), NameToIndex(node.Input0), axis, keepdims, selectLastIndex));
+                model.AddLayer(new Layers.ArgMin(axis, keepdims, selectLastIndex).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Gather")
             {
                 var axis = node.GetOptionalInt("axis", 0);
-                model.AddLayer(new Layers.Gather(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), axis));
+                model.AddLayer(new Layers.Gather(axis).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GatherElements")
             {
                 var axis = node.GetOptionalInt("axis", 0);
-                model.AddLayer(new Layers.GatherElements(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), axis));
+                model.AddLayer(new Layers.GatherElements(axis).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GatherND")
             {
                 var batchDims = node.GetOptionalInt("batch_dims", 0);
-                model.AddLayer(new Layers.GatherND(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), batchDims));
+                model.AddLayer(new Layers.GatherND(batchDims).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "NonZero")
             {
-                model.AddLayer(new Layers.NonZero(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.NonZero().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Scatter")
             {
                 // Scatter-9 maps to ScatterElements
                 var axis = node.GetOptionalInt("axis", 0);
-                model.AddLayer(new Layers.ScatterElements(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), axis, Layers.ScatterReductionMode.None));
+                model.AddLayer(new Layers.ScatterElements(axis, Layers.ScatterReductionMode.None).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ScatterElements")
             {
@@ -335,7 +370,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     _ => throw new ArgumentOutOfRangeException()
                 };
 
-                model.AddLayer(new Layers.ScatterElements(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), axis, reduction));
+                model.AddLayer(new Layers.ScatterElements(axis, reduction).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ScatterND")
             {
@@ -349,7 +384,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     _ => throw new ArgumentOutOfRangeException()
                 };
 
-                model.AddLayer(new Layers.ScatterND(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), reduction));
+                model.AddLayer(new Layers.ScatterND(reduction).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "TopK")
             {
@@ -362,82 +397,83 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var k = node.GetRequiredInt("k");
                     var kConstant = new Constant(AppendNewLayer(), new TensorShape(1), new[] { k });
                     model.AddConstant(kConstant);
-                    model.AddLayer(new Layers.TopK(AppendName(node.Output0), AppendName(node.Output1), NameToIndex(node.Input0), kConstant.index, axis, largest, sorted));
+                    model.AddLayer(new Layers.TopK(axis, largest, sorted).SetInputs(NameToIndex(node.Input0), kConstant.index).SetOutputs(AppendName(node.Output0), AppendName(node.Output1)));
                 }
                 else
                 {
                     // TopK-10, TopK-11
-                    model.AddLayer(new Layers.TopK(AppendName(node.Output0), AppendName(node.Output1), NameToIndex(node.Input0), NameToIndex(node.Input1), axis, largest, sorted));
+                    model.AddLayer(new Layers.TopK(axis, largest, sorted).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Output0), AppendName(node.Output1)));
                 }
             }
             // Layer.Logical
             else if (opType == "And")
             {
-                model.AddLayer(new Layers.And(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.And().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Compress")
             {
-                int? axis = node.HasAttribute("axis") ? node.GetRequiredInt("axis") : null;
-                model.AddLayer(new Layers.Compress(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), axis));
+                var hasAxis = node.HasAttribute("axis");
+                var axis = node.GetOptionalInt("axis", 0);
+                model.AddLayer(new Layers.Compress(hasAxis, axis).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Equal")
             {
-                model.AddLayer(new Layers.Equal(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Equal().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Greater")
             {
-                model.AddLayer(new Layers.Greater(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Greater().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GreaterOrEqual")
             {
-                model.AddLayer(new Layers.GreaterOrEqual(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.GreaterOrEqual().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "IsInf")
             {
                 var detectNegative = node.GetOptionalInt("detect_negative", 1) != 0;
                 var detectPositive = node.GetOptionalInt("detect_positive", 1) != 0;
-                model.AddLayer(new Layers.IsInf(AppendName(node.Name), NameToIndex(node.Input0), detectNegative, detectPositive));
+                model.AddLayer(new Layers.IsInf(detectNegative, detectPositive).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "IsNaN")
             {
-                model.AddLayer(new Layers.IsNaN(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.IsNaN().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Less")
             {
-                model.AddLayer(new Layers.Less(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Less().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "LessOrEqual")
             {
-                model.AddLayer(new Layers.LessOrEqual(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.LessOrEqual().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Not")
             {
-                model.AddLayer(new Layers.Not(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Not().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Or")
             {
-                model.AddLayer(new Layers.Or(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Or().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Xor")
             {
-                model.AddLayer(new Layers.Xor(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Xor().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Where")
             {
-                model.AddLayer(new Layers.Where(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)));
+                model.AddLayer(new Layers.Where().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Math
             else if (opType == "Abs")
             {
-                model.AddLayer(new Layers.Abs(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Abs().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Add")
             {
-                model.AddLayer(new Layers.Add(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Add().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Ceil")
             {
-                model.AddLayer(new Layers.Ceil(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Ceil().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Clip")
             {
@@ -450,38 +486,38 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var max = node.GetOptionalFloat("max", float.MaxValue);
                     var maxConstant = new Constant(AppendNewLayer(), new TensorShape(), new[] { max });
                     model.AddConstant(maxConstant);
-                    model.AddLayer(new Layers.Clip(AppendName(node.Name), NameToIndex(node.Input0), minConstant.index, maxConstant.index));
+                    model.AddLayer(new Layers.Clip().SetInputs(NameToIndex(node.Input0), minConstant.index, maxConstant.index).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Clip-11, Clip-12, Clip-13 or Clip-1, Clip-6 with no min or max
-                    model.AddLayer(new Layers.Clip(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1)), NameToIndex(node.OptionalInput(2))));
+                    model.AddLayer(new Layers.Clip().SetInputs(NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1)), NameToIndex(node.OptionalInput(2))).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "CumSum")
             {
                 var reverse = node.GetOptionalInt("reverse", 0) == 1;
                 var exclusive = node.GetOptionalInt("exclusive", 0) == 1;
-                model.AddLayer(new Layers.CumSum(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), reverse, exclusive));
+                model.AddLayer(new Layers.CumSum(reverse, exclusive).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Div")
             {
-                model.AddLayer(new Layers.Div(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Div().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Einsum")
             {
                 var inputs = new int[node.InputCount];
                 for (var i = 0; i < node.InputCount; i++)
                     inputs[i] = NameToIndex(node.RequiredInput(i));
-                model.AddLayer(new Layers.Einsum(AppendName(node.Name), inputs, node.GetRequiredString("equation")));
+                model.AddLayer(new Layers.Einsum(node.GetRequiredString("equation")).SetInputs(inputs).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Exp")
             {
-                model.AddLayer(new Layers.Exp(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Exp().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Floor")
             {
-                model.AddLayer(new Layers.Floor(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Floor().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Gemm")
             {
@@ -490,30 +526,30 @@ namespace Unity.InferenceEngine.ONNX.Editor
 
                 var alpha = node.GetOptionalFloat("alpha", 1.0f);
                 var scalarMadA = AppendNewLayer();
-                model.AddLayer(new Layers.ScalarMad(scalarMadA, NameToIndex(node.Input0), alpha, 0));
+                model.AddLayer(new Layers.ScalarMad(DataType.Float, alpha, 0, 0, 0).SetInputs(NameToIndex(node.Input0)).SetOutputs(scalarMadA));
 
                 var hasC = node.InputCount == 3 && !string.IsNullOrEmpty(node.Inputs[2]);
                 if (hasC)
                 {
                     var matMulIndex = AppendNewLayer();
-                    model.AddLayer(new Layers.MatMul2D(matMulIndex, scalarMadA, transposeA, NameToIndex(node.Input1), transposeB));
+                    model.AddLayer(new Layers.MatMul2D(transposeA, transposeB).SetInputs(scalarMadA, NameToIndex(node.Input1)).SetOutputs(matMulIndex));
                     var beta = node.GetOptionalFloat("beta", 1.0f);
                     var scalarMadC = AppendNewLayer();
-                    model.AddLayer(new Layers.ScalarMad(scalarMadC, NameToIndex(node.Input2), beta, 0));
-                    model.AddLayer(new Layers.Add(AppendName(node.Name), matMulIndex, scalarMadC));
+                    model.AddLayer(new Layers.ScalarMad(DataType.Float, beta, 0, 0, 0).SetInputs(NameToIndex(node.Input2)).SetOutputs(scalarMadC));
+                    model.AddLayer(new Layers.Add().SetInputs(matMulIndex, scalarMadC).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
-                    model.AddLayer(new Layers.MatMul2D(AppendName(node.Name), scalarMadA, transposeA, NameToIndex(node.Input1), transposeB));
+                    model.AddLayer(new Layers.MatMul2D(transposeA, transposeB).SetInputs(scalarMadA, NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "Log")
             {
-                model.AddLayer(new Layers.Log(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Log().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "MatMul")
             {
-                model.AddLayer(new Layers.MatMul(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.MatMul().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Max")
             {
@@ -521,22 +557,22 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 for (var i = 1; i < node.InputCount - 1; i++)
                 {
                     var currentIndex = AppendNewLayer();
-                    model.AddLayer(new Layers.Max(currentIndex, NameToIndex(node.RequiredInput(i)), prevIndex));
+                    model.AddLayer(new Layers.Max().SetInputs(NameToIndex(node.RequiredInput(i)), prevIndex).SetOutputs(currentIndex));
                     prevIndex = currentIndex;
                 }
-                model.AddLayer(new Layers.Max(AppendName(node.Name), NameToIndex(node.RequiredInput(node.InputCount - 1)), prevIndex));
+                model.AddLayer(new Layers.Max().SetInputs(NameToIndex(node.RequiredInput(node.InputCount - 1)), prevIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Mean")
             {
                 var prevIndex = AppendNewLayer();
-                model.AddLayer(new Layers.Add(prevIndex, NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Add().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(prevIndex));
                 for (var i = 2; i < node.InputCount; i++)
                 {
                     var currentIndex = AppendNewLayer();
-                    model.AddLayer(new Layers.Add(currentIndex, NameToIndex(node.RequiredInput(i)), prevIndex));
+                    model.AddLayer(new Layers.Add().SetInputs(NameToIndex(node.RequiredInput(i)), prevIndex).SetOutputs(currentIndex));
                     prevIndex = currentIndex;
                 }
-                model.AddLayer(new Layers.ScalarMad(AppendName(node.Name), prevIndex, 1.0f / node.InputCount, 0));
+                model.AddLayer(new Layers.ScalarMad(DataType.Float, 1.0f / node.InputCount, 0, 0, 0).SetInputs(prevIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Min")
             {
@@ -544,80 +580,83 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 for (var i = 1; i < node.InputCount - 1; i++)
                 {
                     var currentIndex = AppendNewLayer();
-                    model.AddLayer(new Layers.Min(currentIndex, NameToIndex(node.RequiredInput(i)), prevIndex));
+                    model.AddLayer(new Layers.Min().SetInputs(NameToIndex(node.RequiredInput(i)), prevIndex).SetOutputs(currentIndex));
                     prevIndex = currentIndex;
                 }
-                model.AddLayer(new Layers.Min(AppendName(node.Name), NameToIndex(node.RequiredInput(node.InputCount - 1)), prevIndex));
+                model.AddLayer(new Layers.Min().SetInputs(NameToIndex(node.RequiredInput(node.InputCount - 1)), prevIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Mod")
             {
-                model.AddLayer(new Layers.Mod(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), node.GetOptionalInt("fmod", 0) != 0));
+                var fmod = node.GetOptionalInt("fmod", 0) != 0;
+                model.AddLayer(new Layers.Mod(fmod).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Mul")
             {
-                model.AddLayer(new Layers.Mul(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Mul().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Neg")
             {
-                model.AddLayer(new Layers.Neg(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Neg().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Pow")
             {
                 // Pow-1, Pow-7, Pow-12, Pow-13
-                model.AddLayer(new Layers.Pow(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Pow().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Reciprocal")
             {
-                model.AddLayer(new Layers.Reciprocal(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Reciprocal().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Round")
             {
-                model.AddLayer(new Layers.Round(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Round().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Shrink")
             {
-                model.AddLayer(new Layers.Shrink(AppendName(node.Name), NameToIndex(node.Input0), node.GetOptionalFloat("bias", 0f), node.GetOptionalFloat("lambd", 0.5f)));
+                var bias = node.GetOptionalFloat("bias", 0f);
+                var lambd = node.GetOptionalFloat("lambd", 0.5f);
+                model.AddLayer(new Layers.Shrink(bias, lambd).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sign")
             {
-                model.AddLayer(new Layers.Sign(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Sign().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sqrt")
             {
-                model.AddLayer(new Layers.Sqrt(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Sqrt().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sub")
             {
-                model.AddLayer(new Layers.Sub(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Sub().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sum")
             {
                 var add0Index = AppendNewLayer();
-                model.AddLayer(new Layers.Add(add0Index, NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Add().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(add0Index));
                 for (var i = 2; i < node.InputCount; i++)
                 {
                     var addIIndex = AppendNewLayer();
-                    model.AddLayer(new Layers.Add(addIIndex, NameToIndex(node.RequiredInput(i)), add0Index));
+                    model.AddLayer(new Layers.Add().SetInputs(NameToIndex(node.RequiredInput(i)), add0Index).SetOutputs(addIIndex));
                     add0Index = addIIndex;
                 }
-                model.AddLayer(new Layers.Identity(AppendName(node.Name), add0Index));
+                model.AddLayer(new Layers.Identity().SetInputs(add0Index).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Normalization
             else if (opType == "BatchNormalization")
             {
                 var epsilon = node.GetOptionalFloat("epsilon", 1e-5f);
-                model.AddLayer(new Layers.BatchNormalization(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), NameToIndex(node.Input3), NameToIndex(node.Input4), epsilon));
+                model.AddLayer(new Layers.BatchNormalization(epsilon).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), NameToIndex(node.Input3), NameToIndex(node.Input4)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "InstanceNormalization")
             {
                 var epsilon = node.GetOptionalFloat("epsilon", 1e-5f);
-                model.AddLayer(new Layers.InstanceNormalization(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), epsilon));
+                model.AddLayer(new Layers.InstanceNormalization(epsilon).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "LayerNormalization")
             {
                 var epsilon = node.GetOptionalFloat("epsilon", 1e-5f);
                 node.UnsupportedAttribute("axis", -1);
-                model.AddLayer(new Layers.LayerNormalization(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2)), epsilon));
+                model.AddLayer(new Layers.LayerNormalization(epsilon).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2))).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "LRN")
             {
@@ -625,13 +664,13 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var beta = node.GetOptionalFloat("beta", 0.75f);
                 var bias = node.GetOptionalFloat("bias", 1.0f);
                 var size = node.GetRequiredInt("size");
-                model.AddLayer(new Layers.LRN(AppendName(node.Name), NameToIndex(node.Input0), alpha, beta, bias, size));
+                model.AddLayer(new Layers.LRN(alpha, beta, bias, size).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.ObjectDetection
             else if (opType == "NonMaxSuppression")
             {
                 var centerPointBox = (node.GetOptionalInt("center_point_box", 0) == 0) ? Layers.CenterPointBox.Corners : Layers.CenterPointBox.Center;
-                model.AddLayer(new Layers.NonMaxSuppression(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2)), NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4)), centerPointBox));
+                model.AddLayer(new Layers.NonMaxSuppression(centerPointBox).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.OptionalInput(2)), NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4))).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "RoiAlign")
             {
@@ -661,7 +700,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var samplingRatio = node.GetOptionalInt("sampling_ratio", 0);
                 var spatialScale = node.GetOptionalFloat("spatial_scale", 1.0f);
 
-                model.AddLayer(new Layers.RoiAlign(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), mode, outputHeight, outputWidth, samplingRatio, spatialScale, coordinateTransformMode));
+                model.AddLayer(new Layers.RoiAlign(mode, outputHeight, outputWidth, samplingRatio, spatialScale, coordinateTransformMode).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Pooling
             else if (opType == "AveragePool")
@@ -674,18 +713,25 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var autopad = node.AutoPadMode();
 
                 var kernelShape = node.GetRequiredIntArray("kernel_shape");
-                var pads = node.GetOptionalIntArray("pads", null);
+                var pads = node.GetOptionalIntArray("pads", new int[2 * kernelShape.Length]);
                 var strides = node.GetOptionalIntArray("strides", null);
 
-                model.AddLayer(new Layers.AveragePool(AppendName(node.Name), NameToIndex(node.Input0), kernelShape, strides, pads, autopad));
+                if (strides == null)
+                {
+                    strides = new int[kernelShape.Length];
+                    for (var i = 0; i < strides.Length; i++)
+                        strides[i] = 1;
+                }
+
+                model.AddLayer(new Layers.AveragePool(kernelShape, strides, pads, autopad).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GlobalAveragePool")
             {
-                model.AddLayer(new Layers.GlobalAveragePool(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.GlobalAveragePool().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GlobalMaxPool")
             {
-                model.AddLayer(new Layers.GlobalMaxPool(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.GlobalMaxPool().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "MaxPool")
             {
@@ -696,66 +742,122 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var autopad = node.AutoPadMode();
 
                 var kernelShape = node.GetRequiredIntArray("kernel_shape");
-                var pads = node.GetOptionalIntArray("pads", null);
+                var pads = node.GetOptionalIntArray("pads", new int[2 * kernelShape.Length]);
                 var strides = node.GetOptionalIntArray("strides", null);
 
-                model.AddLayer(new Layers.MaxPool(AppendName(node.Name), NameToIndex(node.Input0), kernelShape, strides, pads, autopad));
+                if (strides == null)
+                {
+                    strides = new int[kernelShape.Length];
+                    for (var i = 0; i < strides.Length; i++)
+                        strides[i] = 1;
+                }
+
+                model.AddLayer(new Layers.MaxPool(kernelShape, strides, pads, autopad).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Random
             else if (opType == "Bernoulli")
             {
                 var dataType = node.GetDataType(defaultValue: DataType.Float);
-                model.AddLayer(new Layers.Bernoulli(AppendName(node.Name), NameToIndex(node.Input0), dataType, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.Bernoulli(dataType, hasSeed, seed).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Multinomial")
             {
                 node.IgnoredAttribute("dtype", "dtype can only be int32 or int64 which both map to Tensor<int>");
                 var samples = node.GetOptionalInt("sample_size", 1);
-                model.AddLayer(new Layers.Multinomial(AppendName(node.Name), NameToIndex(node.Input0), samples, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.Multinomial(samples, hasSeed, seed).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "RandomNormal")
             {
                 var mean = node.GetOptionalFloat("mean", 0.0f);
                 var scale = node.GetOptionalFloat("scale", 1.0f);
                 var shape = node.GetRequiredIntArray("shape");
-                model.AddLayer(new Layers.RandomNormal(AppendName(node.Name), shape, mean, scale, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.RandomNormal(mean, scale, shape, hasSeed, seed).SetInputs().SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "RandomNormalLike")
             {
                 var mean = node.GetOptionalFloat("mean", 0.0f);
                 var scale = node.GetOptionalFloat("scale", 1.0f);
-                model.AddLayer(new Layers.RandomNormalLike(AppendName(node.Name), NameToIndex(node.Input0), mean, scale, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.RandomNormalLike(mean, scale, hasSeed, seed).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "RandomUniform")
             {
                 var low = node.GetOptionalFloat("low", 0.0f);
                 var high = node.GetOptionalFloat("high", 1.0f);
                 var shape = node.GetRequiredIntArray("shape");
-                model.AddLayer(new Layers.RandomUniform(AppendName(node.Name), shape, low, high, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.RandomUniform(low, high, shape, hasSeed, seed).SetInputs().SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "RandomUniformLike")
             {
                 var low = node.GetOptionalFloat("low", 0.0f);
                 var high = node.GetOptionalFloat("high", 1.0f);
-                model.AddLayer(new Layers.RandomUniformLike(AppendName(node.Name), NameToIndex(node.Input0), low, high, node.Seed));
+                var hasSeed = node.HasAttribute("seed");
+                var seed = hasSeed ? math.asint(node.GetRequiredFloat("seed")) : 0;
+                model.AddLayer(new Layers.RandomUniformLike(low, high, hasSeed, seed).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Recurrent
             else if (opType == "LSTM")
             {
                 var hiddenSize = node.GetRequiredInt("hidden_size");
                 var direction = node.Direction();
-                var activations = node.Activations();
-                var activationAlpha = node.GetOptionalFloatArray("activation_alpha", null);
-                var activationBeta = node.GetOptionalFloatArray("activation_beta", null);
+                var activationsNode = node.Activations();
+                var activationAlphaNode = node.GetOptionalFloatArray("activation_alpha", null);
+                var activationBetaNode = node.GetOptionalFloatArray("activation_beta", null);
+
+                var numDirections = direction == Layers.RnnDirection.Bidirectional ? 2 : 1;
+
+                var activations = new Layers.RnnActivation[3 * numDirections];
+                var activationAlpha = new float[3 * numDirections];
+                var activationBeta = new float[3 * numDirections];
+                for (var i = 0; i < 3 * numDirections; i++)
+                {
+                    activations[i] = i % 3 == 0 ? Layers.RnnActivation.Sigmoid : Layers.RnnActivation.Tanh;
+                    if (activationsNode != null && i < activationsNode.Length)
+                        activations[i] = activationsNode[i];
+                    switch (activations[i])
+                    {
+                        case Layers.RnnActivation.Affine:
+                            activationAlpha[i] = 1.0f;
+                            break;
+                        case Layers.RnnActivation.LeakyRelu:
+                            activationAlpha[i] = 0.01f;
+                            break;
+                        case Layers.RnnActivation.ThresholdedRelu:
+                            activationAlpha[i] = 1.0f;
+                            break;
+                        case Layers.RnnActivation.ScaledTanh:
+                            activationAlpha[i] = 1.0f;
+                            activationBeta[i] = 1.0f;
+                            break;
+                        case Layers.RnnActivation.HardSigmoid:
+                            activationAlpha[i] = 0.2f;
+                            activationBeta[i] = 0.5f;
+                            break;
+                        case Layers.RnnActivation.Elu:
+                            activationAlpha[i] = 1.0f;
+                            break;
+                    }
+
+                    if (activationAlphaNode != null && i < activationAlphaNode.Length)
+                        activationAlpha[i] = activationAlphaNode[i];
+                    if (activationBetaNode != null && i < activationBetaNode.Length)
+                        activationBeta[i] = activationBetaNode[i];
+                }
+
                 var clip = node.GetOptionalFloat("clip", float.MaxValue);
                 var inputForget = node.GetOptionalInt("input_forget", 0) != 0;
                 var layout = node.Layout();
 
-                var lstm = new Layers.LSTM(AppendName(node.Output0), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), hiddenSize,
-                    AppendName(node.OptionalOutput(1)), AppendName(node.OptionalOutput(2)),
-                    NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4)), NameToIndex(node.OptionalInput(5)),
-                    NameToIndex(node.OptionalInput(6)), NameToIndex(node.OptionalInput(7)),
-                    direction, activations, activationAlpha, activationBeta, clip, inputForget, layout);
+                var lstm = new Layers.LSTM(hiddenSize, direction, activations, activationAlpha, activationBeta, clip, inputForget, layout).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4)), NameToIndex(node.OptionalInput(5)), NameToIndex(node.OptionalInput(6)), NameToIndex(node.OptionalInput(7))).SetOutputs(AppendName(node.Output0), AppendName(node.OptionalOutput(1)), AppendName(node.OptionalOutput(2)));
                 model.AddLayer(lstm);
             }
             // Layer.Reduction
@@ -779,7 +881,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceL1(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceL1(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceL2")
             {
@@ -801,7 +903,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceL2(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceL2(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceLogSum")
             {
@@ -823,7 +925,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceLogSum(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceLogSum(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceLogSumExp")
             {
@@ -845,7 +947,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceLogSumExp(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceLogSumExp(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceMax")
             {
@@ -867,7 +969,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceMax(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceMax(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceMean")
             {
@@ -889,7 +991,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceMean(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceMean(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceMin")
             {
@@ -911,7 +1013,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceMin(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceMin(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceProd")
             {
@@ -933,7 +1035,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceProd(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceProd(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceSum")
             {
@@ -955,7 +1057,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceSum(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceSum(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ReduceSumSquare")
             {
@@ -977,7 +1079,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     axesIndex = NameToIndex(node.OptionalInput(1));
                 }
 
-                model.AddLayer(new Layers.ReduceSumSquare(AppendName(node.Name), NameToIndex(node.Input0), axesIndex, keepDims, noopWithEmptyAxes));
+                model.AddLayer(new Layers.ReduceSumSquare(keepDims, noopWithEmptyAxes).SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
             }
             // Layer.Transformation
             else if (opType == "Cast")
@@ -988,11 +1090,11 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     Warn(WarningType.Error, $"Unsupported tensor dataType: {toOnnxType}.");
                     Debug.LogError(Warnings.Last().Message);
                 });
-                model.AddLayer(new Layers.Cast(AppendName(node.Name), NameToIndex(node.Input0), toDataType));
+                model.AddLayer(new Layers.Cast(toDataType).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "CastLike")
             {
-                model.AddLayer(new Layers.CastLike(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.CastLike().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Concat")
             {
@@ -1000,24 +1102,24 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var inputs = new int[node.InputCount];
                 for (var i = 0; i < node.InputCount; i++)
                     inputs[i] = NameToIndex(node.RequiredInput(i));
-                model.AddLayer(new Layers.Concat(AppendName(node.Name), inputs, axis));
+                model.AddLayer(new Layers.Concat(axis).SetInputs(inputs).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "DepthToSpace")
             {
                 var modeType = node.GetOptionalString("mode", "DCR");
                 var mode = modeType == "DCR" ? Layers.DepthToSpaceMode.DepthColumnRow : Layers.DepthToSpaceMode.ColumnRowDepth;
                 var blocksize = node.GetRequiredInt("blocksize");
-                model.AddLayer(new Layers.DepthToSpace(AppendName(node.Name), NameToIndex(node.Input0), blocksize, mode));
+                model.AddLayer(new Layers.DepthToSpace(blocksize, mode).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Expand")
             {
                 // Expand-8, Expand-13
-                model.AddLayer(new Layers.Expand(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Expand().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Flatten")
             {
                 var axis = node.GetOptionalInt("axis", 1);
-                model.AddLayer(new Layers.Flatten(AppendName(node.Name), NameToIndex(node.Input0), axis));
+                model.AddLayer(new Layers.Flatten(axis).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "GridSample")
             {
@@ -1038,15 +1140,15 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     _ => throw new ArgumentOutOfRangeException()
                 };
                 var alignCorners = node.GetOptionalInt("align_corners", 0) == 1;
-                model.AddLayer(new Layers.GridSample(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), mode, paddingMode, alignCorners));
+                model.AddLayer(new Layers.GridSample(mode, paddingMode, alignCorners).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Dropout")
             {
-                model.AddLayer(new Layers.Identity(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Identity().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Identity")
             {
-                model.AddLayer(new Layers.Identity(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Identity().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Pad")
             {
@@ -1062,14 +1164,14 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var valueIndex = AppendNewLayer();
                     model.AddConstant(new Constant(valueIndex, new TensorShape(), new[] { value }));
 
-                    model.AddLayer(new Layers.Pad(AppendName(node.Name), NameToIndex(node.Input0), padsIndex, valueIndex, mode: mode));
+                    model.AddLayer(new Layers.Pad(mode).SetInputs(NameToIndex(node.Input0), padsIndex, valueIndex, -1).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Pad-11, Pad-13, Pad-18
                     var constantIndex = node.InputCount > 2 ? NameToIndex(node.Inputs[2]) : -1;
                     var axesIndex = node.InputCount > 3 ? NameToIndex(node.Inputs[3]) : -1;
-                    model.AddLayer(new Layers.Pad(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), constantIndex, axesIndex, mode));
+                    model.AddLayer(new Layers.Pad(mode).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), constantIndex, axesIndex).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "Reshape")
@@ -1080,13 +1182,13 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var shape = node.GetRequiredIntArray("shape");
                     var shapeIndex = AppendNewLayer();
                     model.AddConstant(new Constant(shapeIndex, new TensorShape(shape.Length), shape));
-                    model.AddLayer(new Layers.Reshape(AppendName(node.Name), NameToIndex(node.Input0), shapeIndex));
+                    model.AddLayer(new Layers.Reshape(false).SetInputs(NameToIndex(node.Input0), shapeIndex).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Reshape-5, Reshape-13, Reshape-14
                     var allowZero = node.GetOptionalInt("allowzero", 0) != 0;
-                    model.AddLayer(new Layers.Reshape(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), allowZero));
+                    model.AddLayer(new Layers.Reshape(allowZero).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "Resize")
@@ -1096,7 +1198,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 if (defaultOpsetVersion < 11)
                 {
                     // Resize-10
-                    model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), Layers.ScaleMode.Scales, mode, Layers.CoordTransformMode.Asymmetric, Layers.NearestMode.Floor, axes));
+                    model.AddLayer(new Layers.Resize(Layers.ScaleMode.Scales, Layers.CoordTransformMode.Asymmetric, mode, Layers.NearestMode.Floor, axes).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
@@ -1108,12 +1210,12 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     if (node.InputCount == 3 || string.IsNullOrEmpty(node.Inputs[3]))
                     {
                         // Resize-11, Resize-13, Resize-18 with scales
-                        model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input2), Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, axes));
+                        model.AddLayer(new Layers.Resize(Layers.ScaleMode.Scales, coordinateTransformMode, mode, nearestMode, axes).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input2)).SetOutputs(AppendName(node.Name)));
                     }
                     else if (node.InputCount == 4)
                     {
                         // Resize-11, Resize-13, Resize-18 with sizes
-                        model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input3), Layers.ScaleMode.Sizes, mode, coordinateTransformMode, nearestMode, axes));
+                        model.AddLayer(new Layers.Resize(Layers.ScaleMode.Sizes, coordinateTransformMode, mode, nearestMode, axes).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input3)).SetOutputs(AppendName(node.Name)));
                     }
                 }
             }
@@ -1135,23 +1237,23 @@ namespace Unity.InferenceEngine.ONNX.Editor
                         var axes = node.GetRequiredIntArray("axes");
                         var axesIndex = AppendNewLayer();
                         model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
-                        model.AddLayer(new Layers.Slice(AppendName(node.Name), NameToIndex(node.Input0), startsIndex, endsIndex, axesIndex));
+                        model.AddLayer(new Layers.Slice().SetInputs(NameToIndex(node.Input0), startsIndex, endsIndex, axesIndex, -1).SetOutputs(AppendName(node.Name)));
                     }
                     else
                     {
-                        model.AddLayer(new Layers.Slice(AppendName(node.Name), NameToIndex(node.Input0), startsIndex, endsIndex));
+                        model.AddLayer(new Layers.Slice().SetInputs(NameToIndex(node.Input0), startsIndex, endsIndex, -1, -1).SetOutputs(AppendName(node.Name)));
                     }
                 }
                 else
                 {
                     // Slice-10, Slice-11, Slice-13
-                    model.AddLayer(new Layers.Slice(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4))));
+                    model.AddLayer(new Layers.Slice().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1), NameToIndex(node.Input2), NameToIndex(node.OptionalInput(3)), NameToIndex(node.OptionalInput(4))).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "SpaceToDepth")
             {
                 var blocksize = node.GetRequiredInt("blocksize");
-                model.AddLayer(new Layers.SpaceToDepth(AppendName(node.Name), NameToIndex(node.Input0), blocksize));
+                model.AddLayer(new Layers.SpaceToDepth(blocksize).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Split")
             {
@@ -1165,17 +1267,18 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var split = node.GetRequiredIntArray("split");
                     var splitIndex = AppendNewLayer();
                     model.AddConstant(new Constant(splitIndex, new TensorShape(split.Length), split));
-                    model.AddLayer(new Layers.Split(outputs, NameToIndex(node.Input0), splitIndex, axis));
+                    model.AddLayer(new Layers.Split(axis, node.OutputCount).SetInputs(NameToIndex(node.Input0), splitIndex).SetOutputs(outputs));
                 }
                 else if (!string.IsNullOrEmpty(node.OptionalInput(1)))
                 {
                     // Split-1, Split-2, Split-11, Split-13, Split-18 with split tensor
-                    model.AddLayer(new Layers.Split(outputs, NameToIndex(node.Input0), NameToIndex(node.Input1), axis));
+                    model.AddLayer(new Layers.Split(axis, node.OutputCount).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(outputs));
                 }
                 else
                 {
                     // Split-1, Split-2, Split-11, Split-13, Split-18 with num_outputs
-                    model.AddLayer(new Layers.Split(outputs, NameToIndex(node.Input0), axis: axis, numOutputs: node.GetOptionalInt("num_outputs", node.Outputs.Length)));
+                    var numOutputs = node.GetOptionalInt("num_outputs", node.Outputs.Length);
+                    model.AddLayer(new Layers.Split(axis, numOutputs).SetInputs(NameToIndex(node.Input0), -1).SetOutputs(outputs));
                 }
             }
             else if (opType == "Squeeze")
@@ -1187,27 +1290,27 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var axesIndex = AppendNewLayer();
 
                     model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
-                    model.AddLayer(new Layers.Squeeze(AppendName(node.Name), NameToIndex(node.Input0), axesIndex));
+                    model.AddLayer(new Layers.Squeeze().SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Squeeze-13 or Squeeze-1, Squeeze-11 without given axes
-                    model.AddLayer(new Layers.Squeeze(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1))));
+                    model.AddLayer(new Layers.Squeeze().SetInputs(NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1))).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "Tile")
             {
-                model.AddLayer(new Layers.Tile(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                model.AddLayer(new Layers.Tile().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Transpose")
             {
                 var permutations = node.GetOptionalIntArray("perm", null);
-                model.AddLayer(new Layers.Transpose(AppendName(node.Name), NameToIndex(node.Input0), permutations));
+                model.AddLayer(new Layers.Transpose(permutations).SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Trilu")
             {
                 var upper = node.GetOptionalInt("upper", 1);
-                model.AddLayer(new Layers.Trilu(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1)), (Layers.TriluMode)upper));
+                model.AddLayer(new Layers.Trilu((Layers.TriluMode)upper).SetInputs(NameToIndex(node.Input0), NameToIndex(node.OptionalInput(1))).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Upsample")
             {
@@ -1221,12 +1324,12 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var scalesIndex = AppendNewLayer();
 
                     model.AddConstant(new Constant(scalesIndex, new TensorShape(scales.Length), scales));
-                    model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), scalesIndex, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, null));
+                    model.AddLayer(new Layers.Resize(Layers.ScaleMode.Scales, coordinateTransformMode, mode, nearestMode, null).SetInputs(NameToIndex(node.Input0), scalesIndex).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Upsample-9
-                    model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1), Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, null));
+                    model.AddLayer(new Layers.Resize(Layers.ScaleMode.Scales, coordinateTransformMode, mode, nearestMode, null).SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
                 }
             }
             else if (opType == "Unsqueeze")
@@ -1238,63 +1341,63 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     var axesIndex = AppendNewLayer();
 
                     model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
-                    model.AddLayer(new Layers.Unsqueeze(AppendName(node.Name), NameToIndex(node.Input0), axesIndex));
+                    model.AddLayer(new Layers.Unsqueeze().SetInputs(NameToIndex(node.Input0), axesIndex).SetOutputs(AppendName(node.Name)));
                 }
                 else
                 {
                     // Unsqueeze-13
-                    model.AddLayer(new Layers.Unsqueeze(AppendName(node.Name), NameToIndex(node.Input0), NameToIndex(node.Input1)));
+                    model.AddLayer(new Layers.Unsqueeze().SetInputs(NameToIndex(node.Input0), NameToIndex(node.Input1)).SetOutputs(AppendName(node.Name)));
                 }
             }
             // Layer.Trigonometric
             else if (opType == "Acos")
             {
-                model.AddLayer(new Layers.Acos(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Acos().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Acosh")
             {
-                model.AddLayer(new Layers.Acosh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Acosh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Asin")
             {
-                model.AddLayer(new Layers.Asin(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Asin().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Asinh")
             {
-                model.AddLayer(new Layers.Asinh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Asinh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Atan")
             {
-                model.AddLayer(new Layers.Atan(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Atan().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Atanh")
             {
-                model.AddLayer(new Layers.Atanh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Atanh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Cos")
             {
-                model.AddLayer(new Layers.Cos(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Cos().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Cosh")
             {
-                model.AddLayer(new Layers.Cosh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Cosh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sin")
             {
-                model.AddLayer(new Layers.Sin(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Sin().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Sinh")
             {
-                model.AddLayer(new Layers.Sinh(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Sinh().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "Tan")
             {
-                model.AddLayer(new Layers.Tan(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Tan().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             // Non standard ONNX
             else if (opType == "Swish")
             {
-                model.AddLayer(new Layers.Swish(AppendName(node.Name), NameToIndex(node.Input0)));
+                model.AddLayer(new Layers.Swish().SetInputs(NameToIndex(node.Input0)).SetOutputs(AppendName(node.Name)));
             }
             else if (opType == "ImageScaler")
             {
@@ -1306,7 +1409,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 var biasIndex = AppendNewLayer();
                 model.AddConstant(new Constant(scaleIndex, new TensorShape(maxElements), attrScale));
                 model.AddConstant(new Constant(biasIndex, new TensorShape(maxElements), attrBias));
-                model.AddLayer(new Layers.ScaleBias(AppendName(node.Name), NameToIndex(node.Input0), scaleIndex, biasIndex));
+                model.AddLayer(new Layers.ScaleBias().SetInputs(NameToIndex(node.Input0), scaleIndex, biasIndex).SetOutputs(AppendName(node.Name)));
             }
             else
             {

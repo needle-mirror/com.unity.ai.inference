@@ -23,36 +23,19 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float weight, absWeight;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
-            return alpha * v + beta * abs(v);
+            return weight * v + absWeight * abs(v);
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -60,30 +43,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -97,30 +62,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -134,30 +81,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -171,30 +100,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -208,30 +119,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -245,30 +138,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -282,30 +157,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -319,30 +176,13 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float alpha, beta;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -356,30 +196,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -411,30 +233,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -463,30 +267,13 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float alpha;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -500,40 +287,23 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float bias, lambd;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
             float y = 0.0f;
-            if (v < -beta)
-                y = v + alpha;
-            else if (v > beta)
-                y = v - alpha;
+            if (v < -lambd)
+                y = v + bias;
+            else if (v > lambd)
+                y = v - bias;
             return y;
 
         }
@@ -543,30 +313,13 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float alpha;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -584,30 +337,13 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float alpha;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -621,30 +357,13 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float alpha, gamma;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -658,30 +377,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -695,30 +396,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -732,30 +415,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -769,30 +434,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -806,30 +453,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -843,30 +472,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -880,30 +491,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -917,30 +510,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -954,30 +529,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -991,30 +548,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1028,30 +567,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1065,30 +586,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1102,30 +605,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1139,30 +624,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1176,30 +643,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1213,30 +662,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1250,30 +681,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1287,30 +700,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1324,30 +719,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1361,30 +738,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1398,30 +757,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1435,36 +776,18 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public int Operation(int v)
         {
-            return math.abs(v);
+            return abs(v);
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1472,36 +795,18 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
-            return math.abs(v);
+            return abs(v);
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1509,30 +814,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1546,30 +833,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1583,30 +852,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1620,30 +871,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1657,36 +890,18 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public int Operation(float v)
         {
-            return math.isnan(v) ? 1 : 0;
+            return isnan(v) ? 1 : 0;
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1694,30 +909,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1731,30 +928,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1764,40 +943,87 @@ partial class CPUBackend
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct CastHalfToFloatJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } ushort* Xptr => (ushort*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(ushort v)
+        {
+            float result = Mathf.HalfToFloat(v);
+            // round denormal
+            if (float.IsSubnormal(result))
+                result = 0;
+            return result;
+
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct DequantizeUint8Job : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } byte* Xptr => (byte*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public float scale;
+        public byte zeroPoint;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(byte v)
+        {
+            return (v - zeroPoint) * scale;
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct IsInfJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public bool detectNegative, detectPositive;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public int Operation(float v)
+        {
+            return (float.IsNegativeInfinity(v) && detectNegative || float.IsPositiveInfinity(v) && detectPositive) ? 1 : 0;
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct SignFloatJob : IParallelForBatch, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
-            return math.sign(v);
+            return sign(v);
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1805,30 +1031,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1842,30 +1050,12 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
@@ -1879,36 +1069,19 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float minValue, maxValue;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
-            return math.min(beta, math.max(v, alpha));
+            return min(maxValue, max(v, minValue));
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1916,36 +1089,19 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public int minValue, maxValue;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public int Operation(int v)
         {
-            return math.min(betai, math.max(v, alphai));
+            return min(maxValue, max(v, minValue));
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1953,36 +1109,19 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float s, b;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-            float* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    float x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public float Operation(float v)
         {
-            return alpha * v + beta;
+            return s * v + b;
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1990,36 +1129,19 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public int s, b;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-            int* Xp = Xptr + i;
-
-            int lengthRemaining = length - i;
-
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    int x = Xp[k];
-                    Op[k] = Operation(x);
-                }
-
-                Op += spanCount;
-                Xp += spanCount;
+                Optr[index] = Operation(Xptr[index]);
             }
         }
 
         public int Operation(int v)
         {
-            return alphai * v + betai;
+            return s * v + b;
         }
     }
 
@@ -2029,70 +1151,38 @@ partial class CPUBackend
     internal unsafe struct RangeFloatJob : IParallelForBatch, IJobResourceDeclarationO
     {
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public float start, delta;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            float* Op = Optr + i;
-
-            int lengthRemaining = length - i;
-
-            int index = i;
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    Op[k] = Apply(index);
-                    index++;
-                }
-
-                Op += spanCount;
+                Optr[index] = Apply(index);
             }
         }
 
-        public float Apply(int i)
+        public float Apply(int index)
         {
-            return alpha + (i * beta);
+            return start + index * delta;
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct RangeIntJob : IParallelForBatch, IJobResourceDeclarationO
     {
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int length;
-        public float alpha, beta, gamma;
-        public int alphai, betai, gammai;
+        public int start, delta;
 
-        public void Execute(int i, int count)
+        public void Execute(int startIndex, int count)
         {
-            int* Op = Optr + i;
-
-            int lengthRemaining = length - i;
-
-            int index = i;
-            while (count > 0)
+            for (int index = startIndex; index < startIndex + count; ++index)
             {
-                int spanCount = math.min(count, lengthRemaining);
-                count -= spanCount;
-
-                for (int k = 0; k < spanCount; k++)
-                {
-                    Op[k] = Apply(index);
-                    index++;
-                }
-
-                Op += spanCount;
+                Optr[index] = Apply(index);
             }
         }
 
-        public int Apply(int i)
+        public int Apply(int index)
         {
-            return alphai + (i * betai);
+            return start + index * delta;
         }
     }
 

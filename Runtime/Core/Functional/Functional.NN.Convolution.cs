@@ -28,7 +28,7 @@ namespace Unity.InferenceEngine
             var strides = new[] { stride };
             var pads = new[] { padding, padding };
             var dilations = new[] { dilation };
-            return FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), new[] { input, weight, bias });
+            return FromLayer(new Layers.Conv(Layers.AutoPad.NotSet, dilations, groups, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Unity.InferenceEngine
             var strides = new[] { stride, stride };
             var pads = new[] { padding, padding, padding, padding };
             var dilations = new[] { dilation, dilation };
-            return FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), new[] { input, weight, bias });
+            return FromLayer(new Layers.Conv(Layers.AutoPad.NotSet, dilations, groups, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), new[] { input, weight, bias });
+            return FromLayer(new Layers.Conv(Layers.AutoPad.NotSet, dilationArray, groups, paddingArray, strideArray, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Unity.InferenceEngine
             var strides = new[] { stride, stride, stride };
             var pads = new[] { padding, padding, padding, padding, padding, padding };
             var dilations = new[] { dilation, dilation, dilation };
-            return FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), new[] { input, weight, bias });
+            return FromLayer(new Layers.Conv(Layers.AutoPad.NotSet, dilations, groups, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), new[] { input, weight, bias });
+            return FromLayer(new Layers.Conv(Layers.AutoPad.NotSet, dilationArray, groups, paddingArray, strideArray, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -160,10 +160,11 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
+            var dilations = new[] { 1 };
             var strides = new[] { stride };
             var pads = new[] { padding, padding };
             var outputPaddings = new[] { outputPadding };
-            return FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), new[] { input, weight, bias });
+            return FromLayer(new Layers.ConvTranspose(Layers.AutoPad.NotSet, dilations, 1, outputPaddings, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -187,10 +188,11 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
+            var dilations = new[] { 1, 1 };
             var strides = new[] { stride, stride };
             var pads = new[] { padding, padding, padding, padding };
             var outputPaddings = new[] { outputPadding, outputPadding };
-            return FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), new[] { input, weight, bias });
+            return FromLayer(new Layers.ConvTranspose(Layers.AutoPad.NotSet, dilations, 1, outputPaddings, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -211,13 +213,14 @@ namespace Unity.InferenceEngine
             DeclareRank(weight, 4);
             if (bias != null)
                 DeclareRank(bias, 1);
+            var dilations = new[] { 1, 1 };
             var strideArray = new[] { stride.Item1, stride.Item2 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item1, padding.Item2 };
             var outputPaddingArray = new[] { outputPadding.Item1, outputPadding.Item2 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), new[] { input, weight, bias });
+            return FromLayer(new Layers.ConvTranspose(Layers.AutoPad.NotSet, dilations, 1, outputPaddingArray, paddingArray, strideArray, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -241,10 +244,11 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
+            var dilations = new[] { 1, 1, 1 };
             var strides = new[] { stride, stride, stride };
             var pads = new[] { padding, padding, padding, padding, padding, padding };
             var outputPaddings = new[] { outputPadding, outputPadding, outputPadding };
-            return FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), new[] { input, weight, bias });
+            return FromLayer(new Layers.ConvTranspose(Layers.AutoPad.NotSet, dilations, 1, outputPaddings, pads, strides, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -265,13 +269,14 @@ namespace Unity.InferenceEngine
             DeclareRank(weight, 5);
             if (bias != null)
                 DeclareRank(bias, 1);
+            var dilations = new[] { 1, 1, 1 };
             var strideArray = new[] { stride.Item1, stride.Item2, stride.Item3 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item3, padding.Item1, padding.Item2, padding.Item3 };
             var outputPaddingArray = new[] { outputPadding.Item1, outputPadding.Item2, outputPadding.Item3 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), new[] { input, weight, bias });
+            return FromLayer(new Layers.ConvTranspose(Layers.AutoPad.NotSet, dilations, 1, outputPaddingArray, paddingArray, strideArray, null, Layers.FusableActivation.None), new[] { input, weight, bias });
         }
     }
 }

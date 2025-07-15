@@ -52,6 +52,53 @@ namespace Unity.InferenceEngine
             return shift;
         }
 
+        // Stein's algo, from https://stackoverflow.com/questions/22281661/what-is-the-fastest-way-to-find-the-gcd-of-two-numbers
+        public static int GCD(int a, int b)
+        {
+            // gcd(0, b) == b
+            // gcd(a, 0) == a
+            // gcd(0, 0) == 0
+            if (a == 0)
+                return b;
+            if (b == 0)
+                return a;
+
+            // Finding k, where k is the greatest power of 2 that divides both a and b:
+            int k;
+            for (k = 0; ((a | b) & 1) == 0; k++)
+            {
+                a >>= 1;
+                b >>= 1;
+            }
+
+            // Divide a by 2 until a becomes odd:
+            while ((a & 1) == 0)
+                a >>= 1;
+
+            // From here on, 'a' is always odd:
+            do
+            {
+                // If b is even, remove all factor of 2 in b
+                while ((b & 1) == 0)
+                    b >>= 1;
+
+                // Now a and b are both odd.
+                // Swap if necessary so a <= b,
+                // then set b = b - a (which is even).
+                if (a > b)
+                {
+                    // Swap u and v.
+                    int tmp = a;
+                    a = b;
+                    b = tmp;
+                }
+                b = (b - a);
+            } while (b != 0);
+
+            // restore common factors of 2
+            return a << k;
+        }
+
         public static void SetTexture(this ComputeFunction fn, int nameID, Texture tex)
         {
             fn.shader.SetTexture(fn.kernelIndex, nameID, tex);

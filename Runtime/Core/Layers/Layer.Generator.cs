@@ -1,32 +1,17 @@
 using System;
-using Unity.Profiling;
 
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
     /// Represents a `ConstantOfShape` layer. This generates a tensor with the shape given by the `input` tensor and filled with a given value.
     /// </summary>
-    class ConstantOfShape : Layer
+    [Operator(category = "Generator")]
+    [Inputs(names = new[] { "input" }, inputCPURead = new[] { 0 })]
+    partial class ConstantOfShape : Layer
     {
-        static readonly string k_OpName = "ConstantOfShape";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType dataType;
         public float floatValue;
         public int intValue;
-
-        public ConstantOfShape(int output, int input, int value)
-            : base(new[] { output }, new[] { input })
-        {
-            dataType = DataType.Int;
-            intValue = value;
-        }
-
-        public ConstantOfShape(int output, int input, float value)
-            : base(new[] { output }, new[] { input })
-        {
-            dataType = DataType.Float;
-            floatValue = value;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -64,32 +49,17 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.MemSet(O as Tensor<float>, floatValue);
             return;
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, dataType: {dataType}, floatValue: {floatValue}, intValue: {intValue}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `OneHot` layer. This generates a one-hot tensor with a given `depth`, `indices` and `values`.
     /// </summary>
-    class OneHot : Layer
+    [Operator(category = "Generator")]
+    [Inputs(names = new[] { "indices", "depth", "values" }, inputCPURead = new[] { 1, 2 })]
+    partial class OneHot : Layer
     {
-        static readonly string k_OpName = "OneHot";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public bool allowNegativeIndexes;
-
-        public OneHot(int output, int indices, int depth, int values, int axis, bool allowNegativeIndexes)
-            : base(new[] { output }, new[] { indices, depth, values })
-        {
-            this.axis = axis;
-            this.allowNegativeIndexes = allowNegativeIndexes;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -128,27 +98,15 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.OneHot(indices, O as Tensor<float>, axis, depth, valuesf[0], valuesf[1], allowNegativeIndexes);
             }
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Range` layer. This generates a 1D output tensor where the values form an arithmetic progression defined by the `start`, `limit` and `delta` scalar input tensors.
     /// </summary>
-    class Range : Layer
+    [Operator(category = "Generator")]
+    [Inputs(names = new[] { "start", "limit", "delta" }, inputCPURead = new[] { 0, 1, 2 })]
+    partial class Range : Layer
     {
-        static readonly string k_OpName = "Range";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Range(int output, int start, int limit, int delta)
-            : base(new[] { output }, new[] { start, limit, delta }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var start = getPartialTensor(0);
@@ -196,8 +154,5 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.Range(O, startf, deltaf);
             }
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

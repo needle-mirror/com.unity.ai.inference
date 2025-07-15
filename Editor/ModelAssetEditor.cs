@@ -6,6 +6,7 @@ using System;
 using UnityEngine.UIElements;
 using Unity.InferenceEngine.Compiler.Analyser;
 using System.IO;
+using Unity.InferenceEngine.Editor.Visualizer;
 
 namespace Unity.InferenceEngine.Editor
 {
@@ -107,6 +108,13 @@ public class ModelAssetEditor : UnityEditor.Editor
         rootElement.Add(button);
     }
 
+    void CreateVisualizeButton(VisualElement rootElement, ModelAsset modelAsset, string name)
+    {
+        var button = new Button(() => ModelVisualizerWindow.VisualizeModel(modelAsset));
+        button.text = "Visualize Model";
+        rootElement.Add(button);
+    }
+
     public override VisualElement CreateInspectorGUI()
     {
         var rootInspector = new VisualElement();
@@ -119,11 +127,12 @@ public class ModelAssetEditor : UnityEditor.Editor
 
         m_Model ??= ModelLoader.LoadModelDescription(modelAsset.modelAssetData.value);
 
-        CreateSerializeButton(rootInspector, modelAsset, target.name);
+        CreateVisualizeButton(rootInspector, modelAsset, target.name);
         CreateInputListView(rootInspector);
         CreateOutputListView(rootInspector);
         CreateLayersListView(rootInspector);
         CreateConstantsListView(rootInspector);
+        CreateSerializeButton(rootInspector, modelAsset, target.name);
 
         rootInspector.Add(new Label($"Producer Name: {m_Model.ProducerName}"));
 

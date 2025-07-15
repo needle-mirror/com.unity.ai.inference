@@ -12,7 +12,7 @@ Shader "Hidden/InferenceEngine/Broadcast"
         {
             CGPROGRAM
             // TODO: use Scriban to generate variants
-            #pragma multi_compile_local Add Sub Mul Div Pow Min Max Mod FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
+            #pragma multi_compile_local Add Sub Mul Div PowFloatFloat PowFloatInt Min Max Mod FMod Mean AddInt SubInt MulInt DivInt PowIntFloat PowIntInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
 
             #pragma vertex vert
             #pragma fragment frag
@@ -21,7 +21,7 @@ Shader "Hidden/InferenceEngine/Broadcast"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            #if defined(AddInt) | defined(SubInt) | defined(MulInt) | defined(DivInt) | defined(MinInt) | defined(MaxInt) | defined(ModInt) | defined(FModInt) | defined(And) | defined(EqualInt) | defined(GreaterInt) | defined(GreaterOrEqualInt) | defined(LessInt) | defined(LessOrEqualInt) | defined(Or) | defined(Xor)
+            #if defined(AddInt) | defined(SubInt) | defined(MulInt) | defined(DivInt) | defined(MinInt) | defined(MaxInt) | defined(ModInt) | defined(FModInt) | defined(And) | defined(EqualInt) | defined(GreaterInt) | defined(GreaterOrEqualInt) | defined(LessInt) | defined(LessOrEqualInt) | defined(Or) | defined(Xor) | defined(PowIntInt)
             #define O_DTYPE4 int4
             #define A_DTYPE4 int4
             #define B_DTYPE4 int4
@@ -33,12 +33,18 @@ Shader "Hidden/InferenceEngine/Broadcast"
             #define B_DTYPE4 float4
             DECLARE_TENSOR(A, float);
             DECLARE_TENSOR(B, float);
-            #elif defined(PowInt)
+            #elif defined(PowFloatInt)
             #define O_DTYPE4 float4
             #define A_DTYPE4 float4
             #define B_DTYPE4 int4
             DECLARE_TENSOR(A, float);
             DECLARE_TENSOR(B, int);
+            #elif defined(PowIntFloat)
+            #define O_DTYPE4 int4
+            #define A_DTYPE4 int4
+            #define B_DTYPE4 float4
+            DECLARE_TENSOR(A, int);
+            DECLARE_TENSOR(B, float);
             #else
             #define O_DTYPE4 float4
             #define A_DTYPE4 float4
@@ -106,12 +112,15 @@ Shader "Hidden/InferenceEngine/Broadcast"
                 #ifdef DivInt
                     v = va / vb;
                 #endif
-                #if defined(Pow) | defined(PowInt)
+                #if defined(PowFloatFloat) | defined(PowFloatInt) | defined(PowIntFloat)
                     O_DTYPE4 u = SignedPow(va, vb);
                     v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
                     v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
                     v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;
                     v.w = IsInfOrNaN(u.w) ? 0.0f : u.w;
+                #endif
+                #if defined(PowIntInt)
+                    v = SignedPowInt(va, vb);
                 #endif
                 #if defined(Min) | defined(MinInt)
                     v = min(va, vb);

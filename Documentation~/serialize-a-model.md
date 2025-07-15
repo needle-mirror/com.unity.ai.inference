@@ -32,7 +32,7 @@ Some advantages of using a serialized model are as follows:
 
 ## Serialization layout
 
-Inference Engine serializes a `.sentis` file with `FlatBuffers`. 
+Inference Engine serializes a `.sentis` file with `FlatBuffers`.
 
 ```
              ┌───────────────────────────────────┐
@@ -52,7 +52,7 @@ Weights  ─┤  ├────────────────────
           └─ └───────────────────────────────────┘
 ```
 
-For more information, refer to `Inference Engine/Runtime/Core/Serialization/program.fbs`. 
+For more information, refer to `Inference Engine/Runtime/Core/Serialization/program.fbs`.
 
 ## Additional resources
 

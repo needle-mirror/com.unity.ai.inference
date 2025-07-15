@@ -61,7 +61,7 @@ namespace Unity.InferenceEngine
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = ComputeFunctions.k_ScalarBroadcastPowFloat;
+                var fn = ComputeFunctions.k_ScalarBroadcastPowFloatFloat;
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
@@ -74,7 +74,7 @@ namespace Unity.InferenceEngine
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = ComputeFunctions.k_BroadcastPowFloat;
+                var fn = ComputeFunctions.k_BroadcastPowFloatFloat;
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
@@ -87,7 +87,51 @@ namespace Unity.InferenceEngine
             }
             else
             {
-                var fn = ComputeFunctions.k_ElementwisePowFloat;
+                var fn = ComputeFunctions.k_ElementwisePowFloatFloat;
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
+        {
+            if (A.shape == O.shape && B.shape.length == 1)
+            {
+                var fn = ComputeFunctions.k_ScalarBroadcastPowFloatInt;
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxIndexO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else if (A.shape == O.shape && B.shape == O.shape)
+            {
+                var fn = ComputeFunctions.k_BroadcastPowFloatInt;
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxIndexO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else
+            {
+                var fn = ComputeFunctions.k_ElementwisePowFloatInt;
                 cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
                 cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -365,11 +409,11 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
+        public void Pow(Tensor<int> A, Tensor<float> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = ComputeFunctions.k_ScalarBroadcastPowInt;
+                var fn = ComputeFunctions.k_ScalarBroadcastPowIntFloat;
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
@@ -382,7 +426,7 @@ namespace Unity.InferenceEngine
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = ComputeFunctions.k_BroadcastPowInt;
+                var fn = ComputeFunctions.k_BroadcastPowIntFloat;
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
@@ -395,7 +439,51 @@ namespace Unity.InferenceEngine
             }
             else
             {
-                var fn = ComputeFunctions.k_ElementwisePowInt;
+                var fn = ComputeFunctions.k_ElementwisePowIntFloat;
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Pow(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            if (A.shape == O.shape && B.shape.length == 1)
+            {
+                var fn = ComputeFunctions.k_ScalarBroadcastPowIntInt;
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxIndexO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else if (A.shape == O.shape && B.shape == O.shape)
+            {
+                var fn = ComputeFunctions.k_BroadcastPowIntInt;
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxIndexO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else
+            {
+                var fn = ComputeFunctions.k_ElementwisePowIntInt;
                 cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
                 cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);

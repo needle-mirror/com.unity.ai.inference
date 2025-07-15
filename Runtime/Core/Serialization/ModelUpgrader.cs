@@ -49,6 +49,13 @@ namespace Unity.InferenceEngine
             return valuesOffsets.Count - 1;
         }
 
+        static int AddIntListValue(FlatBufferBuilder builder, List<Offset<EValue>> valuesOffsets, int[] intArray)
+        {
+            var val = IntList.CreateIntList(builder, IntList.CreateItemsVector(builder, intArray));
+            valuesOffsets.Add(EValue.CreateEValue(builder, KernelTypes.Int, val.Value));
+            return valuesOffsets.Count - 1;
+        }
+
         static int AddFloatValue(FlatBufferBuilder builder, List<Offset<EValue>> valuesOffsets, float v)
         {
             var val = Float.CreateFloat(builder, v);
@@ -380,6 +387,46 @@ namespace Unity.InferenceEngine
             }
         }
 
+        static bool UpgradeChainV5toV6(ExecutionPlan executionPlan, Chain chain, FlatBufferBuilder builder, List<string> operators, List<Offset<Chain>> chainsOffsets, List<Offset<EValue>> valuesOffsets)
+        {
+            var instruction = chain.Instructions(0).Value;
+            if (instruction.InstrArgsType != InstructionArguments.KernelCall)
+                return false;
+            var kernel = instruction.InstrArgsAsKernelCall();
+            var k = operators[kernel.OpIndex];
+            switch (k)
+            {
+                case "ConvTranspose": // ConvTranspose now supports dilations and group
+                    {
+                        var a = chain.InputsLength;
+                        var input = chain.Inputs(0);
+                        var weights = chain.Inputs(1);
+                        var bias = chain.Inputs(2); // bias: optional
+                        var output = chain.Outputs(0);
+
+                        var argsListOrig = kernel.GetArgsArray().ToList();
+                        var argsList = new List<int>();
+                        argsList.Add(argsListOrig[0]); // autopad
+                        argsList.Add(AddIntListValue(builder, valuesOffsets, new int[] { 1, 1, 1, 1, 1, 1, 1, 1 })); // dilations
+                        argsList.Add(AddIntValue(builder, valuesOffsets, 1)); // number of groups
+                        argsList.AddRange(argsListOrig.GetRange(1, argsListOrig.Count - 1));
+                        var args = argsList.ToArray();
+
+                        var instructionOffset = Instruction.CreateInstruction(builder, instruction.InstrArgsType, KernelCall.CreateKernelCall(builder, kernel.OpIndex, ExecutionPlan.CreateInputsVector(builder, args)).Value);
+
+                        chainsOffsets.Add(Chain.CreateChain(
+                            builder,
+                            Chain.CreateInputsVector(builder, new[] { input, weights, bias, }),
+                            Chain.CreateOutputsVector(builder, new[] { output }),
+                            Chain.CreateInstructionsVector(builder, new[] { instructionOffset }))
+                        );
+                        return true;
+                    }
+                default:
+                    return false;
+            }
+        }
+
         public static Program Upgrade(Program program)
         {
             if (program.Version == 1)
@@ -390,6 +437,8 @@ namespace Unity.InferenceEngine
                 program = UpgradeFlatbuffer(program, 4);
             if (program.Version == 4)
                 program = UpgradeFlatbuffer(program, 5, UpgradeChainV4toV5);
+            if (program.Version == 5)
+                program = UpgradeFlatbuffer(program, 6, UpgradeChainV5toV6);
             return program;
         }
     }

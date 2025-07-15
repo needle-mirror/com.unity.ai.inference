@@ -51,7 +51,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 // previous layer is a transpose and current layer is the only downstream layer
                 var permutations = MergeTranspose(previousLayer.permutations, layer.permutations);
 
-                model.layers[l] = new Layers.Transpose(layer.outputs[0], previousLayer.inputs[0], permutations);
+                model.layers[l] = new Layers.Transpose(permutations).SetInputs(previousLayer.inputs[0]).SetOutputs(layer.outputs[0]);
 
                 if (!preserve.Contains(input) && (layerDownstreamCounts[input] == 1))
                     removeLayers.Add(input);

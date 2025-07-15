@@ -72,15 +72,15 @@ namespace Unity.InferenceEngine
             Tensor X, int XM, int XN,
             Tensor Y, int YM, int YN,
             Tensor O, int OM, int ON,
-            bool transposeA = false, bool transposeB = false, bool accumulateC = false, int offsetY = 0)
+            bool transposeA = false, bool transposeB = false, bool accumulateC = false, int offsetX = 0, int offsetY = 0, int offsetO = 0)
         {
             var pinX = Pin(X);
             var pinY = Pin(Y);
             var pinO = Pin(O, clearOnInit: accumulateC);
             var data = new BatchMatrixMultiplyHelper();
-            data.A = (float*)pinX.rawPtr;
+            data.A = (float*)pinX.rawPtr + offsetX;
             data.B = (float*)pinY.rawPtr + offsetY;
-            data.C = (float*)pinO.rawPtr;
+            data.C = (float*)pinO.rawPtr + offsetO;
             data.M = transposeA ? XN : XM;
             data.N = transposeB ? YM : YN;
             data.K = transposeA ? XM : XN;
@@ -257,63 +257,93 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
-            if (X.shape.rank >= 5)
-            {
-                ConvTransposeND(X, W, B, O, strides, pads, outputPadding, fusedActivation);
-                return;
-            }
+            if (X.shape.rank >= 6)
+                throw new NotImplementedException();
 
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-            var job = new ConvTransposeJob();
-
-            job.Prepare(X.shape, W.shape, O.shape, strides, pads);
-
             var batchCount = X.shape[0];
-            var inputChannels = X.shape[1];
-            var outputChannels = O.shape[1];
+            var numInputChannelsPerGroup = X.shape[1] / groups;
+            var numOutputChannelsPerGroup = O.shape[1] / groups;
 
-            var columnBuffer = AllocTensorFloat(new TensorShape(outputChannels * job.kernelSize, job.inputSize));
-            var pinCB = Pin(columnBuffer);
-
-            for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
+            bool singleInnerChannel = (numInputChannelsPerGroup == 1);
+            if (singleInnerChannel)
             {
-                ScheduleSGEMM(
-                    W, inputChannels, outputChannels * job.kernelSize,
-                    X, inputChannels, job.inputSize,
-                    columnBuffer, outputChannels * job.kernelSize, job.inputSize,
-                    transposeA: true, offsetY: batchIndex * inputChannels * job.inputSize);
+                var job = new ConvTransposeJobNoInnerProduct();
+                ScheduleConvTranspose(ref job, strides, pads, dilations);
+            }
+            else
+            {
+                var job = new ConvTransposeJob();
+                ScheduleConvTranspose(ref job, strides, pads, dilations);
+            }
 
-                job.offsetO = batchIndex * outputChannels * job.outputSize;
-                if (B != null)
+            // We use this local generic trampoline to do static polymorphism on the job ie without the interface causing boxing:
+            void ScheduleConvTranspose<T>(ref T job, Span<int> strides, Span<int> pads, Span<int> dilations) where T : struct, IConvTransposeJobCommon
+            {
+                job.Prepare(X.shape, W.shape, O.shape, groups, numOutputChannelsPerGroup, strides, pads, dilations);
+
+                var columnBufferOrX = singleInnerChannel ? X : AllocTensorFloat(new TensorShape(groups * numOutputChannelsPerGroup * job.kernelSpatialSize, job.inputSpatialSize));
+                var pinCBorX = Pin(columnBufferOrX);
+
+                for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
                 {
-                    job.useBias = true;
-                    job.ScheduleXBO(pinCB, Pin(B), Pin(Otmp), outputChannels, 1);
-                }
-                else
-                {
-                    job.useBias = false;
-                    var pinO = Pin(Otmp);
-                    var fenceBeforeJobStart = JobHandle.CombineDependencies(pinCB.fence, pinO.reuse);
-                    unsafe
+                    if (!singleInnerChannel)
                     {
-                        job.X = new ReadOnlyMemResource { ptr = pinCB.rawPtr };
-                        job.O = new ReadWriteMemResource { ptr = pinO.rawPtr };
+                        for (int groupId = 0; groupId < groups; groupId++)
+                        {
+                            var offsetKernelW = groupId * numInputChannelsPerGroup * numOutputChannelsPerGroup * job.kernelSpatialSize;
+                            var offsetInputX = (batchIndex * groups + groupId) * numInputChannelsPerGroup * job.inputSpatialSize;
+                            var offsetO = groupId * numOutputChannelsPerGroup * job.kernelSpatialSize * job.inputSpatialSize;
+                            ScheduleSGEMM(
+                                X: W, numInputChannelsPerGroup, numOutputChannelsPerGroup * job.kernelSpatialSize,
+                                Y: X, numInputChannelsPerGroup, job.inputSpatialSize,
+                                O: columnBufferOrX, numOutputChannelsPerGroup * job.kernelSpatialSize, job.inputSpatialSize,
+                                transposeA: true, offsetX: offsetKernelW, offsetY: offsetInputX, offsetO: offsetO);
+                        }
                     }
-                    var jobFence = job.Schedule(outputChannels, 1, fenceBeforeJobStart);
-                    pinCB.reuse = jobFence;
-                    pinO.fence = jobFence;
-                }
-            }
 
-            if (fusedActivation != Layers.FusableActivation.None)
-            {
-                ApplyFusedActivation(Otmp, O, fusedActivation);
-                ReleaseTensorFloat(Otmp);
+                    job.offsetO = batchIndex * groups * numOutputChannelsPerGroup * job.outputSpatialSize;
+                    job.offsetX = singleInnerChannel ? batchIndex * groups * numInputChannelsPerGroup * job.inputSpatialSize : 0;
+                    if (B != null)
+                    {
+                        job.useBias = true;
+                        // Note: W is only used in the case where singleInnerChannel is used: in that case, pinCBorX is X
+                        job.ScheduleXSBO(pinCBorX, Pin(W), Pin(B), Pin(Otmp), numOutputChannelsPerGroup * groups, 1);
+                    }
+                    else
+                    {
+                        job.useBias = false;
+                        var pinO = Pin(Otmp);
+                        var pinW = singleInnerChannel ? Pin(W) : null;
+                        var fenceBeforeJobStart = singleInnerChannel ? JobHandle.CombineDependencies(pinCBorX.fence, pinW.fence, pinO.reuse) : JobHandle.CombineDependencies(pinCBorX.fence, pinO.reuse);
+                        unsafe
+                        {
+                            job.X = new ReadOnlyMemResource { ptr = pinCBorX.rawPtr };
+                            job.S = new ReadOnlyMemResource { ptr = (pinW != null) ? pinW.rawPtr : null}; // note: .? doesn't work when RHS is void*
+                            job.O = new ReadWriteMemResource { ptr = pinO.rawPtr };
+                        }
+                        // TODO innerloop adapted to number of threads and/or handle manually a workItemNum size
+                        // per index scheduled.
+                        var jobFence = job.Schedule(numOutputChannelsPerGroup * groups, 1, fenceBeforeJobStart);
+                        pinCBorX.reuse = jobFence;
+                        if (singleInnerChannel)
+                            pinW.reuse = jobFence;
+                        pinO.fence = jobFence;
+                    }
+                }
+
+                if (fusedActivation != Layers.FusableActivation.None)
+                {
+                    ApplyFusedActivation(Otmp, O, fusedActivation);
+                    ReleaseTensorFloat(Otmp);
+                }
+
+                if (!singleInnerChannel)
+                    ReleaseTensorFloat(columnBufferOrX);
             }
-            ReleaseTensorFloat(columnBuffer);
         }
 
         /// <inheritdoc/>
@@ -753,7 +783,6 @@ namespace Unity.InferenceEngine
         public void Cast(Tensor<float> X, Tensor<int> O)
         {
             var job = new CastFloatToIntJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -761,7 +790,6 @@ namespace Unity.InferenceEngine
         public void Cast(Tensor<int> X, Tensor<float> O)
         {
             var job = new CastIntToFloatJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -769,7 +797,7 @@ namespace Unity.InferenceEngine
         public void Cast(Tensor<short> X, Tensor<float> O)
         {
             var job = new CastHalfToFloatJob();
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -778,7 +806,7 @@ namespace Unity.InferenceEngine
             var job = new DequantizeUint8Job();
             job.scale = scale;
             job.zeroPoint = zeroPoint;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -787,7 +815,7 @@ namespace Unity.InferenceEngine
             var job = new IsInfJob();
             job.detectNegative = detectNegative;
             job.detectPositive = detectPositive;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -802,10 +830,8 @@ namespace Unity.InferenceEngine
         public void LeakyRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new LeakyReluJob();
-            job.alpha = alpha;
-            job.alpha = 0.5f * (1f + alpha);
-            job.beta = 0.5f * (1f - alpha);
-            job.length = O.shape.length;
+            job.weight = 0.5f * (1f + alpha);
+            job.absWeight = 0.5f * (1f - alpha);
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -815,7 +841,6 @@ namespace Unity.InferenceEngine
             var job = new HardSigmoidJob();
             job.alpha = alpha;
             job.beta = beta;
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -824,7 +849,6 @@ namespace Unity.InferenceEngine
         {
             var job = new EluJob();
             job.alpha = alpha;
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -832,7 +856,6 @@ namespace Unity.InferenceEngine
         public void Gelu(Tensor<float> X, Tensor<float> O)
         {
             var job = new GeluJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -840,7 +863,6 @@ namespace Unity.InferenceEngine
         public void GeluFast(Tensor<float> X, Tensor<float> O)
         {
             var job = new GeluFastJob();
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -850,7 +872,6 @@ namespace Unity.InferenceEngine
             var job = new SeluJob();
             job.alpha = alpha;
             job.gamma = gamma;
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -858,9 +879,8 @@ namespace Unity.InferenceEngine
         public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
         {
             var job = new ClipFloatJob();
-            job.alpha = min;
-            job.beta = max;
-            job.length = O.shape.length;
+            job.minValue = min;
+            job.maxValue = max;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -868,9 +888,8 @@ namespace Unity.InferenceEngine
         public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
         {
             var job = new ClipIntJob();
-            job.alphai = min;
-            job.betai = max;
-            job.length = O.shape.length;
+            job.minValue = min;
+            job.maxValue = max;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -879,7 +898,6 @@ namespace Unity.InferenceEngine
         {
             var job = new CeluJob();
             job.alpha = alpha;
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -887,9 +905,8 @@ namespace Unity.InferenceEngine
         public void Shrink(Tensor<float> X, Tensor<float> O, float bias, float lambd)
         {
             var job = new ShrinkJob();
-            job.alpha = bias;
-            job.beta = lambd;
-            job.length = O.shape.length;
+            job.bias = bias;
+            job.lambd = lambd;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -898,7 +915,6 @@ namespace Unity.InferenceEngine
         {
             var job = new ThresholdedReluJob();
             job.alpha = alpha;
-            job.length = O.shape.length;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -1092,14 +1108,6 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
-        {
-            var job = new PowFloatIntJob();
-            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
-        }
-
-        /// <inheritdoc/>
         public void Where(Tensor<int> C, Tensor A, Tensor B, Tensor O)
         {
             var job = new WhereJob();
@@ -1142,7 +1150,7 @@ namespace Unity.InferenceEngine
         {
             var job = new SetJob();
             job.memValue = math.asint(value);
-            job.ScheduleO(Pin(O), O.shape.length, 32);
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1150,7 +1158,7 @@ namespace Unity.InferenceEngine
         {
             var job = new SetJob();
             job.memValue = value;
-            job.ScheduleO(Pin(O), O.shape.length, 32);
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1480,7 +1488,7 @@ namespace Unity.InferenceEngine
             job.seed = Random.GetSeed(seed);
             job.mean = mean;
             job.scale = scale;
-            job.ScheduleO(Pin(O), O.shape.length, 32);
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1490,7 +1498,7 @@ namespace Unity.InferenceEngine
             job.seed = Random.GetSeed(seed);
             job.low = low;
             job.high = high;
-            job.ScheduleO(Pin(O), O.shape.length, 32);
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1499,7 +1507,7 @@ namespace Unity.InferenceEngine
             var job = new BernoulliJob();
             job.seed = Random.GetSeed(seed);
             job.dataType = O.dataType;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1564,9 +1572,8 @@ namespace Unity.InferenceEngine
         public void ScalarMad(Tensor<float> X, Tensor<float> O, float s, float b)
         {
             var job = new ScalarMadFloatJob();
-            job.alpha = s;
-            job.beta = b;
-            job.length = O.shape.length;
+            job.s = s;
+            job.b = b;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -1574,9 +1581,8 @@ namespace Unity.InferenceEngine
         public void ScalarMad(Tensor<int> X, Tensor<int> O, int s, int b)
         {
             var job = new ScalarMadIntJob();
-            job.alphai = s;
-            job.betai = b;
-            job.length = O.shape.length;
+            job.s = s;
+            job.b = b;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 

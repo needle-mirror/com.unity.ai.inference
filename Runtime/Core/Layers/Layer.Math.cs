@@ -1,20 +1,13 @@
 using System;
-using System.Linq;
-using Unity.Profiling;
 
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
     /// Represents an element-wise `Abs` math layer: f(x) = |x|.
     /// </summary>
-    class Abs : Activation
+    [Operator(category = "Math")]
+    partial class Abs : Activation
     {
-        static readonly string k_OpName = "Abs";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Abs(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -26,9 +19,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Abs(X as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -36,14 +26,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Add : Broadcast
+    [Operator(category = "Math")]
+    partial class Add : Broadcast
     {
-        static readonly string k_OpName = "Add";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Add(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return a + b;
@@ -61,22 +46,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Add(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Ceil` math layer: f(x) = ceil(x).
     /// </summary>
-    class Ceil : Activation
+    [Operator(category = "Math")]
+    partial class Ceil : Activation
     {
-        static readonly string k_OpName = "Ceil";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Ceil(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -85,22 +62,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Ceil(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Clip` math layer: f(x, xmin, xmax) = min(max(x, xmin), xmax)
     /// </summary>
-    class Clip : Layer
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input", "min", "max" }, inputCPURead = new[] { 1, 2 })]
+    partial class Clip : Layer
     {
-        static readonly string k_OpName = "Clip";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Clip(int output, int input, int min = -1, int max = -1)
-            : base(new[] { output }, new[] { input, min, max }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -127,28 +97,17 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.Clip(X as Tensor<float>, O as Tensor<float>, min, max);
             }
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `CumSum` math layer that performs the cumulative sum along a given axis.
     /// </summary>
-    class CumSum : Layer
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input", "axis" }, inputCPURead = new[] { 1 })]
+    partial class CumSum : Layer
     {
-        static readonly string k_OpName = "CumSum";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
         public bool reverse;
         public bool exclusive;
-
-        public CumSum(int output, int input, int axis, bool reverse, bool exclusive)
-            : base(new[] { output }, new[] { input, axis })
-        {
-            this.reverse = reverse;
-            this.exclusive = exclusive;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -168,14 +127,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.CumSum(X as Tensor<float>, O as Tensor<float>, axis, reverse, exclusive);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, reverse: {reverse}, exclusive: {exclusive}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -183,17 +134,10 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Dense : FusedActivation
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input", "weights", "bias" })]
+    partial class Dense : FusedActivation
     {
-        static readonly string k_OpName = "Dense";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Dense(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
-            : base(new[] { output }, new[] { input, weights, bias })
-        {
-            this.fusedActivation = fusedActivation;
-        }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -214,22 +158,12 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Dense(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
-    class DenseBatched : FusedActivation
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input", "weights", "bias" })]
+    partial class DenseBatched : FusedActivation
     {
-        static readonly string k_OpName = "DenseBatched";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public DenseBatched(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
-            : base(new[] { output }, new[] { input, weights, bias })
-        {
-            this.fusedActivation = fusedActivation;
-        }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var X = getPartialTensor(0);
@@ -250,9 +184,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.DenseBatched(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -260,14 +191,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Div : Broadcast
+    [Operator(category = "Math")]
+    partial class Div : Broadcast
     {
-        static readonly string k_OpName = "Div";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Div(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return a / b;
@@ -285,9 +211,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Div(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -299,20 +222,18 @@ namespace Unity.InferenceEngine.Layers
     /// When a dimension character is repeated in the left-hand side, it represents summation along the dimension.
     /// The equation may contain ellipsis ("...") to enable broadcasting. Ellipsis must indicate a fixed number of dimensions. Specifically, every occurrence of ellipsis in the equation must represent the same number of dimensions. The right-hand side may contain exactly one ellipsis. In implicit mode, the ellipsis dimensions are set to the beginning of the output. The equation string may contain space (U+0020) character.
     /// </description>
-    class Einsum : Layer
+    [Operator(category = "Math")]
+    [Inputs(isVariadic = true)]
+    partial class Einsum : Layer
     {
-        static readonly string k_OpName = "Einsum";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public string equation;
 
         TensorShape[] operandShapes;
         TensorIndex[] operandIndices;
         Tensor<float>[] operandTensors;
 
-        public Einsum(int output, int[] inputs, string equation)
-            : base(new[] { output }, inputs)
+        void Initialize()
         {
-            this.equation = equation;
             operandShapes = new TensorShape[inputs.Length];
             operandIndices = new TensorIndex[inputs.Length];
             operandTensors = new Tensor<float>[inputs.Length];
@@ -320,7 +241,8 @@ namespace Unity.InferenceEngine.Layers
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
-            var operandIndices = new TensorIndex[inputs.Length];
+            if (operandShapes is null)
+                Initialize();
             var inputShapes = new DynamicTensorShape[inputs.Length];
             for (var i = 0; i < inputShapes.Length; i++)
                 inputShapes[i] = getPartialTensor(i).shape;
@@ -330,6 +252,8 @@ namespace Unity.InferenceEngine.Layers
 
         internal override void Execute(ExecutionContext ctx)
         {
+            if (operandShapes is null)
+                Initialize();
             for (int i = 0; i < inputs.Length; i++)
             {
                 operandTensors[i] = ctx.storage.GetTensor(inputs[i]) as Tensor<float>;
@@ -344,27 +268,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Einsum(operandTensors, O, operandIndices, outputIndices, sumIndices, sumShape);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, equation: {equation}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Exp` math layer: f(x) = e^{x}.
     /// </summary>
-    class Exp : Activation
+    [Operator(category = "Math")]
+    partial class Exp : Activation
     {
-        static readonly string k_OpName = "Exp";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Exp(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -373,22 +284,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Exp(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Floor` math layer: f(x) = floor(x).
     /// </summary>
-    class Floor : Activation
+    [Operator(category = "Math")]
+    partial class Floor : Activation
     {
-        static readonly string k_OpName = "Floor";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Floor(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -397,22 +300,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Floor(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Log` math layer: f(x) = log(x).
     /// </summary>
-    class Log : Activation
+    [Operator(category = "Math")]
+    partial class Log : Activation
     {
-        static readonly string k_OpName = "Log";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Log(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -421,22 +316,15 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Log(X, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `MatMul` math operation layer which performs a matrix multiplication operation: f(a, b) = a x b.
     /// </summary>
-    class MatMul : Layer
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input0", "input1" })]
+    partial class MatMul : Layer
     {
-        static readonly string k_OpName = "MatMul";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public MatMul(int output, int input0, int input1)
-            : base(new[] { output }, new[] { input0, input1 }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var A = getPartialTensor(0);
@@ -456,28 +344,17 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.MatMul(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `MatMul2D` math operation layer which performs a matrix multiplication operation with optional transposes: f(a, b) = a' x b'.
     /// </summary>
-    class MatMul2D : Layer
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "input0", "input1" })]
+    partial class MatMul2D : Layer
     {
-        static readonly string k_OpName = "MatMul2D";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
         public bool transposeA;
         public bool transposeB;
-
-        public MatMul2D(int output, int input0, bool transpose0, int input1, bool transpose1)
-            : base(new[] { output }, new[] { input0, input1 })
-        {
-            this.transposeA = transpose0;
-            this.transposeB = transpose1;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -510,14 +387,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.MatMul2D(A as Tensor<float>, B as Tensor<float>, O, transposeA, transposeB);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, transposeA: {transposeA}, transposeB: {transposeB}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -525,14 +394,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Min : Broadcast
+    [Operator(category = "Math")]
+    partial class Min : Broadcast
     {
-        static readonly string k_OpName = "Min";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Min(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Min(a, b);
@@ -550,9 +414,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Min(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -560,14 +421,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Max : Broadcast
+    [Operator(category = "Math")]
+    partial class Max : Broadcast
     {
-        static readonly string k_OpName = "Max";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Max(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Max(a, b);
@@ -585,9 +441,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Max(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -599,17 +452,10 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Mod : Broadcast
+    [Operator(category = "Math")]
+    partial class Mod : Broadcast
     {
-        static readonly string k_OpName = "Mod";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool fmod;
-
-        public Mod(int output, int a, int b, bool fmod = false)
-            : base(output, a, b)
-        {
-            this.fmod = fmod;
-        }
 
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
@@ -640,14 +486,6 @@ namespace Unity.InferenceEngine.Layers
                     ctx.backend.FMod(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
             }
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, fmod: {fmod}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -655,14 +493,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Mul : Broadcast
+    [Operator(category = "Math")]
+    partial class Mul : Broadcast
     {
-        static readonly string k_OpName = "Mul";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Mul(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return a * b;
@@ -680,22 +513,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Mul(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Neg` math layer: f(x) = -x.
     /// </summary>
-    class Neg : Unary
+    [Operator(category = "Math")]
+    partial class Neg : Unary
     {
-        static readonly string k_OpName = "Neg";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Neg(int output, int input)
-            : base(output, input) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
         {
             return -a;
@@ -712,9 +537,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Neg(X as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -722,14 +544,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Pow : Broadcast
+    [Operator(category = "Math")]
+    partial class Pow : Broadcast
     {
-        static readonly string k_OpName = "Pow";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Pow(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Pow(a, b);
@@ -737,32 +554,35 @@ namespace Unity.InferenceEngine.Layers
 
         internal override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (B is Tensor<int>)
-                ctx.backend.Pow(A, B as Tensor<int>, O);
-            else
-                ctx.backend.Pow(A, B as Tensor<float>, O);
-        }
 
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
+            if (A is Tensor<int>)
+            {
+                if (B is Tensor<int>)
+                    ctx.backend.Pow(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
+                else
+                    ctx.backend.Pow(A as Tensor<int>, B as Tensor<float>, O as Tensor<int>);
+            }
+            else
+            {
+                if (B is Tensor<int>)
+                    ctx.backend.Pow(A as Tensor<float>, B as Tensor<int>, O as Tensor<float>);
+                else
+                    ctx.backend.Pow(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
+            }
+        }
     }
 
     /// <summary>
     /// Represents an element-wise `Reciprocal` math layer: f(x) = 1 / x.
     /// </summary>
-    class Reciprocal : Activation
+    [Operator(category = "Math")]
+    partial class Reciprocal : Activation
     {
-        static readonly string k_OpName = "Reciprocal";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Reciprocal(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -771,22 +591,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Reciprocal(X as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Round` math layer: f(x) = round(x).
     /// </summary>
-    class Round : Activation
+    [Operator(category = "Math")]
+    partial class Round : Activation
     {
-        static readonly string k_OpName = "Round";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Round(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -795,39 +607,19 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Round(X as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Mad` math operation: multiplies and adds bias to a tensor: f(T, s, b) = s * T + b.
     /// </summary>
-    class ScalarMad : Activation
+    [Operator(category = "Math")]
+    partial class ScalarMad : Activation
     {
-        static readonly string k_OpName = "ScalarMad";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType dataType;
         public float sFloat;
         public float bFloat;
         public int sInt;
         public int bInt;
-
-        public ScalarMad(int output, int input, float s, float b)
-            : base(output, input)
-        {
-            dataType = DataType.Float;
-            sFloat = s;
-            bFloat = b;
-        }
-
-        public ScalarMad(int output, int input, int s, int b)
-            : base(output, input)
-        {
-            dataType = DataType.Int;
-            sInt = s;
-            bInt = b;
-        }
 
         internal override void Execute(ExecutionContext ctx)
         {
@@ -840,32 +632,16 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.ScalarMad(X as Tensor<int>, O as Tensor<int>, sInt, bInt);
         }
-
-        public override string ToString()
-        {
-            return dataType == DataType.Float ? $"{base.ToString()}, sFloat: {sFloat}, bFloat: {bFloat}" : $"{base.ToString()}, sInt: {sInt}, bInt: {bInt}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Shrink` math layer: f(x) = x + bias if x &lt; lambd. f(x) = x - bias if x &gt; lambd. Otherwise f(x) = 0.
     /// </summary>
-    class Shrink : Layer
+    [Operator(category = "Math")]
+    partial class Shrink : Layer
     {
-        static readonly string k_OpName = "Shrink";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float bias;
         public float lambd;
-
-        public Shrink(int output, int input, float bias, float lambd)
-            : base(new[] { output }, new[] { input })
-        {
-            this.bias = bias;
-            this.lambd = lambd;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -881,27 +657,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Shrink(X as Tensor<float>, O, bias, lambd);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, bias: {bias}, lambd: {lambd}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Sign` math layer: f(x) = 1 if x > 0. f(x) = -1 if x &lt; 0. Otherwise f(x) = 0.
     /// </summary>
-    class Sign : Unary
+    [Operator(category = "Math")]
+    partial class Sign : Unary
     {
-        static readonly string k_OpName = "Sign";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Sign(int output, int input)
-            : base(output, input) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
         {
             return PartialTensorElement<T>.Sign(a);
@@ -924,22 +687,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Sign(X as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Sqrt` math layer: f(x) = sqrt(x).
     /// </summary>
-    class Sqrt : Activation
+    [Operator(category = "Math")]
+    partial class Sqrt : Activation
     {
-        static readonly string k_OpName = "Sqrt";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Sqrt(int output, int input)
-            : base(output, input) { }
-
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -948,22 +703,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Sqrt(X as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Square` math layer: f(x) = x * x.
     /// </summary>
-    class Square : Unary
+    [Operator(category = "Math")]
+    partial class Square : Unary
     {
-        static readonly string k_OpName = "Square";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Square(int output, int input)
-            : base(output, input) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
         {
             return a * a;
@@ -980,9 +727,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Square(X as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -990,14 +734,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Sub : Broadcast
+    [Operator(category = "Math")]
+    partial class Sub : Broadcast
     {
-        static readonly string k_OpName = "Sub";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Sub(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return a - b;
@@ -1015,8 +754,5 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Sub(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

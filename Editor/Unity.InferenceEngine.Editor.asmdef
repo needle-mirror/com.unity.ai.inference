@@ -1,10 +1,11 @@
 {
     "name": "Unity.InferenceEngine.Editor",
+    "rootNamespace": "",
     "references": [
         "Unity.InferenceEngine",
+        "Unity.InferenceEngine.Editor.Visualizer",
         "Unity.InferenceEngine.ONNX.Editor"
     ],
-    "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
@@ -13,5 +14,7 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": []
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

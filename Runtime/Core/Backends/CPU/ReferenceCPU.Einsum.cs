@@ -8,7 +8,8 @@ namespace Unity.InferenceEngine
         {
             for (var i = 0; i < inputTensors.Length; i++)
             {
-                CPUTensorData.Pin(inputTensors[i]);
+                var tensorData = CPUTensorData.Pin(inputTensors[i]);
+                tensorData.CompleteAllPendingOperations();
             }
 
             CPUTensorData.Pin(O);

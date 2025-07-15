@@ -14,7 +14,7 @@ namespace Unity.InferenceEngine.Tests
     {
         static FunctionalTensor RandomUniform(int[] shape, System.Random random, float low = -1f, float high = 1f)
         {
-            return Functional.FromLayer(new RandomUniform(-1, shape, low, high, random.Next()), Array.Empty<FunctionalTensor>());
+            return Functional.FromLayer(new RandomUniform(low, high, shape, true, random.Next()), Array.Empty<FunctionalTensor>());
         }
 
         static FunctionalTensor RandomInt(int[] shape, System.Random random, int low = byte.MinValue, int high = byte.MaxValue)
@@ -68,7 +68,7 @@ namespace Unity.InferenceEngine.Tests
         {
             var rand = new System.Random("Conv".GetHashCode());
 
-            void Test(int[] shape, int m, int[] kernelSize, bool bias, int group = 1, int[] strides = null, int[] pads = null, int[] dilations = null, AutoPad autoPad = AutoPad.NotSet, FusableActivation fusedActivation = FusableActivation.None)
+            void Test(int[] shape, int m, int[] kernelSize, bool bias, int group, int[] strides, int[] pads, int[] dilations, AutoPad autoPad = AutoPad.NotSet, FusableActivation fusedActivation = FusableActivation.None)
             {
                 var x = RandomUniform(shape, rand);
                 var wShape = new int[kernelSize.Length + 2];
@@ -79,21 +79,21 @@ namespace Unity.InferenceEngine.Tests
                 var w = RandomUniform(wShape, rand);
                 var b = bias ? RandomUniform(new[] { m }, rand) : null;
 
-                var outputs = Functional.FromLayerMultiOutput(new Conv(-1, -1, -1, -1, group, strides, pads, dilations, autoPad, kernelSize, fusedActivation), new[] { x, w, b });
+                var outputs = Functional.FromLayerMultiOutput(new Conv(autoPad, dilations, group, pads, strides, kernelSize, fusedActivation), new[] { x, w, b });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true);
-            Test(new[] { 2, 3, 256, 256 }, 8, new[] { 3, 3 }, true);
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, false);
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 4 }, true);
-            Test(new[] { 1, 3, 256, 256 }, 9, new[] { 3, 3 }, true, 3);
-            Test(new[] { 1, 4, 256, 256 }, 8, new[] { 3, 3 }, true, 2);
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, strides: new[] { 2, 3 });
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, pads: new[] { 1, 2, 3, 4 });
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, dilations: new[] { 2, 3 });
-            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, fusedActivation: FusableActivation.Relu);
-            Test(new[] { 1, 3, 32, 32, 32 }, 8, new[] { 3, 3, 3 }, true);
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 2, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, false, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 4 }, true, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 9, new[] { 3, 3 }, true, 3, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 4, 256, 256 }, 8, new[] { 3, 3 }, true, 2, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 2, 3 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 1, 1 }, new[] { 1, 2, 3, 4 }, new[] { 1, 1 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 2, 3 });
+            Test(new[] { 1, 3, 256, 256 }, 8, new[] { 3, 3 }, true, 1, new[] { 1, 1 }, new[] { 0, 0, 0, 0 }, new[] { 1, 1 }, fusedActivation: FusableActivation.Relu);
+            Test(new[] { 1, 3, 32, 32, 32 }, 8, new[] { 3, 3, 3 }, true, 1, new[] { 1, 1, 1 }, new[] { 0, 0, 0, 0, 0, 0 }, new[] { 1, 1, 1 });
         }
 
         [Test]
@@ -107,7 +107,7 @@ namespace Unity.InferenceEngine.Tests
                 var input = RandomUniform(inputShape, rand);
                 var weights = RandomUniform(weightsShape, rand);
                 var bias = RandomUniform(biasShape, rand);
-                var outputs = Functional.FromLayerMultiOutput(new Dense(-1, -1, -1, -1, fusedActivation), new[] { input, weights, bias });
+                var outputs = Functional.FromLayerMultiOutput(new Dense(fusedActivation), new[] { input, weights, bias });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -125,7 +125,7 @@ namespace Unity.InferenceEngine.Tests
             {
                 var a = RandomUniform(aShape, rand);
                 var b = RandomUniform(bShape, rand);
-                var outputs = Functional.FromLayerMultiOutput(new MatMul(-1, -1, -1), new[] { a, b });
+                var outputs = Functional.FromLayerMultiOutput(new MatMul(), new[] { a, b });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -151,7 +151,7 @@ namespace Unity.InferenceEngine.Tests
             {
                 var a = RandomUniform(aShape, rand);
                 var b = RandomUniform(bShape, rand);
-                var outputs = Functional.FromLayerMultiOutput(new MatMul2D(-1, -1, transposeA, -1, transposeB), new[] { a, b });
+                var outputs = Functional.FromLayerMultiOutput(new MatMul2D(transposeA, transposeB), new[] { a, b });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -169,7 +169,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceL1(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceL1(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -192,7 +192,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceL2(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceL2(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -210,7 +210,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceLogSum(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceLogSum(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -228,7 +228,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceLogSumExp(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceLogSumExp(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -246,7 +246,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceMax(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceMax(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -269,7 +269,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceMean(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceMean(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -287,7 +287,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceMin(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceMin(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -310,7 +310,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceProd(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceProd(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -333,7 +333,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceSum(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceSum(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 
@@ -356,7 +356,7 @@ namespace Unity.InferenceEngine.Tests
 
             void Test(FunctionalTensor input, int[] axes)
             {
-                var outputs = Functional.FromLayerMultiOutput(new ReduceSumSquare(-1, -1, -1), new[] { input, Functional.Constant(axes) });
+                var outputs = Functional.FromLayerMultiOutput(new ReduceSumSquare(true, false), new[] { input, Functional.Constant(axes) });
                 TestFunctional(outputs, new[] { BackendType.GPUCompute, BackendType.GPUPixel });
             }
 

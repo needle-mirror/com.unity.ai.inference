@@ -26,7 +26,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     // replace concat with one input with identity
                     if (layer.inputs.Length == 1)
                     {
-                        model.layers[l] = new Layers.Identity(concatLayer.outputs[0], concatLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity().SetInputs(concatLayer.inputs[0]).SetOutputs(concatLayer.outputs[0]);
                         continue;
                     }
 
@@ -40,7 +40,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 
                     var repeatsConstant = new Constant(model.GetUniqueIndex(), new TensorShape(tileShape.rank), tileShape.ToArray());
                     model.AddConstant(repeatsConstant);
-                    model.layers[l] = new Layers.Tile(concatLayer.outputs[0], concatLayer.inputs[0], repeatsConstant.index);
+                    model.layers[l] = new Layers.Tile().SetInputs(concatLayer.inputs[0], repeatsConstant.index).SetOutputs(concatLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.Transpose transposeLayer)
@@ -60,7 +60,9 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     }
 
                     if (nopTranspose)
-                        model.layers[l] = new Layers.Identity(transposeLayer.outputs[0], transposeLayer.inputs[0]);
+                    {
+                        model.layers[l] = new Layers.Identity().SetInputs(transposeLayer.inputs[0]).SetOutputs(transposeLayer.outputs[0]);
+                    }
                     continue;
                 }
                 if (layer is Layers.Reshape reshapeLayer)
@@ -82,7 +84,9 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     }
 
                     if (isIdentity)
-                        model.layers[l] = new Layers.Identity(layer.outputs[0], layer.inputs[0]);
+                    {
+                        model.layers[l] = new Layers.Identity().SetInputs(layer.inputs[0]).SetOutputs(layer.outputs[0]);
+                    }
                     continue;
                 }
                 if (layer is Layers.Expand expandLayer)
@@ -109,7 +113,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 
                         if (isIdentity)
                         {
-                            model.layers[l] = new Layers.Identity(layer.outputs[0], layer.inputs[0]);
+                            model.layers[l] = new Layers.Identity().SetInputs(layer.inputs[0]).SetOutputs(layer.outputs[0]);
                             continue;
                         }
                     }
@@ -118,7 +122,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     {
                         var shapeConstant = new Constant(model.GetUniqueIndex(), new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray());
                         model.AddConstant(shapeConstant);
-                        model.layers[l] = new Layers.Reshape(layer.outputs[0], layer.inputs[0], shapeConstant.index);
+                        model.layers[l] = new Layers.Reshape(false).SetInputs(layer.inputs[0], shapeConstant.index).SetOutputs(layer.outputs[0]);
                     }
 
                     continue;
@@ -132,7 +136,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     if (scalarMadLayer.dataType == DataType.Int && (scalarMadLayer.sInt != 1 || scalarMadLayer.bInt != 0))
                         continue;
 
-                    model.layers[l] = new Layers.Identity(scalarMadLayer.outputs[0], scalarMadLayer.inputs[0]);
+                    model.layers[l] = new Layers.Identity().SetInputs(scalarMadLayer.inputs[0]).SetOutputs(scalarMadLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.Tile tileLayer)
@@ -150,7 +154,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     if (!allOnes)
                         continue;
 
-                    model.layers[l] = new Layers.Identity(tileLayer.outputs[0], tileLayer.inputs[0]);
+                    model.layers[l] = new Layers.Identity().SetInputs(tileLayer.inputs[0]).SetOutputs(tileLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.Reduce reduceLayer)
@@ -160,7 +164,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
                     if (reduceLayer.noopWithEmptyAxes && isEmptyAxes)
                     {
-                        model.layers[l] = new Layers.Identity(reduceLayer.outputs[0], reduceLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity().SetInputs(reduceLayer.inputs[0]).SetOutputs(reduceLayer.outputs[0]);
                         continue;
                     }
 
@@ -184,9 +188,14 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                         continue;
 
                     if (reduceLayer.keepdims)
-                        model.layers[l] = new Layers.Identity(reduceLayer.outputs[0], reduceLayer.inputs[0]);
+                    {
+                        model.layers[l] = new Layers.Identity().SetInputs(reduceLayer.inputs[0]).SetOutputs(reduceLayer.outputs[0]);
+                    }
                     else
-                        model.layers[l] = new Layers.Squeeze(reduceLayer.outputs[0], reduceLayer.inputs[0], reduceLayer.inputs[1]);
+                    {
+                        model.layers[l] = new Layers.Squeeze().SetInputs(reduceLayer.inputs[0], reduceLayer.inputs[1]).SetOutputs(reduceLayer.outputs[0]);
+                    }
+
                     continue;
                 }
                 if (layer is Layers.Cast castLayer)
@@ -196,7 +205,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     if (input.dataType != castLayer.toType)
                         continue;
 
-                    model.layers[l] = new Layers.Identity(castLayer.outputs[0], castLayer.inputs[0]);
+                    model.layers[l] = new Layers.Identity().SetInputs(castLayer.inputs[0]).SetOutputs(castLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.CastLike castLikeLayer)
@@ -206,11 +215,11 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     var targetType = ctx.GetPartialTensor(castLikeLayer.inputs[1]);
                     if (input.dataType == targetType.dataType)
                     {
-                        model.layers[l] = new Layers.Identity(castLikeLayer.outputs[0], castLikeLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity().SetInputs(castLikeLayer.inputs[0]).SetOutputs(castLikeLayer.outputs[0]);
                         continue;
                     }
 
-                    model.layers[l] = new Layers.Cast(castLikeLayer.outputs[0], castLikeLayer.inputs[0], targetType.dataType);
+                    model.layers[l] = new Layers.Cast(targetType.dataType).SetInputs(castLikeLayer.inputs[0]).SetOutputs(castLikeLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.BatchNormalization bnLayer)
@@ -246,7 +255,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     var biasConstantIndex = model.GetUniqueIndex();
                     model.AddConstant(new Constant(biasConstantIndex, bias.shape, bias.DownloadToArray()));
 
-                    model.layers[l] = new Layers.ScaleBias(bnLayer.outputs[0], bnLayer.inputs[0], scaleConstantIndex, biasConstantIndex);
+                    model.layers[l] = new Layers.ScaleBias().SetInputs(bnLayer.inputs[0], scaleConstantIndex, biasConstantIndex).SetOutputs(bnLayer.outputs[0]);
                     continue;
                 }
                 if (layer is Layers.Gather gatherLayer)
@@ -263,7 +272,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 
                     if (indices.shape.rank == 0)
                     {
-                        model.layers[l] = new Layers.Select(gatherLayer.outputs[0], gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1]);
+                        model.layers[l] = new Layers.Select().SetInputs(gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1]).SetOutputs(gatherLayer.outputs[0]);
                         continue;
                     }
 
@@ -271,7 +280,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     {
                         var lengthConstantIndex = model.GetUniqueIndex();
                         model.AddConstant(new Constant(lengthConstantIndex, new TensorShape(), new[] { 1 }));
-                        model.layers[l] = new Layers.Narrow(gatherLayer.outputs[0], gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1], lengthConstantIndex);
+                        model.layers[l] = new Layers.Narrow().SetInputs(gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1], lengthConstantIndex).SetOutputs(gatherLayer.outputs[0]);
                     }
                 }
             }

@@ -37,7 +37,8 @@ namespace Unity.InferenceEngine
                     layerInputs[i] = expressions[layer.inputs[i]];
                 }
 
-                var layerOutputs = FromLayerMultiOutput(layer, layerInputs);
+                var node = new LayerNode(layerInputs, layer);
+                var layerOutputs = node.CreateOutputs();
 
                 for (var i = 0; i < layer.outputs.Length; i++)
                 {

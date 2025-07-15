@@ -1,6 +1,4 @@
 using System;
-using Unity.Collections.LowLevel.Unsafe;
-using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
@@ -23,17 +21,11 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents a `NonMaxSuppression` object detection layer. This calculates an output tensor of selected indices of boxes from input `boxes` and `scores` tensors, and bases the indices on the scores and amount of intersection with previously selected boxes.
     /// </summary>
-    class NonMaxSuppression : Layer
+    [Operator(category = "ObjectDetection")]
+    [Inputs(names = new[] { "boxes", "scores", "maxOutputBoxesPerClass", "iouThreshold", "scoreThreshold" }, inputCPURead = new[] { 2, 3, 4 })]
+    partial class NonMaxSuppression : Layer
     {
-        static readonly string k_OpName = "NonMaxSuppression";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public CenterPointBox centerPointBox;
-
-        public NonMaxSuppression(int output, int boxes, int scores, int maxOutputBoxesPerClass = -1, int iouThreshold = -1, int scoreThreshold = -1, CenterPointBox centerPointBox = CenterPointBox.Corners)
-            : base(new[] { output }, new[] { boxes, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold })
-        {
-            this.centerPointBox = centerPointBox;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -73,9 +65,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.cpuBackend.NonMaxSuppression(boxes, scores, O, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -108,10 +97,10 @@ namespace Unity.InferenceEngine.Layers
     /// <summary>
     /// Represents an `RoiAlign` region of interest alignment layer. This calculates an output tensor by pooling the input tensor across each region of interest given by the `rois` tensor.
     /// </summary>
-    class RoiAlign : Layer
+    [Operator(category = "ObjectDetection")]
+    [Inputs(names = new[] { "X", "rois", "batch_indices" })]
+    partial class RoiAlign : Layer
     {
-        static readonly string k_OpName = "RoiAlign";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public RoiPoolingMode mode;
         public int outputHeight;
         public int outputWidth;
@@ -166,13 +155,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.RoiAlign(X, rois, indices, O, mode, outputHeight, outputWidth, samplingRatio, spatialScale, coordinateTransformationMode);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, mode: {mode}, outputHeight: {outputHeight}, outputWidth: {outputWidth}, samplingRatio: {samplingRatio}, spatialScale: {spatialScale}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

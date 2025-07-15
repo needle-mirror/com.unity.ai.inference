@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 
 namespace Unity.InferenceEngine
 {
@@ -149,6 +150,17 @@ namespace Unity.InferenceEngine
         protected abstract PartialTensor MaxDefinedPartialTensor(PartialTensor other);
 
         public abstract void CopyElement(int dstIndex, PartialTensor src, int srcIndex);
+
+        /// <summary>
+        /// Returns a string that represents the `PartialTensor`.
+        /// </summary>
+        /// <returns>The string representation of the `PartialTensor`.</returns>
+        public override string ToString()
+        {
+            return ToString(p => "d" + p);
+        }
+
+        internal abstract string ToString(Func<byte, string> GetParamName);
     }
 
     /// <summary>
@@ -372,6 +384,31 @@ namespace Unity.InferenceEngine
             }
 
             return true;
+        }
+
+        internal override string ToString(Func<byte, string> GetParamName)
+        {
+            var sb = new StringBuilder();
+            if (isPartiallyKnown)
+            {
+                if (m_Shape.rank > 0)
+                    sb.Append("[");
+                for (var i = 0; i < m_Elements.Length; i++)
+                {
+                    if (i != 0)
+                        sb.Append(", ");
+                    var element = this[i];
+                    sb.Append(element.ToString(GetParamName));
+                }
+                if (m_Shape.rank > 0)
+                    sb.Append("]");
+            }
+            else
+            {
+                sb.Append(dataType.ToString().ToLower());
+                sb.Append(m_Shape.ToString(GetParamName));
+            }
+            return sb.ToString();
         }
     }
 }

@@ -1,16 +1,13 @@
 using System;
-using Unity.Profiling;
 
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
     /// Represents an element-wise comparison layer.
     /// </summary>
+    [Inputs(names = new[] { "a", "b" })]
     abstract class Comparison : Layer
     {
-        protected Comparison(int output, int a, int b)
-            : base(new[] { output }, new[] { a, b }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var a = getPartialTensor(0);
@@ -47,14 +44,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class And : Broadcast
+    [Operator(category = "Logical")]
+    partial class And : Broadcast
     {
-        static readonly string k_OpName = "And";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public And(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             if (a.IsFalse() || b.IsFalse())
@@ -73,28 +65,18 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.And(A, B, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents a `Compress` logical layer that selects slices of an input tensor along a given axis according to a condition tensor.
     /// If you don't provide an axis, the layer flattens the input tensor.
     /// </summary>
-    class Compress : Layer
+    [Operator(category = "Logical")]
+    [Inputs(names = new[] { "input", "condition" })]
+    partial class Compress : Layer
     {
-        static readonly string k_OpName = "Compress";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool hasAxis;
         public int axis;
-
-        public Compress(int output, int input, int condition, int? axis)
-            : base(new[] { output }, new[] { input, condition })
-        {
-            hasAxis = axis.HasValue;
-            this.axis = axis ?? 0;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -154,14 +136,6 @@ namespace Unity.InferenceEngine.Layers
                 ctx.storage.Dispose(X);
             ctx.storage.Dispose(indices);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, hasAxis: {hasAxis}, axis: {axis}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -169,14 +143,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Equal : Comparison
+    [Operator(category = "Logical")]
+    partial class Equal : Comparison
     {
-        static readonly string k_OpName = "Equal";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Equal(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Eq(a, b);
@@ -194,9 +163,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Equal(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -204,14 +170,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Greater : Comparison
+    [Operator(category = "Logical")]
+    partial class Greater : Comparison
     {
-        static readonly string k_OpName = "Greater";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Greater(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Gt(a, b);
@@ -229,9 +190,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Greater(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -239,14 +197,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class GreaterOrEqual : Comparison
+    [Operator(category = "Logical")]
+    partial class GreaterOrEqual : Comparison
     {
-        static readonly string k_OpName = "GreaterOrEqual";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public GreaterOrEqual(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Ge(a, b);
@@ -264,27 +217,16 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.GreaterOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `IsInf` logical layer: f(x) = 1 elementwise if x is +Inf and detectPositive, or x is -Inf and `detectNegative` is true. Otherwise f(x) = 0.
     /// </summary>
-    class IsInf : Layer
+    [Operator(category = "Logical")]
+    partial class IsInf : Layer
     {
-        static readonly string k_OpName = "IsInf";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool detectNegative;
         public bool detectPositive;
-
-        public IsInf(int output, int input, bool detectNegative, bool detectPositive)
-            : base(new[] { output }, new[] { input })
-        {
-            this.detectNegative = detectNegative;
-            this.detectPositive = detectPositive;
-        }
 
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
@@ -299,27 +241,14 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.IsInf(A, O, detectNegative, detectPositive);
         }
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, detectNegative: {detectNegative}, detectPositive: {detectPositive}";
-        }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `IsNaN` logical layer: f(x) = 1 if x is NaN, otherwise f(x) = 0.
     /// </summary>
-    class IsNaN : Layer
+    [Operator(category = "Logical")]
+    partial class IsNaN : Layer
     {
-        static readonly string k_OpName = "IsNaN";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public IsNaN(int output, int input)
-            : base(new[] { output }, new[] { input }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             setPartialTensor(0, new PartialTensor<int>(getPartialTensor(0).shape));
@@ -333,9 +262,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.IsNaN(A, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -343,14 +269,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Less : Comparison
+    [Operator(category = "Logical")]
+    partial class Less : Comparison
     {
-        static readonly string k_OpName = "Less";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Less(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Lt(a, b);
@@ -368,9 +289,6 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.Less(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -378,14 +296,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class LessOrEqual : Comparison
+    [Operator(category = "Logical")]
+    partial class LessOrEqual : Comparison
     {
-        static readonly string k_OpName = "LessOrEqual";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public LessOrEqual(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             return PartialTensorElement<T>.Le(a, b);
@@ -403,22 +316,14 @@ namespace Unity.InferenceEngine.Layers
             else
                 ctx.backend.LessOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
     /// Represents an element-wise `Not` logical layer: f(x) = ~x.
     /// </summary>
-    class Not : Unary
+    [Operator(category = "Logical")]
+    partial class Not : Unary
     {
-        static readonly string k_OpName = "Not";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Not(int output, int input)
-            : base(output, input) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
         {
             if (a.IsTrue())
@@ -454,8 +359,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Not(A, O);
         }
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -463,14 +366,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Or : Broadcast
+    [Operator(category = "Logical")]
+    partial class Or : Broadcast
     {
-        static readonly string k_OpName = "Or";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Or(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             if (a.IsFalse() && b.IsFalse())
@@ -489,9 +387,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Or(A, B, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -499,14 +394,9 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Xor : Broadcast
+    [Operator(category = "Logical")]
+    partial class Xor : Broadcast
     {
-        static readonly string k_OpName = "Xor";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Xor(int output, int a, int b)
-            : base(output, a, b) { }
-
         internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
             if (a.IsTrue())
@@ -537,9 +427,6 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Xor(A, B, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -547,14 +434,10 @@ namespace Unity.InferenceEngine.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    class Where : Layer
+    [Operator(category = "Logical")]
+    [Inputs(names = new[] { "condition", "input1", "input2" })]
+    partial class Where : Layer
     {
-        static readonly string k_OpName = "Where";
-        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
-
-        public Where(int output, int condition, int input1, int input2)
-            : base(new[] { output }, new[] { condition, input1, input2 }) { }
-
         internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
         {
             var condition = getPartialTensor(0) as PartialTensor<int>;
@@ -589,8 +472,5 @@ namespace Unity.InferenceEngine.Layers
                 return;
             ctx.backend.Where(C, A, B, O);
         }
-
-        public override string opName => k_OpName;
-        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }
