@@ -12,14 +12,14 @@ namespace SourceGenerators;
 /// </summary>
 public class OpDef
 {
-    string m_Name;
-    string m_Category;
-    bool m_IsRandom;
-    bool m_IsInputsVariadic;
-    OpInput[] m_Inputs;
-    bool m_IsOutputsVariadic;
-    OpOutput[] m_Outputs;
-    OpField[] m_Fields;
+    public string m_Name;
+    public string m_Category;
+    public bool m_IsRandom;
+    public bool m_IsInputsVariadic;
+    public OpInput[] m_Inputs;
+    public bool m_IsOutputsVariadic;
+    public OpOutput[] m_Outputs;
+    public OpField[] m_Fields;
 
     /// <summary>
     /// Construct OpDef from classSymbol, used when the Layer class is already defined in code.
@@ -165,61 +165,46 @@ public class OpDef
         codeWriter.WriteLine("}");
     }
 
-    public void WriteIsEquivalent(IndentedTextWriter codeWriter)
+    public void WritePartialInference(IndentedTextWriter codeWriter)
     {
-        codeWriter.WriteLine("internal override bool IsEquivalent(Layer layer)");
+        codeWriter.WriteLine("internal override void InferPartial(PartialInferenceContext ctx)");
         codeWriter.WriteLine("{");
         codeWriter.Indent++;
-        codeWriter.WriteLine($"if (layer is not {m_Name} other)");
-        codeWriter.Indent++;
-        codeWriter.WriteLine("return false;");
-        codeWriter.Indent--;
-        foreach (var field in m_Fields)
+        var args = new List<string>();
+        if (m_IsInputsVariadic)
         {
-            if (field.type.isArray)
-            {
-                codeWriter.WriteLine($"if (!StructuralComparisons.StructuralEqualityComparer.Equals({field.name}, other.{field.name}))");
-            }
-            else
-            {
-                codeWriter.WriteLine($"if ({field.name} != other.{field.name})");
-            }
-
-            codeWriter.Indent++;
-            codeWriter.WriteLine("return false;");
-            codeWriter.Indent--;
+            codeWriter.WriteLine("var inputTensors = new PartialTensor[inputs.Length];");
+            codeWriter.WriteLine("for (var i = 0; i < inputs.Length; i++)");
+            codeWriter.WriteLine("    inputTensors[i] = ctx.GetPartialTensor(inputs[i]);");
+            args.Add("inputTensors");
         }
-
-        codeWriter.WriteLine("return true;");
-        codeWriter.Indent--;
-        codeWriter.WriteLine("}");
-    }
-
-    public void WriteGetHashCode(IndentedTextWriter codeWriter)
-    {
-        codeWriter.WriteLine("public override int GetHashCode()");
-        codeWriter.WriteLine("{");
-        codeWriter.Indent++;
-        codeWriter.WriteLine("var hashCode = opName.GetHashCode();");
-        foreach (var field in m_Fields)
+        else
         {
-            // skip hashing all the values of the array for speed
-            if (field.type.isArray)
+            for (var i = 0; i < m_Inputs.Length; i++)
             {
-                codeWriter.WriteLine($"hashCode = HashCode.Combine(hashCode, {field.name}?.Length ?? -1);");
-                codeWriter.WriteLine($"for (var i = 0; i < ({field.name}?.Length ?? 0); i++)");
-                codeWriter.Indent++;
-                codeWriter.WriteLine($"hashCode = HashCode.Combine(hashCode, {field.name}[i]);");
-                codeWriter.Indent--;
-            }
-            else
-            {
-                codeWriter.WriteLine($"hashCode = HashCode.Combine(hashCode, {field.name});");
+                codeWriter.WriteLine($"var {m_Inputs[i].name} = ctx.GetPartialTensor(inputs[{i}]);");
+                args.Add(m_Inputs[i].name);
             }
         }
 
-        codeWriter.WriteLine("return hashCode;");
+        for (var i = 0; i < m_Fields.Length; i++)
+        {
+            args.Add(m_Fields[i].name);
+        }
+
+        if (m_IsOutputsVariadic || m_Outputs.Length > 1)
+        {
+            codeWriter.WriteLine($"var outputTensors = InferPartial({string.Join(", ", args)});");
+            codeWriter.WriteLine("for (var i = 0; i < outputTensors.Length; i++)");
+            codeWriter.WriteLine("    ctx.AddPartialTensor(outputs[i], outputTensors[i]);");
+        }
+        else
+        {
+            codeWriter.WriteLine($"var outputTensor = InferPartial({string.Join(", ", args)});");
+            codeWriter.WriteLine("ctx.AddPartialTensor(outputs[0], outputTensor);");
+        }
         codeWriter.Indent--;
+
         codeWriter.WriteLine("}");
     }
 
@@ -332,6 +317,12 @@ public class OpDef
             codeWriter.WriteLine($"return this;");
             codeWriter.Indent--;
             codeWriter.WriteLine('}');
+            codeWriter.WriteLine();
+        }
+
+        if (m_IsOutputsVariadic || m_Outputs?.Length > 1)
+        {
+            codeWriter.WriteLine("internal override bool IsOutputList => true;");
             codeWriter.WriteLine();
         }
     }

@@ -3,57 +3,28 @@ using System;
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
-    /// Represents an element-wise comparison layer.
-    /// </summary>
-    [Inputs(names = new[] { "a", "b" })]
-    abstract class Comparison : Layer
-    {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var a = getPartialTensor(0);
-            var b = getPartialTensor(1);
-
-            var shapeOut = a.shape.Broadcast(b.shape);
-            var tensorOut = new PartialTensor<int>(shapeOut);
-
-            if (shapeOut.IsStatic() && shapeOut.rank <= 1 && a.isPartiallyKnown && b.isPartiallyKnown)
-            {
-                if (a is PartialTensor<int> aInt && b is PartialTensor<int> bInt)
-                {
-                    for (var i = 0; i < tensorOut.length; i++)
-                        tensorOut[i] = InferPartial(aInt[aInt.length > 1 ? i : 0], bInt[bInt.length > 1 ? i : 0]);
-                }
-                else if (a is PartialTensor<float> aFloat && b is PartialTensor<float> bFloat)
-                {
-                    for (var i = 0; i < tensorOut.length; i++)
-                        tensorOut[i] = InferPartial(aFloat[aFloat.length > 1 ? i : 0], bFloat[bFloat.length > 1 ? i : 0]);
-                }
-            }
-
-            setPartialTensor(0, tensorOut);
-        }
-
-        /// <summary>
-        /// Returns the optional function that calculates an output partial tensor element from input partial tensor elements.
-        /// </summary>
-        internal abstract PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b) where T : unmanaged;
-    }
-
-    /// <summary>
     /// Represents an element-wise `And` logical operation layer: f(a, b) = a &amp; b.
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class And : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class And : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            if (a.IsFalse() || b.IsFalse())
-                return PartialTensorElement<T>.Zero;
-            if (a.IsTrue() && b.IsTrue())
-                return PartialTensorElement<T>.One;
-            return PartialTensorElement<T>.Unknown;
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) =>
+            {
+                if (x == y)
+                    return x;
+                if (x == PartialTensorElement<int>.One)
+                    return y;
+                if (y == PartialTensorElement<int>.One)
+                    return x;
+                if (x == PartialTensorElement<int>.Zero || y == PartialTensorElement<int>.Zero)
+                    return PartialTensorElement<int>.Zero;
+                return PartialTensorElement<int>.Unknown;
+            });
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -78,22 +49,17 @@ namespace Unity.InferenceEngine.Layers
         public bool hasAxis;
         public int axis;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor condition, bool hasAxis, int axis)
         {
-            var X = getPartialTensor(0);
-            var condition = getPartialTensor(1);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
-            var isZero = shapeX.Length() * condition.shape.Length() == 0;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
+            var isZero = shapeInput.Length() * condition.shape.Length() == 0;
             if (!hasAxis)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType, new DynamicTensorShape(isZero ? DynamicTensorDim.Zero : DynamicTensorDim.Unknown)));
-                return;
-            }
+                return PartialTensor.Create(dataType, new DynamicTensorShape(isZero ? DynamicTensorDim.Zero : DynamicTensorDim.Unknown));
 
-            var shapeOut = shapeX;
+            var shapeOut = shapeInput;
             shapeOut[axis] = isZero ? DynamicTensorDim.Zero : DynamicTensorDim.Unknown;
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.Create(dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -144,11 +110,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Equal : Comparison
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Equal : Layer
     {
-        internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Eq(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Eq);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Eq);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -171,11 +141,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Greater : Comparison
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Greater : Layer
     {
-        internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Gt(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Gt);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Gt);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -198,11 +172,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class GreaterOrEqual : Comparison
+    [Inputs(names = new[] { "a", "b" })]
+    partial class GreaterOrEqual : Layer
     {
-        internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Ge(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Ge);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Ge);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -228,9 +206,9 @@ namespace Unity.InferenceEngine.Layers
         public bool detectNegative;
         public bool detectPositive;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, bool detectNegative, bool detectPositive)
         {
-            setPartialTensor(0, new PartialTensor<int>(getPartialTensor(0).shape));
+            return new PartialTensor<int>(input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -249,9 +227,9 @@ namespace Unity.InferenceEngine.Layers
     [Operator(category = "Logical")]
     partial class IsNaN : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            setPartialTensor(0, new PartialTensor<int>(getPartialTensor(0).shape));
+            return new PartialTensor<int>(input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -270,11 +248,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Less : Comparison
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Less : Layer
     {
-        internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Lt(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Lt);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Lt);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -297,11 +279,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class LessOrEqual : Comparison
+    [Inputs(names = new[] { "a", "b" })]
+    partial class LessOrEqual : Layer
     {
-        internal override PartialTensorElement<int> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Le(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Le);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Le);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -322,33 +308,18 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Not` logical layer: f(x) = ~x.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Not : Unary
+    partial class Not : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            if (a.IsTrue())
-                return PartialTensorElement<T>.Zero;
-            if (a.IsFalse())
-                return PartialTensorElement<T>.One;
-            return PartialTensorElement<T>.Unknown;
-        }
-
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var input = getPartialTensor(0) as PartialTensor<int>;
-            var output = new PartialTensor<int>(input.shape);
-            if (output.isPartiallyKnown)
+            return PartialTensor.Unary(input as PartialTensor<int>, x =>
             {
-                for (var i = 0; i < output.length; i++)
-                {
-                    if (input[i].IsTrue())
-                        output[i] = PartialTensorElement<int>.Zero;
-                    else if (input[i].IsFalse())
-                        output[i] = PartialTensorElement<int>.One;
-                }
-            }
-
-            setPartialTensor(0, output);
+                if (x == PartialTensorElement<int>.One)
+                    return PartialTensorElement<int>.Zero;
+                if (x == PartialTensorElement<int>.Zero)
+                    return PartialTensorElement<int>.One;
+                return PartialTensorElement<int>.Unknown;
+            });
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -362,20 +333,59 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `NotEqual` logical operation layer: f(a, b) = 1 if a != b, otherwise f(x) = 0.
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Logical")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class NotEqual : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Ne);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Ne);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as Tensor<int>;
+            if (O.shape.HasZeroDims())
+                return;
+            if (A is Tensor<int>)
+                ctx.backend.NotEqual(A as Tensor<int>, B as Tensor<int>, O);
+            else
+                ctx.backend.NotEqual(A as Tensor<float>, B as Tensor<float>, O);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Or` logical operation layer: f(a, b) = a | b.
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Or : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Or : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            if (a.IsFalse() && b.IsFalse())
-                return PartialTensorElement<T>.Zero;
-            if (a.IsTrue() || b.IsTrue())
-                return PartialTensorElement<T>.One;
-            return PartialTensorElement<T>.Unknown;
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) =>
+            {
+                if (x == PartialTensorElement<int>.Zero)
+                    return y;
+                if (y == PartialTensorElement<int>.Zero)
+                    return x;
+                if (x == y)
+                    return x;
+                if (x == PartialTensorElement<int>.One || y == PartialTensorElement<int>.One)
+                    return PartialTensorElement<int>.One;
+                return PartialTensorElement<int>.Unknown;
+            });
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -395,27 +405,21 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Logical")]
-    partial class Xor : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Xor : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            if (a.IsTrue())
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) =>
             {
-                if (b.IsTrue())
-                    return PartialTensorElement<T>.Zero;
-                if (b.IsFalse())
-                    return PartialTensorElement<T>.One;
-            }
-
-            if (a.IsFalse())
-            {
-                if (b.IsTrue())
-                    return PartialTensorElement<T>.One;
-                if (b.IsFalse())
-                    return PartialTensorElement<T>.Zero;
-            }
-
-            return PartialTensorElement<T>.Unknown;
+                if (x == y)
+                    return PartialTensorElement<int>.Zero;
+                if (x == PartialTensorElement<int>.One && y == PartialTensorElement<int>.Zero)
+                    return PartialTensorElement<int>.One;
+                if (x == PartialTensorElement<int>.Zero && y == PartialTensorElement<int>.One)
+                    return PartialTensorElement<int>.One;
+                return PartialTensorElement<int>.Unknown;
+            });
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -438,12 +442,8 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "condition", "input1", "input2" })]
     partial class Where : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor condition, PartialTensor input1, PartialTensor input2)
         {
-            var condition = getPartialTensor(0) as PartialTensor<int>;
-            var input1 = getPartialTensor(1);
-            var input2 = getPartialTensor(2);
-
             var shapeOut = condition.shape.Broadcast(input1.shape.Broadcast(input2.shape));
             var tensorOut = PartialTensor.Create(input1.dataType, shapeOut);
 
@@ -451,15 +451,15 @@ namespace Unity.InferenceEngine.Layers
             {
                 for (var i = 0; i < tensorOut.length; i++)
                 {
-                    var c = condition[i % condition.length];
-                    if (c.IsTrue())
+                    var c = condition.Get<int>(i % condition.length);
+                    if (c == PartialTensorElement<int>.One)
                         tensorOut.CopyElement(i, input1, i % input1.length);
-                    else if (c.IsFalse())
+                    else if (c == PartialTensorElement<int>.Zero)
                         tensorOut.CopyElement(i, input2, i % input2.length);
                 }
             }
 
-            setPartialTensor(0, tensorOut);
+            return tensorOut;
         }
 
         internal override void Execute(ExecutionContext ctx)

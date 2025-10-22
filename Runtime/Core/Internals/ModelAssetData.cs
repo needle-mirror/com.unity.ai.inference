@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents data storage for an Inference Engine model asset.
+    /// Represents data storage for a Sentis model asset.
     /// </summary>
     [PreferBinarySerialization]
     class ModelAssetData : ScriptableObject

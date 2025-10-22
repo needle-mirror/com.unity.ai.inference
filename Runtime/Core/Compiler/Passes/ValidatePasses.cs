@@ -48,7 +48,7 @@ namespace Unity.InferenceEngine.Compiler.Passes
                 }
             }
 
-            Logger.AssertAreEqual(unconnectedLinks.Count, 0, "unexpected broken links: {0}", unconnectedLinks);
+            Logger.AssertAreEqual(unconnectedLinks.Count, 0, "unexpected broken links: {0}", unconnectedLinks.Count);
 
             List<int> unconnectedOutput = new List<int>();
             foreach (var gO in globalOutputs)
@@ -57,7 +57,7 @@ namespace Unity.InferenceEngine.Compiler.Passes
                     unconnectedOutput.Add(gO.Key);
             }
 
-            Logger.AssertAreEqual(unconnectedOutput.Count, 0, "unexpected broken links: {0}", unconnectedOutput);
+            Logger.AssertAreEqual(unconnectedOutput.Count, 0, "unexpected broken links: {0}", unconnectedOutput.Count);
         }
     }
 

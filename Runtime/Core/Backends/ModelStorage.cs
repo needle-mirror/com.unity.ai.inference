@@ -89,7 +89,7 @@ namespace Unity.InferenceEngine
             if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
                 return readableTensorData.array.Get<int>(0);
 
-            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Inference Engine will download the tensor data which may be slow.");
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<int>(1)[0];
         }
 
@@ -103,7 +103,7 @@ namespace Unity.InferenceEngine
             if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
                 return readableTensorData.array.Get<float>(0);
 
-            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Inference Engine will download the tensor data which may be slow.");
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<float>(1)[0];
         }
 
@@ -120,7 +120,7 @@ namespace Unity.InferenceEngine
             if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
                 return readableTensorData.array.AsReadOnlySpan<int>(tensor.shape.length);
 
-            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Inference Engine will download the tensor data which may be slow.");
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<int>(tensor.shape.length).AsReadOnlySpan();
         }
 
@@ -137,7 +137,7 @@ namespace Unity.InferenceEngine
             if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
                 return readableTensorData.array.AsReadOnlySpan<float>(tensor.shape.length);
 
-            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Inference Engine will download the tensor data which may be slow.");
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<float>(tensor.shape.length).AsReadOnlySpan();
         }
 
@@ -218,7 +218,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void PrepareStorage(Model model, bool takeoverWeights)
+        public void PrepareStorage(Model model)
         {
             m_TensorsToDisposeWhenLayerDone.Clear();
             m_InUseTensorsPool.Clear();
@@ -232,12 +232,11 @@ namespace Unity.InferenceEngine
             {
                 // TODO<Allocator> consider moving constants in memory pool to get disposed
                 var constant = model.constants[i];
-                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, new CPUTensorData(constant.weights));
+                var nativeTensorArray = constant.shape.length == 0 ? null : new NativeTensorArrayFromManagedArray(constant.array, constant.shape.length);
+                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, new CPUTensorData(nativeTensorArray));
 
                 m_InUseTensorsPool[constant.index] = tensor;
                 constants.Add(constant.index);
-                if (takeoverWeights)
-                    constant.m_Weights = null;
             }
 
             m_UnconnectedTensors = new HashSet<int>(model.inputs.Select(i => i.index));

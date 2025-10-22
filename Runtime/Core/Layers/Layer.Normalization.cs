@@ -11,13 +11,10 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "scale", "bias" })]
     partial class ScaleBias : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scale, PartialTensor bias)
         {
-            var X = getPartialTensor(0);
-            var scale = getPartialTensor(1);
-            var bias = getPartialTensor(2);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
             var c = DynamicTensorDim.Unknown;
@@ -25,17 +22,14 @@ namespace Unity.InferenceEngine.Layers
             c = DynamicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
             c = DynamicTensorDim.MaxDefinedDim(c, shapeBias[0]);
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(dataType);
 
-            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
+            Logger.AssertIsTrue(!shapeInput.hasRank || shapeInput.rank >= 2, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeInput.rank);
 
-            var shapeOut = new DynamicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeInput);
             shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], c);
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.Create(dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -57,13 +51,10 @@ namespace Unity.InferenceEngine.Layers
     {
         public float epsilon;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scale, PartialTensor bias, float epsilon)
         {
-            var X = getPartialTensor(0);
-            var scale = getPartialTensor(1);
-            var bias = getPartialTensor(2);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
             var c = DynamicTensorDim.Unknown;
@@ -71,18 +62,15 @@ namespace Unity.InferenceEngine.Layers
             c = DynamicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
             c = DynamicTensorDim.MaxDefinedDim(c, shapeBias[0]);
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(dataType);
 
-            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
+            Logger.AssertIsTrue(!shapeInput.hasRank || shapeInput.rank >= 2, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeInput.rank);
             shapeScale.DeclareRank(1);
 
-            var shapeOut = new DynamicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeInput);
             shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], c);
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.Create(dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -104,30 +92,24 @@ namespace Unity.InferenceEngine.Layers
     {
         public float epsilon;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scale, PartialTensor bias, float epsilon)
         {
-            var X = getPartialTensor(0);
-            var scale = getPartialTensor(1);
-            var bias = getPartialTensor(2);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank);
 
-            Logger.AssertIsTrue(shapeX.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+            Logger.AssertIsTrue(shapeInput.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeInput.rank);
 
             shapeScale.DeclareRank(1);
             shapeBias.DeclareRank(1);
 
-            var shape = new DynamicTensorShape(shapeX);
+            var shape = new DynamicTensorShape(shapeInput);
             shape[-1] = DynamicTensorDim.MaxDefinedDim(shape[-1], DynamicTensorDim.MaxDefinedDim(shapeScale[0], shapeBias[0]));
-            setPartialTensor(0, PartialTensor.Create(dataType, shape));
+            return PartialTensor.Create(dataType, shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -149,27 +131,22 @@ namespace Unity.InferenceEngine.Layers
     {
         public float epsilon;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scale, float epsilon)
         {
-            var X = getPartialTensor(0);
-            var scale = getPartialTensor(1);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             var shapeScale = scale.shape;
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank);
 
-            Logger.AssertIsTrue(shapeX.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+            Logger.AssertIsTrue(shapeInput.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeInput.rank);
 
             shapeScale.DeclareRank(1);
 
-            var shape = new DynamicTensorShape(shapeX);
+            var shape = new DynamicTensorShape(shapeInput);
             shape[-1] = DynamicTensorDim.MaxDefinedDim(shape[-1], shapeScale[0]);
-            setPartialTensor(0, PartialTensor.Create(dataType, shape));
+            return PartialTensor.Create(dataType, shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -191,37 +168,29 @@ namespace Unity.InferenceEngine.Layers
     {
         public float epsilon;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scale, PartialTensor bias, PartialTensor mean, PartialTensor variance, float epsilon)
         {
-            var X = getPartialTensor(0);
-            var scale = getPartialTensor(1);
-            var bias = getPartialTensor(2);
-            var mean = getPartialTensor(3);
-            var var = getPartialTensor(4);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
             var shapeMean = mean.shape;
-            var shapeVar = var.shape;
+            var shapeVar = variance.shape;
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank);
 
-            Logger.AssertIsTrue(shapeX.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+            Logger.AssertIsTrue(shapeInput.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeInput.rank);
 
             shapeScale.DeclareRank(1);
             shapeBias.DeclareRank(1);
             shapeMean.DeclareRank(1);
             shapeVar.DeclareRank(1);
 
-            var shape = new DynamicTensorShape(shapeX);
-            if (shapeX.rank > 1)
+            var shape = new DynamicTensorShape(shapeInput);
+            if (shapeInput.rank > 1)
                 shape[1] = DynamicTensorDim.MaxDefinedDim(shape[1], DynamicTensorDim.MaxDefinedDim(shapeScale[0], DynamicTensorDim.MaxDefinedDim(shapeBias[0], DynamicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
-            setPartialTensor(0, PartialTensor.Create(dataType, shape));
+            return PartialTensor.Create(dataType, shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -245,13 +214,12 @@ namespace Unity.InferenceEngine.Layers
         public float bias;
         public int count;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, float alpha, float beta, float bias, int count)
         {
-            var X = getPartialTensor(0);
-            if (X.shape.hasRank)
-                Logger.AssertIsTrue(X.shape.rank >= 2, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, X.shape.rank);
+            if (input.shape.hasRank)
+                Logger.AssertIsTrue(input.shape.rank >= 2, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, input.shape.rank);
 
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)

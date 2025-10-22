@@ -61,17 +61,11 @@ Use the [`layers`](xref:Unity.InferenceEngine.Model.layers) property of the runt
 
 ## Open a model as a graph
 
-To open an ONNX model as a graph, follow these steps:
-
-1. Install [Netron](https://github.com/lutzroeder/netron), a third-party viewer for neural networks.
-2. In the Unity Editor, you can open a model in Netron in one of the following ways:
-
-   * Double-click the model asset in the **Project** window.
-   * Select the model asset, then select **Open** in the **Model Asset Import Settings** window.
+To view a runtime model as a graph, refer to the [Model Visualizer](visualizer.md). This tool provides a graphical representation of the model, so you can inspect its structure, inputs, outputs, and layers.
 
 ## Additional resources
 
-- [Inspect models with the visualizer](visualizer.md)
 - [Profile a model](profile-a-model.md)
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Supported ONNX operators](supported-operators.md)
+- [Supported LiteRT operators](supported-litert-operators.md)

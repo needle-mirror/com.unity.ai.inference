@@ -8,7 +8,6 @@ using Microsoft.Msagl.Core.GraphAlgorithms;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.Layout.Incremental;
 using Microsoft.Msagl.Routing;
-using Node = Microsoft.Msagl.Core.Layout.Node;
 
 namespace Microsoft.Msagl.Layout.Incremental {
     /// <summary>

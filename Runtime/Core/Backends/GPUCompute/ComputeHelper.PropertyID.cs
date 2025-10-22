@@ -32,6 +32,7 @@ namespace Unity.InferenceEngine
     {
         public static readonly int k_ID_X_height = Shader.PropertyToID("X_height");
         public static readonly int k_ID_X_width = Shader.PropertyToID("X_width");
+        public static readonly int k_ID_X_widthDiv4 = Shader.PropertyToID("X_widthDiv4");
         public static readonly int k_ID_O_height = Shader.PropertyToID("O_height");
         public static readonly int k_ID_O_width = Shader.PropertyToID("O_width");
         public static readonly int k_ID_O_channelsDiv4 = Shader.PropertyToID("O_channelsDiv4");
@@ -112,6 +113,7 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_outDepth = Shader.PropertyToID("outDepth");
         public static readonly int k_ID_blocksize = Shader.PropertyToID("blocksize");
         public static readonly int k_ID_stride = Shader.PropertyToID("stride");
+        public static readonly int k_ID_size = Shader.PropertyToID("size");
         public static readonly int k_ID_pad = Shader.PropertyToID("pad");
         public static readonly int k_ID_pool = Shader.PropertyToID("pool");
         public static readonly int k_ID_poolX = Shader.PropertyToID("poolX");
@@ -148,6 +150,7 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_outerLength = Shader.PropertyToID("outerLength");
         public static readonly int k_ID_reduceLength = Shader.PropertyToID("reduceLength");
         public static readonly int k_ID_maxK = Shader.PropertyToID("maxK");
+        public static readonly int k_ID_maxX = Shader.PropertyToID("maxX");
         public static readonly int k_ID_outStridesA = Shader.PropertyToID("outStridesA");
         public static readonly int k_ID_sumStridesA = Shader.PropertyToID("sumStridesA");
         public static readonly int k_ID_sumSize = Shader.PropertyToID("sumSize");
@@ -389,6 +392,16 @@ namespace Unity.InferenceEngine
         public static readonly int k_ID_offset = Shader.PropertyToID("offset");
         public static readonly int k_ID_Kdiv4 = Shader.PropertyToID("Kdiv4");
         public static readonly int k_ID_Ndiv4 = Shader.PropertyToID("Ndiv4");
+
+        public static readonly int k_ID_DFTFundamentalFreq = Shader.PropertyToID("DFTFundamentalFreq");
+        public static readonly int k_ID_IDFTNormalizer = Shader.PropertyToID("IDFTNormalizer");
+        public static readonly int k_ID_NbUniqueDFTFreqTimes2 = Shader.PropertyToID("NbUniqueDFTFreqTimes2");
+        public static readonly int k_ID_dftLength = Shader.PropertyToID("dftLength");
+        public static readonly int k_ID_sampleRate = Shader.PropertyToID("sampleRate");
+        public static readonly int k_ID_lowerEdgeMel = Shader.PropertyToID("lowerEdgeMel");
+        public static readonly int k_ID_melStep = Shader.PropertyToID("melStep");
+        public static readonly int k_ID_numSpectrogramBins = Shader.PropertyToID("numSpectrogramBins");
+        public static readonly int k_ID_numMelBins = Shader.PropertyToID("numMelBins");
 
         public static readonly TensorProperties k_TensorPropertiesO = new TensorProperties("O");
         public static readonly TensorProperties k_TensorPropertiesX = new TensorProperties("X");

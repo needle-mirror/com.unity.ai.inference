@@ -430,6 +430,25 @@ partial class CPUBackend
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct TruncJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return math.trunc(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct RoundJob : IParallelForBatch, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -487,6 +506,25 @@ partial class CPUBackend
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct Expm1Job : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return MathExtensions.Expm1(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct LogJob : IParallelForBatch, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -503,6 +541,82 @@ partial class CPUBackend
         public float Operation(float v)
         {
             return log(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct Log10Job : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return math.log10(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct Log1pJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return MathExtensions.Log1p(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct Log2Job : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return math.log2(v);
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct RsqrtJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public float Operation(float v)
+        {
+            return math.rsqrt(v);
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
@@ -1062,6 +1176,25 @@ partial class CPUBackend
         public int Operation(int v)
         {
             return (v == 0) ? 1 : 0;
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct BitwiseNotJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+        public void Execute(int startIndex, int count)
+        {
+            for (int index = startIndex; index < startIndex + count; ++index)
+            {
+                Optr[index] = Operation(Xptr[index]);
+            }
+        }
+
+        public int Operation(int v)
+        {
+            return ~v;
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]

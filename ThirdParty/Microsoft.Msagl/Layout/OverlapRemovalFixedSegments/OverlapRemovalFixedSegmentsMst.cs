@@ -8,9 +8,9 @@ using Microsoft.Msagl.Routing.ConstrainedDelaunayTriangulation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 namespace Microsoft.Msagl.Layout.OverlapRemovalFixedSegments
 {
+    using SymmetricSegment = SymmetricTuple<Point>;
 
     internal enum SiteType { CenterBoxMoveable, CenterBoxFixed, PointOnSegment }
 

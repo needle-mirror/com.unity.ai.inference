@@ -1,0 +1,14 @@
+{
+    "name": "Unity.InferenceEngine.Tokenization",
+    "rootNamespace": "Unity.InferenceEngine.Tokenization",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

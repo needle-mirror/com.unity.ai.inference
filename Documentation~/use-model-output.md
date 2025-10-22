@@ -22,7 +22,7 @@ For details on how to index and access the tensor, refer to [tensor fundamentals
 
 To convert a tensor to a render texture, use [`TextureConverter.RenderToTexture`](xref:TextureConverter.RenderToTexture*) to write tensor data to an existing render texture.
 
-When you use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.TextureConverter.ToTexture*), if the dimensions of the tensor doesn't match those of the render texture, Inference Engine makes the following adjustments:
+When you use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.TextureConverter.ToTexture*), if the dimensions of the tensor doesn't match those of the render texture, Sentis makes the following adjustments:
 
 - Samples the tensor linearly if the dimensions don't match.
 - Removes channels from the end if the render texture has fewer channels than the tensor.

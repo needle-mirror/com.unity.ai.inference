@@ -1,7 +1,5 @@
 # Export and convert a file to ONNX
 
-Inference Engine imports files in the Open Neural Network Exchange (ONNX) format or the `.sentis` serialized format. If your model is in a different format, convert it to ONNX before you import it into Unity.
-
 The following sections describe how to export and convert models to the ONNX format.
 
 ## Export an ONNX file from a machine learning framework
@@ -14,7 +12,7 @@ To export files in ONNX format from common machine learning frameworks, refer to
 - [Convert TensorFlow, Keras, Tensorflow.js and Tflite models to ONNX](https://github.com/onnx/tensorflow-onnx) on the ONNX GitHub repository.
 
 > [!NOTE]
-> To ensure compatibility with Inference Engine, set the ONNX opset version to `15` during export. For more information about ONNX compatibility, refer to [import a model file](import-a-model-file.md).
+> To ensure compatibility with Sentis, set the ONNX opset version to `15` during export. For more information about ONNX compatibility, refer to [import a model file](import-a-model-file.md).
 
 ## Convert TensorFlow files to ONNX
 
@@ -45,12 +43,11 @@ If you only have the `.ckpt` file, find the Python code that constructs the mode
 
 The following sections explain how to convert PyTorch files to the ONNX format.
 
-### Model files
+### PyTorch Model files
 
 PyTorch model files usually have the `.pt` file extension.
 
 To export a model file to ONNX, refer to the links in the following instructions:
-
 1. [Load the model](https://pytorch.org/tutorials/beginner/saving_loading_models.html) in Python.
 2. [Export the model](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html) as an ONNX file. When you export your model, it's recommended to use Opset `15` or higher.
 

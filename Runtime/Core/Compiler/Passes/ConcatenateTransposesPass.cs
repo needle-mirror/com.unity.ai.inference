@@ -1,68 +1,70 @@
 using System;
 using System.Collections.Generic;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class ConcatenateTransposesPass : IModelPass
+    /// <summary>
+    /// Replaces multiple chained transposes with a single op.
+    /// </summary>
+    class ConcatenateTransposesPass : GraphPass
     {
-        public void Run(ref Model model)
+        public override void Run(GraphModule gm)
         {
-            var preserve = new HashSet<int>();
-            var removeLayers = new HashSet<int>();
-            var transposeReferences = new Dictionary<int, int>();
-            var layerDownstreamCounts = new Dictionary<int, int>();
-            foreach (var o in model.outputs)
-                preserve.Add(o.index);
+            var transposeNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Transpose");
 
-            for (int l = 0; l < model.layers.Count; ++l)
+            for (var i = transposeNodes.Count - 1; i >= 0; i--)
             {
-                Layer layer = model.layers[l];
+                var node = transposeNodes[i];
+                if (node.erased)
+                    continue;
 
-                layerDownstreamCounts[layer.outputs[0]] = 0;
+                // Accumulate the chain of transpose nodes backwards
+                var chainNodes = new List<Node> { node };
+                var currentInputNode = (Node)node.args[0];
 
-                foreach (var input in layer.inputs)
+                while (currentInputNode.op == Node.kOpCallFunction && currentInputNode.target == "Transpose")
                 {
-                    if (input == -1)
-                        continue;
-                    if (layerDownstreamCounts.ContainsKey(input))
-                        layerDownstreamCounts[input] += 1;
+                    chainNodes.Add(currentInputNode);
+                    currentInputNode = (Node)currentInputNode.args[0];
                 }
 
-                if (!(layer is Layers.Transpose))
+                // If chain length is 1, nothing to merge, continue
+                if (chainNodes.Count == 1)
                     continue;
 
-                transposeReferences[layer.outputs[0]] = l;
+                // Compose all permutations starting from the deepest node input upwards
+                var composedPerm = chainNodes[^1].args[1].AsIntArray;
+                for (var j = chainNodes.Count - 2; j >= 0; j--)
+                {
+                    var perm = chainNodes[j].args[1].AsIntArray;
+                    composedPerm = MergeTranspose(perm, composedPerm);
+                }
+
+                // Insert new combined transpose before the first node in the chain (which is the last node in the chainNodes list)
+                var baseInput = (Node)chainNodes[^1].args[0];
+
+                GraphPassUtil.ReplaceNode(node, "Transpose", new Argument[] { baseInput, composedPerm });
+
+                foreach (var chainNode in chainNodes)
+                {
+                    if (chainNode.users.Count > 0)
+                        break;
+                    gm.graph.EraseNode(chainNode);
+                }
             }
-
-            for (int l = 0; l < model.layers.Count; ++l)
-            {
-                if (!(model.layers[l] is Layers.Transpose))
-                    continue;
-                Layers.Transpose layer = model.layers[l] as Layers.Transpose;
-
-                int input = layer.inputs[0];
-
-                if (!transposeReferences.ContainsKey(input))
-                    continue;
-
-                Layers.Transpose previousLayer = model.layers[transposeReferences[input]] as Layers.Transpose;
-
-                // previous layer is a transpose and current layer is the only downstream layer
-                var permutations = MergeTranspose(previousLayer.permutations, layer.permutations);
-
-                model.layers[l] = new Layers.Transpose(permutations).SetInputs(previousLayer.inputs[0]).SetOutputs(layer.outputs[0]);
-
-                if (!preserve.Contains(input) && (layerDownstreamCounts[input] == 1))
-                    removeLayers.Add(input);
-            }
-
-            Passes.PassesUtils.RemoveAndRemap(ref model, removeLayers, new Dictionary<int, int>());
         }
 
-        int[] MergeTranspose(int[] transpose0, int[] transpose1)
+        static int[] MergeTranspose(int[] permA, int[] permB)
         {
-            return (new TensorShape(transpose0)).Transpose(transpose1).ToArray();
+            var n = permA.Length;
+            var result = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                result[i] = permB[permA[i]];
+            }
+            return result;
         }
     }
 }

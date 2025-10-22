@@ -23,7 +23,9 @@ public class AttributeBasedFieldGenerator : IIncrementalGenerator
             .Collect();
 
         context.RegisterSourceOutput(classDeclarations, GenerateLayerClasses);
+        context.RegisterSourceOutput(classDeclarations, GraphConverter.GenerateGraphConverter);
         context.RegisterSourceOutput(classDeclarations, LayerModelLoader.GenerateModelLoader);
+        context.RegisterSourceOutput(classDeclarations, FunctionalLayer.GenerateFunctionalLayer);
     }
 
     // generate the Layer.g.cs file with the partial layer classes with the generated methods for all the ops
@@ -55,6 +57,9 @@ public class AttributeBasedFieldGenerator : IIncrementalGenerator
             opDef.WriteConstructor(codeWriter);
             codeWriter.WriteLine();
 
+            opDef.WritePartialInference(codeWriter);
+            codeWriter.WriteLine();
+
             opDef.WriteGetInputNames(codeWriter);
             codeWriter.WriteLine();
 
@@ -74,12 +79,6 @@ public class AttributeBasedFieldGenerator : IIncrementalGenerator
             codeWriter.WriteLine();
 
             opDef.WriteProfilerMarker(codeWriter);
-            codeWriter.WriteLine();
-
-            opDef.WriteIsEquivalent(codeWriter);
-            codeWriter.WriteLine();
-
-            opDef.WriteGetHashCode(codeWriter);
             codeWriter.WriteLine();
 
             opDef.WriteToString(codeWriter);

@@ -1,4 +1,4 @@
-There are various sources to find pre-trained models, which might either be available in the ONNX format or in a format that you can convert. Examples include the following:
+There are various sources to find pre-trained models, which might either be available in the ONNX format, LiteRT format, or in a format that you can convert. Examples include:
 
 * [Hugging Face](https://huggingface.co/models)
 * [Kaggle Models](https://www.kaggle.com/models) (Formerly TensorFlow Hub)

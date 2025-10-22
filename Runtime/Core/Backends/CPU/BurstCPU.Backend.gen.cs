@@ -16,6 +16,14 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Atan2(Tensor<float> A, Tensor<float> B, Tensor<float> O)
+        {
+            var job = new Atan2Job();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
         public void Sub(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             var job = new SubFloatJob();
@@ -35,6 +43,22 @@ namespace Unity.InferenceEngine
         public void Div(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             var job = new DivFloatJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void FloorDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O)
+        {
+            var job = new FloorDivFloatJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void TruncDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O)
+        {
+            var job = new TruncDivFloatJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
             job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
         }
@@ -64,9 +88,17 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Div(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        public void FloorDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
-            var job = new DivIntJob();
+            var job = new FloorDivIntJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void TruncDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new TruncDivIntJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
             job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
         }
@@ -160,6 +192,14 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void NotEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
+        {
+            var job = new NotEqualFloatJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
         public void Less(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var job = new LessIntJob();
@@ -179,6 +219,14 @@ namespace Unity.InferenceEngine
         public void Equal(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var job = new EqualIntJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void NotEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new NotEqualIntJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
             job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
         }
@@ -272,6 +320,30 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void BitwiseAnd(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new BitwiseAndJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseOr(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new BitwiseOrJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseXor(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            var job = new BitwiseXorJob();
+            var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
+        }
+
+        /// <inheritdoc/>
         public void Abs(Tensor<float> X, Tensor<float> O)
         {
             var job = new AbsFloatJob();
@@ -342,6 +414,13 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void BitwiseNot(Tensor<int> X, Tensor<int> O)
+        {
+            var job = new BitwiseNotJob();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
         public void Ceil(Tensor<float> X, Tensor<float> O)
         {
             var job = new CeilJob();
@@ -352,6 +431,13 @@ namespace Unity.InferenceEngine
         public void Floor(Tensor<float> X, Tensor<float> O)
         {
             var job = new FloorJob();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Trunc(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new TruncJob();
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -370,6 +456,13 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Rsqrt(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new RsqrtJob();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
         public void Sqrt(Tensor<float> X, Tensor<float> O)
         {
             var job = new SqrtJob();
@@ -384,9 +477,37 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Expm1(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new Expm1Job();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
         public void Log(Tensor<float> X, Tensor<float> O)
         {
             var job = new LogJob();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Log10(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new Log10Job();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Log1p(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new Log1pJob();
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Log2(Tensor<float> X, Tensor<float> O)
+        {
+            var job = new Log2Job();
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 

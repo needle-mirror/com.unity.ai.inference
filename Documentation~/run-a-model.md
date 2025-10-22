@@ -6,7 +6,7 @@ After you [create a worker](create-an-engine.md), call [`Schedule`](xref:Unity.I
 worker.Schedule(inputTensor);
 ```
 
-The first scheduling of a model within the Unity Editor might be slow as Inference Engine needs to compile code and shaders, including allocating internal memory. Subsequent runs will be faster due to caching.
+The first scheduling of a model within the Unity Editor might be slow as Sentis needs to compile code and shaders, including allocating internal memory. Subsequent runs will be faster due to caching.
 
 It’s a good idea to include a test run when you start the application to help improve the initial load time.
 
@@ -15,6 +15,6 @@ For an example, refer to the `Run a model` sample in the [sample scripts](packag
 ## Additional resources
 
 - [Split inference over multiple frames](split-inference-over-multiple-frames.md)
-- [Understand models in Inference Engine](models-concept.md)
+- [Sentis models](models-concept.md)
 - [Create an engine to run a model](create-an-engine.md)
 - [Profile a model](profile-a-model.md)

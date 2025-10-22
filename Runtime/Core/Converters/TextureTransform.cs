@@ -151,9 +151,9 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Sets the default behaviour when the output texture has more channels than the input tensor.
         ///
-        /// When `broadcastChannels` is `true`, Inference Engine broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if the number of channels is 4.
+        /// When `broadcastChannels` is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if the number of channels is 4.
         ///
-        /// When `broadcastChannels` is `false`, Inference Engine applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if the number of channels is 4.
+        /// When `broadcastChannels` is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if the number of channels is 4.
         /// </summary>
         /// <param name="broadcastChannels">Whether to broadcast the input channels across output channels.</param>
         /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
@@ -182,7 +182,7 @@ namespace Unity.InferenceEngine
         /// Sets a specific texture channel, for example `Channel.R`, to a specific `color`. The channel ignores input tensor values.
         /// </summary>
         /// <param name="c">The color channel to set.</param>
-        /// <param name="mask">When the value is `false`, Inference Engine ignores `color` and uses input tensor values.</param>
+        /// <param name="mask">When the value is `false`, Sentis ignores `color` and uses input tensor values.</param>
         /// <param name="color">The color value to use.</param>
         /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetChannelColorMask(Channel c, bool mask, float color)
@@ -253,11 +253,11 @@ namespace Unity.InferenceEngine
         internal CoordOrigin coordOrigin { get; private set; }
 
         /// <summary>
-        /// Sets the dimensions of the output texture or tensor. The default value is -1, which means Inference Engine infers the dimensions from the input texture or tensor.
+        /// Sets the dimensions of the output texture or tensor. The default value is -1, which means Sentis infers the dimensions from the input texture or tensor.
         ///
-        /// If the width and height of the input don't match the width and height of the output, Inference Engine applies linear resampling.
+        /// If the width and height of the input don't match the width and height of the output, Sentis applies linear resampling.
         ///
-        /// If you use `SetDimensions` in a blit to an existing texture, Inference Engine ignores `width`, `height`, and `channels`.
+        /// If you use `SetDimensions` in a blit to an existing texture, Sentis ignores `width`, `height`, and `channels`.
         ///
         /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>

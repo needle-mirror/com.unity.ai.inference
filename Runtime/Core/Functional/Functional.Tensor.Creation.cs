@@ -5,6 +5,19 @@ namespace Unity.InferenceEngine
     public static partial class Functional
     {
         /// <summary>
+        /// Returns a tensor with a size filled with values from the input tensor with given stride and offsets.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="size">The shape of the output tensor.</param>
+        /// <param name="stride">The stride of the output tensor.</param>
+        /// <param name="offset">The data offset of the output tensor.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor AsStrided(FunctionalTensor input, int[] size, int[] stride, int offset = 0)
+        {
+            return FunctionalLayer.AsStrided(input, Constant(size), Constant(stride), Constant(offset));
+        }
+
+        /// <summary>
         /// Returns a tensor filled with zeros with a shape and a data type.
         /// </summary>
         /// <param name="size">The shape of the tensor.</param>
@@ -77,7 +90,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ARange(int start, int end, int step = 1)
         {
-            return FromLayer(new Layers.Range(), new[] { Constant(start), Constant(end), Constant(step) });
+            return FunctionalLayer.Range(Constant(start), Constant(end), Constant(step));
         }
 
         /// <summary>
@@ -99,7 +112,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ARange(float start, float end, float step = 1)
         {
-            return FromLayer(new Layers.Range(), new[] { Constant(start), Constant(end), Constant(step) });
+            return FunctionalLayer.Range(Constant(start), Constant(end), Constant(step));
         }
 
         /// <summary>
@@ -129,7 +142,7 @@ namespace Unity.InferenceEngine
             var delta = (end - start) / (steps - 1);
             var starts = start;
             var ends = end + 0.5f * delta;
-            return FromLayer(new Layers.Range(), new[] { Constant(starts), Constant(ends), Constant(delta) });
+            return FunctionalLayer.Range(Constant(starts), Constant(ends), Constant(delta));
         }
 
         // Creates a one-dimensional tensor of size steps whose values are evenly spaced from base ^ start to base ^ end, inclusive, on a logarithmic scale with base base.
@@ -155,7 +168,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Full(int[] size, int fillValue)
         {
-            return FromLayer(new Layers.ConstantOfShape(DataType.Int, 0, fillValue), Constant(size));
+            return FunctionalLayer.ConstantOfShape(Constant(size), DataType.Int, 0, fillValue);
         }
 
         /// <summary>
@@ -166,7 +179,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Full(int[] size, float fillValue)
         {
-            return FromLayer(new Layers.ConstantOfShape(DataType.Float, fillValue, 0), Constant(size));
+            return FunctionalLayer.ConstantOfShape(Constant(size), DataType.Float, fillValue, 0);
         }
 
         /// <summary>
@@ -177,8 +190,8 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor FullLike(FunctionalTensor input, int fillValue)
         {
-            var shape = FromLayer(new Layers.Shape(0, TensorShape.maxRank), input);
-            return FromLayer(new Layers.ConstantOfShape(DataType.Int, 0, fillValue), shape);
+            var shape = FunctionalLayer.Shape(input, 0, TensorShape.maxRank);
+            return FunctionalLayer.ConstantOfShape(shape, DataType.Int, 0, fillValue);
         }
 
         /// <summary>
@@ -189,8 +202,8 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor FullLike(FunctionalTensor input, float fillValue)
         {
-            var shape = FromLayer(new Layers.Shape(0, TensorShape.maxRank), input);
-            return FromLayer(new Layers.ConstantOfShape(DataType.Float, fillValue, 0), shape);
+            var shape = FunctionalLayer.Shape(input, 0, TensorShape.maxRank);
+            return FunctionalLayer.ConstantOfShape(shape, DataType.Float, fillValue, 0);
         }
     }
 }

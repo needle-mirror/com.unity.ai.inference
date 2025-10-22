@@ -854,10 +854,10 @@ namespace Unity.InferenceEngine
         /// </summary>
         internal unsafe struct SliceParameters
         {
-            public fixed int shapeO[TensorShape.maxRank];
-            public fixed int stridedStarts[TensorShape.maxRank];
-            public fixed int stridedSteps[TensorShape.maxRank];
-            public int lastIndex;
+            public fixed int size[TensorShape.maxRank];
+            public fixed int stride[TensorShape.maxRank];
+            public int offset;
+            public int rank;
 
             internal void Prepare(TensorShape shapeX, TensorShape shapeO, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
             {
@@ -882,49 +882,69 @@ namespace Unity.InferenceEngine
                 PrepareWithLocals(shapeX, shapeO, startsLocal, stepsLocal);
             }
 
+            internal void PrepareAsStrided(TensorShape shapeO, ReadOnlySpan<int> strides, int offset)
+            {
+                this.offset = offset;
+                rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+
+                for (int i = shapeO.rank - 1; i >= 0; --i)
+                {
+                    int currShape = shapeO[i];
+                    int currStride = strides[i];
+
+                    if (currStride == accShape * accStride)
+                    {
+                        accShape = currShape * accShape;
+                        continue;
+                    }
+
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+            }
+
             void PrepareWithLocals(TensorShape shapeX, TensorShape shapeO, int* startsLocal, int* stepsLocal)
             {
-                int lastIndex = 0;
-                int strideX = 1;
-                bool isLastUnsliced = false;
+                offset = 0;
+                rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+                int totalStride = 1;
 
-                for (int i = shapeX.rank - 1; i >= 0; i--)
+                for (int i = shapeO.rank - 1; i >= 0; --i)
                 {
-                    int dimX = shapeX[i];
-                    int dimO = shapeO[i];
-                    bool isUnsliced = (dimX == dimO) && (stepsLocal[i] == 1);
+                    int currShape = shapeO[i];
+                    int currStride = totalStride * stepsLocal[i];
+                    offset += totalStride * startsLocal[i];
+                    totalStride *= shapeX[i];
 
-                    // Flatten the shapes if this dimension and the last are not sliced.
-                    if (isUnsliced && isLastUnsliced)
+                    if (currStride == accShape * accStride)
                     {
-                        this.shapeO[lastIndex - 1] *= dimO;
-                    }
-                    else
-                    {
-                        // A dimension of size 1 with no slicing can be ignored to further flatten the shape.
-                        if (dimX == 1 && isUnsliced)
-                            continue;
-
-                        this.shapeO[lastIndex] = dimO;
-                        this.stridedStarts[lastIndex] = startsLocal[i] * strideX;
-                        this.stridedSteps[lastIndex] = stepsLocal[i] * strideX;
-                        lastIndex++;
+                        accShape = currShape * accShape;
+                        continue;
                     }
 
-                    strideX *= dimX;
-                    isLastUnsliced = isUnsliced;
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
                 }
 
-                // Special case for tensor with a single element as these are ignored above.
-                if (lastIndex == 0)
-                {
-                    this.shapeO[0] = 1;
-                    this.stridedStarts[0] = 0;
-                    this.stridedSteps[0] = 1;
-                    lastIndex = 1;
-                }
-
-                this.lastIndex = lastIndex;
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
             }
         }
     }

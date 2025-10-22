@@ -1,11 +1,10 @@
 using System;
 using UnityEditor;
 using UnityEditor.AssetImporters;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unity.InferenceEngine.Editor
+namespace Unity.InferenceEngine.Editor.Onnx
 {
     [CustomEditor(typeof(ONNXModelImporter))]
     class ONNXModelImporterEditor : ScriptedImporterEditor

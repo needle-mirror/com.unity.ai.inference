@@ -4,9 +4,11 @@ using System.Linq;
 using Microsoft.Msagl.Core;
 using Microsoft.Msagl.Core.DataStructures;
 using Microsoft.Msagl.Core.GraphAlgorithms;
-using Graph = Microsoft.Msagl.Core.GraphAlgorithms.BasicGraphOnEdges<Microsoft.Msagl.Layout.Layered.PolyIntEdge>;
 
 namespace Microsoft.Msagl.Layout.Layered {
+
+    using Graph = BasicGraphOnEdges<PolyIntEdge>;
+
     /// <summary>
     /// balances the layers by moving vertices with
     /// the same number of input-output edges to feasible layers with fewer nodes

@@ -6,7 +6,7 @@ using Unity.InferenceEngine.Compiler.Analyser;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents an Inference Engine neural network.
+    /// Represents a Sentis neural network.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class Model
@@ -41,6 +41,14 @@ namespace Unity.InferenceEngine
             /// The shape of the input, as `DynamicTensorShape`.
             /// </summary>
             public DynamicTensorShape shape;
+
+            internal Input(string name, int index, DataType dataType, DynamicTensorShape shape)
+            {
+                this.name = name;
+                this.index = index;
+                this.dataType = dataType;
+                this.shape = shape;
+            }
         }
 
         /// <summary>
@@ -73,6 +81,12 @@ namespace Unity.InferenceEngine
             /// The index of the output.
             /// </summary>
             public int index;
+
+            internal Output(string name, int index)
+            {
+                this.name = name;
+                this.index = index;
+            }
         }
 
         /// <summary>
@@ -120,26 +134,6 @@ namespace Unity.InferenceEngine
                 $"\n{layers.Count} layers, {totalUniqueWeights:n0} weights: \n{string.Join("\n", layers.Select(i => $"{i.GetType()} ({i})"))}";
         }
 
-        /// <summary>
-        /// Returns a string index not yet used in the model inputs, constants or layer outputs
-        /// </summary>
-        internal int GetUniqueIndex()
-        {
-            var maxIndex = 0;
-
-            foreach (var input in inputs)
-                maxIndex = Math.Max(maxIndex, input.index);
-
-            foreach (var constant in constants)
-                maxIndex = Math.Max(maxIndex, constant.index);
-
-            foreach (var layer in layers)
-            foreach (var output in layer.outputs)
-                maxIndex = Math.Max(maxIndex, output);
-
-            return maxIndex + 1;
-        }
-
         internal void ValidateInputTensorShape(Input input, TensorShape shape)
         {
             if (shape.rank != input.shape.rank)
@@ -156,29 +150,6 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Adds an input to the model with a dynamic tensor shape.
-        /// </summary>
-        /// <param name="name">The name of the input.</param>
-        /// <param name="index">The index of the input.</param>
-        /// <param name="dataType">The data type of the input.</param>
-        /// <param name="shape">The `DynamicTensorShape` of the input.</param>
-        internal void AddInput(string name, int index, DataType dataType, DynamicTensorShape shape)
-        {
-            inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = shape });
-        }
-
-        /// <summary>
-        /// Adds an input to the model with a tensor shape.
-        /// </summary>
-        /// <param name="name">The name of the input.</param>
-        /// <param name="dataType">The data type of the input.</param>
-        /// <param name="shape">The `TensorShape` of the input.</param>
-        internal void AddInput(string name, int index, DataType dataType, TensorShape shape)
-        {
-            inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = new DynamicTensorShape(shape) });
-        }
-
-        /// <summary>
         /// Adds an output called `name` to the model.
         /// </summary>
         /// <param name="name">The name of the output.</param>
@@ -186,30 +157,6 @@ namespace Unity.InferenceEngine
         public void AddOutput(string name, int index)
         {
             outputs.Add(new Output { name = name, index = index });
-        }
-
-        /// <summary>
-        /// Appends a `layer` to the model.
-        /// </summary>
-        /// <param name="layer">The layer to append.</param>
-        internal void AddLayer(Layer layer)
-        {
-            layers.Add(layer);
-        }
-
-        /// <summary>
-        /// Adds a `constant` to the model.
-        /// </summary>
-        /// <param name="constant">The constant to add.</param>
-        internal void AddConstant(Constant constant)
-        {
-            constants.Add(constant);
-        }
-
-        internal void DisposeWeights()
-        {
-            foreach (var constant in constants)
-                constant.weights?.Dispose();
         }
 
         // Infer the data types and shapes for the model tensors via the partial tensor inference.

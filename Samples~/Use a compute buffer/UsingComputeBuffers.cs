@@ -64,12 +64,12 @@ public class UsingComputeBuffers : MonoBehaviour
         // For simplicity, the shader is setup to index only using id.x, so dispatch must be (x=m_TensorX.shape.length, y=1, z=1).
         computeProducer.Dispatch(m_ComputeKernelIndex, m_TensorA.shape.length, 1, 1);
 
-        // Inference Engine schedules execution of the Adder model, which takes two tensors and adds them.
+        // Sentis schedules execution of the Adder model, which takes two tensors and adds them.
         // In this case, all elements of tensor X are set to 41 and the value of tensor Y is set to 1 (from the white texture, where all values are 1.0).
         // The expected output of this call is 42.
         m_Worker.Schedule(m_Inputs);
 
-        // Peek the value from Inference Engine, without taking ownership of the Tensor (see PeekOutput docs for details).
+        // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
         var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
         // Calling MakeReadable will trigger a blocking download of the data to the CPU cache.

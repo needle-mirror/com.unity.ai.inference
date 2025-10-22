@@ -63,6 +63,7 @@ namespace Unity.InferenceEngine
             int index = bufferSizeCount[key];
             long keyIndex = SzudzikPairing(key, index);
 
+            // TODO: a re-init interface for ITensorData if ever needed
             var buffer = freeBuffers[keyIndex];
             freeBuffers.Remove(keyIndex);
             freeBufferSize.RemoveAt(found);

@@ -21,7 +21,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize };
             var strideArray = new[] { s };
             var paddingArray = new[] { padding, padding };
-            return FromLayer(new Layers.AveragePool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.AveragePool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize, kernelSize };
             var strideArray = new[] { s, s };
             var paddingArray = new[] { padding, padding, padding, padding };
-            return FromLayer(new Layers.AveragePool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.AveragePool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize.Item1, kernelSize.Item2 };
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0 };
-            return FromLayer(new Layers.AveragePool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.AveragePool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize, kernelSize, kernelSize };
             var strideArray = new[] { s, s, s };
             var paddingArray = new[] { padding, padding, padding, padding, padding, padding };
-            return FromLayer(new Layers.AveragePool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.AveragePool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 };
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2, stride?.Item3 ?? kernelSize.Item3 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0 };
-            return FromLayer(new Layers.AveragePool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.AveragePool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize };
             var strideArray = new[] { s };
             var paddingArray = new[] { padding, padding };
-            return FromLayer(new Layers.MaxPool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.MaxPool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize, kernelSize };
             var strideArray = new[] { s, s };
             var paddingArray = new[] { padding, padding, padding, padding };
-            return FromLayer(new Layers.MaxPool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.MaxPool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize.Item1, kernelSize.Item2 };
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0 };
-            return FromLayer(new Layers.MaxPool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.MaxPool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -178,7 +178,7 @@ namespace Unity.InferenceEngine
             var kernelArray = new[] { kernelSize, kernelSize, kernelSize };
             var strideArray = new[] { s, s, s };
             var paddingArray = new[] { padding, padding, padding, padding, padding, padding };
-            return FromLayer(new Layers.MaxPool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.MaxPool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace Unity.InferenceEngine
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2, stride?.Item3 ?? kernelSize.Item3 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0 };
             var kernelArray = new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 };
-            return FromLayer(new Layers.MaxPool(kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet), input);
+            return FunctionalLayer.MaxPool(input, kernelArray, strideArray, paddingArray, Layers.AutoPad.NotSet);
         }
     }
 }

@@ -2,7 +2,7 @@
 
 To avoid slow readbacks when you access a tensor or pass it between models, read from and write to the tensor’s underlying native data directly.
 
-For more information about how Inference Engine stores tensor data, refer to [Tensor fundamentals in Inference Engine](tensor-fundamentals.md#memory-location).
+For more information about how Sentis stores tensor data, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location).
 
 ## Check where tensor data is stored
 
@@ -95,7 +95,7 @@ var tensor = new Tensor<float>(new TensorShape(1,2,3), new [] { 0f, 1f, 2f, 3f, 
 tensor.Upload(new [] { 6f, 7f, 8f });
 // tensor dataOnBackend now contains {6,7,8,3,4,5}
 ```
-This method works for all tensor data backends but might be a blocking call. If the tensor data is on the central processing unit (CPU), Inference Engine blocks it until the tensor's pending jobs are complete. If the tensor data is on the GPU, Inference Engine performs a GPU upload.
+This method works for all tensor data backends but might be a blocking call. If the tensor data is on the central processing unit (CPU), Sentis blocks it until the tensor's pending jobs are complete. If the tensor data is on the GPU, Sentis performs a GPU upload.
 
 ## Access a tensor in GPU memory
 
@@ -118,4 +118,4 @@ For examples, refer to the `Use the job system to write data` example in the [sa
 ## Additional resources
 
 - [Use Tensors](use-tensors.md)
-- [Tensor fundamentals in Inference Engine](tensor-fundamentals.md)
+- [Tensor fundamentals in Sentis](tensor-fundamentals.md)

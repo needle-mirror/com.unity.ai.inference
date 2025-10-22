@@ -6,11 +6,8 @@ using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.Routing.Visibility;
-using LineSegment = Microsoft.Msagl.Core.Geometry.Curves.LineSegment;
 
 namespace Microsoft.Msagl.Layout.LargeGraphLayout {
-
-
     /// <summary>
     /// keeps a part of EdgeGeometry which is visible
     /// </summary>

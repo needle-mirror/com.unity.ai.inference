@@ -1,8 +1,8 @@
 # Import a model file
 
-To import an ONNX model file into your Unity project, drag the `.onnx` file from your computer into the `Assets` folder of the **Project** window.
+To import an ONNX or LiteRT model file into your Unity project, drag the file from your computer into the `Assets` folder of the **Project** window.
 
-If your model has external weights files, put them in the same directory as the model file so that Inference Engine imports them automatically.
+If your model has external weights files, put them in the same directory as the model file so that Sentis imports them automatically.
 
 For more information on supported model formats, refer to [Supported models](supported-models.md).
 
@@ -30,7 +30,8 @@ After the model is loaded, you can [create an engine to run a model](create-an-e
 
 ## Additional resources
 
-- [How Inference Engine optimizes a model](models-concept.md#how-inference-engine-optimizes-a-model)
+- [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model)
 - [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
+- [Export a LiteRT file from a machine learning framework](export-convert-litert.md)
 - [Model Asset Inspector](model-asset-inspector.md)
 - [Supported models](supported-models.md)

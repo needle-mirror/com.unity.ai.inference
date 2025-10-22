@@ -1,10 +1,8 @@
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Rendering;
-using System;
 using Unity.Collections;
-using System.Threading.Tasks;
-using Unity.Collections.LowLevel.Unsafe;
+using System.Collections.Generic;
 
 namespace Unity.InferenceEngine
 {
@@ -22,11 +20,101 @@ namespace Unity.InferenceEngine
     }
 
     /// <summary>
+    /// This deals with asynchronous management of the disposition of compute buffers:
+    /// </summary>
+    internal class ComputeTensorDataReaper
+    {
+        // Global async pending dispose queue: to be used by Tensor.AdoptTensorData when disposing compute buffers
+        // that might still be used later eg a yet-to-be-dispatched command buffer may hold references to it
+        static List<ComputeTensorData> m_DisposeQueue = new List<ComputeTensorData>();
+        internal static void AddToDisposeQueue(ComputeTensorData ctd) => m_DisposeQueue.Add(ctd);
+        internal static bool IsDisposeQueueEmpty => (m_DisposeQueue.Count == 0);
+
+        // Simple async GPU event mechanism: request a small dummy readback for the ComputeTensorData
+        static int s_DummySize = 16;
+        static ComputeBuffer m_DummyDestination = new ComputeBuffer(s_DummySize, sizeof(float));
+        static CommandBuffer m_AsyncCallbackCommandBuffer = new CommandBuffer();
+
+        static void CleanupStaticResources()
+        {
+            m_DummyDestination?.Release();
+            m_AsyncCallbackCommandBuffer?.Release();
+            m_DummyDestination = null;
+            m_AsyncCallbackCommandBuffer = null;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void RegisterCleanup()
+        {
+#if UNITY_EDITOR
+            UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += CleanupStaticResources;
+#endif
+            Application.quitting += CleanupStaticResources;
+        }
+
+        // Manual dispatch of the async disposition queue
+        public static void ExecuteAsyncDisposeCommandBufferAndClear()
+        {
+            Graphics.ExecuteCommandBuffer(m_AsyncCallbackCommandBuffer);
+            m_AsyncCallbackCommandBuffer.Clear();
+        }
+
+        // Synchronous disposition of the dispose queue
+        public static void ProcessDisposeQueue()
+        {
+            foreach (var ctd in m_DisposeQueue)
+            {
+                ctd.Dispose();
+            }
+            m_DisposeQueue.Clear();
+        }
+
+        // Queue to an external commandbuffer the async disposition events
+        public static void MoveDisposeQueueAsAsyncGPUEvents(CommandBuffer cb)
+        {
+            foreach (var ctd in m_DisposeQueue)
+            {
+                ctd.DisposeAfterDispatchInitiation(cb);
+            }
+            m_DisposeQueue.Clear();
+        }
+
+        // Queue to command buffer the deferred disposition of the `ComputeTensorData` and any associated memory using the async readback mechanism as a GPU event.
+        // This should only be called by ComputeTensorData.DisposeAfterDispatch
+        internal static void DisposeAfterDispatch(CommandBuffer cb, ComputeTensorData ctd)
+        {
+            {
+                var fn = ComputeFunctions.k_MemCopy;
+                var numWords = ComputeHelper.IDivC(System.Math.Min(s_DummySize, ctd.buffer.count), 4);
+                var wordsHeight = 1;
+                var wordsWidth = numWords;
+                cb.SetComputeIntParam(fn.shader, ShaderPropertyID.k_ID_offsetO, 0);
+                cb.SetComputeIntParam(fn.shader, ShaderPropertyID.k_ID_offsetX, 0);
+                cb.SetComputeIntParam(fn.shader, ShaderPropertyID.k_ID_count, s_DummySize);
+                cb.SetComputeIntParam(fn.shader, ShaderPropertyID.k_ID_O_width, numWords * 4);
+                cb.SetComputeBufferParam(fn.shader, fn.kernelIndex, ShaderPropertyID.k_ID_Xptr, ctd.buffer);
+                cb.SetComputeBufferParam(fn.shader, fn.kernelIndex, ShaderPropertyID.k_ID_Optr, m_DummyDestination);
+                cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
+            }
+            AsyncGPUReadback.Request(m_DummyDestination, (request) =>
+            {
+                if (request.hasError)
+                    D.LogWarning("DisposeAfterDispatch AsyncGPUReadback callback: request has error.");
+                ctd.DisposeAsyncCompletion();
+            });
+        }
+    }
+
+    /// <summary>
     /// Represents data storage for a `Tensor` as a compute buffer, for GPUCompute backend.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class ComputeTensorData : ITensorData, IConvertibleToCPUTensorData
     {
+        // Acquire/Release barrier flag for the progress of the async disposition (completion callback can happen on a different thread)
+        // Only the main thread can set it to true, only the async completion thread can set it to false.
+        volatile bool m_DelayedDisposeInProgress = false;
+
         bool m_IsDisposed;
         ComputeBuffer m_Buffer;
         int m_Count;
@@ -49,6 +137,8 @@ namespace Unity.InferenceEngine
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
         public ComputeTensorData(int count, bool clearOnInit = false)
         {
+            m_DelayedDisposeInProgress = false;
+
             m_Count = count;
             m_IsDisposed = false;
 
@@ -87,13 +177,63 @@ namespace Unity.InferenceEngine
         /// </summary>
         public void Dispose()
         {
+            if (m_DelayedDisposeInProgress)
+            {
+                D.LogWarning($"Dispose called on ComputeTensorData while m_DelayedDisposeInProgress already true");
+                return;
+            }
             if (!m_IsDisposed)
             {
                 m_Buffer?.Dispose();
                 m_Buffer = null;
             }
-
             m_IsDisposed = true;
+        }
+
+        // This should only be called by the thread running the AsyncGPUReadback callback.
+        // The AsyncGPUReadback is launched and the callback lambda specified by ComputeTensorDataReaper.DisposeAfterDispatch
+        internal void DisposeAsyncCompletion()
+        {
+            // Note: the context of the callback is not necessarily the main thread but ComputeBuffer.Release() should be thread-safe:
+            if (m_Buffer != null)
+            {
+                //D.Log($"DisposeAsyncCompletion AsyncGPUReadback releasing for {m_Buffer?.GetNativeBufferPtr()}");
+                m_Buffer.Release();
+                m_Buffer = null;
+                m_IsDisposed = true;
+            }
+            else
+            {
+                D.LogWarning("DisposeAsyncCompletion AsyncGPUReadback callback: m_Buffer is already null?!");
+            }
+            m_DelayedDisposeInProgress = false; // var is volatile, so this has release semantics
+        }
+
+        // This should only be called by ComputeTensorDataReaper.DisposeAfterDispatch
+        // Queue to command buffer the deferred disposition of the `ComputeTensorData` and any associated memory using the async readback mechanism as a GPU event.
+        // Called by the ComputeTensorDataReaper to allow the ComputeTensorData to flag the "in progress" barrier before.
+        internal void DisposeAfterDispatchInitiation(CommandBuffer cb)
+        {
+            if (m_IsDisposed || (m_Buffer == null))
+                return;
+
+            if (m_DelayedDisposeInProgress)
+            {
+                D.LogWarning($"DisposeAfterDispatchInitiation called on ComputeTensorData while m_DelayedDisposeInProgress already true");
+                return;
+            }
+            m_DelayedDisposeInProgress = true; // var is volatile, so this has acquire semantics
+
+            ComputeTensorDataReaper.DisposeAfterDispatch(cb, this);
+        }
+
+        /// <summary>
+        /// Deferred disposition of the `ComputeTensorData` and any associated memory using the async readback mechanism as a GPU event.
+        /// Called by Tensor.AdoptTensorData.
+        /// </summary>
+        internal void DelayedDispose()
+        {
+            ComputeTensorDataReaper.AddToDisposeQueue(this);
         }
 
         /// <inheritdoc/>
@@ -126,7 +266,7 @@ namespace Unity.InferenceEngine
             m_AsyncDownloadRequested = true;
         }
 
-        #if UNITY_2023_2_OR_NEWER
+#if UNITY_2023_2_OR_NEWER
         /// <inheritdoc/>
         public async Awaitable<NativeArray<T>> DownloadAsync<T>(int dstCount) where T : unmanaged
         {
@@ -142,7 +282,7 @@ namespace Unity.InferenceEngine
             var request = await AsyncGPUReadback.RequestAsync(m_Buffer, count * sizeof(int), 0);
             return request.GetData<int>().Reinterpret<T>(sizeof(int)).GetSubArray(0, dstCount);
         }
-        #endif
+#endif
 
         /// <inheritdoc/>
         public CPUTensorData ConvertToCPUTensorData(int dstCount)
@@ -150,6 +290,8 @@ namespace Unity.InferenceEngine
             CPUTensorData output = new CPUTensorData(dstCount);
             if (dstCount == 0)
                 return output;
+
+            ProfilerMarkers.ComputeTensorDataDownload.Begin();
 
             var array = output.array.GetNativeArrayHandle<int>();
 
@@ -167,6 +309,7 @@ namespace Unity.InferenceEngine
 
             m_AsyncDownloadRequest = AsyncGPUReadback.RequestIntoNativeArray<int>(ref array, m_Buffer, dstCount * sizeof(int), 0);
             m_AsyncDownloadRequest.WaitForCompletion();
+            ProfilerMarkers.ComputeTensorDataDownload.End();
             return output;
         }
 
@@ -238,7 +381,7 @@ namespace Unity.InferenceEngine
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AdoptTensorData(new ComputeTensorData(X.count, clearOnInit));
+                X.AdoptTensorData(new ComputeTensorData(X.count, clearOnInit), disposePrevious: true, disposeIsDelayed: false);
                 return X.dataOnBackend as ComputeTensorData;
             }
 
@@ -254,7 +397,7 @@ namespace Unity.InferenceEngine
                 dataOnBackend = new ComputeTensorData(X.count, clearOnInit: false);
                 dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
             }
-            X.AdoptTensorData(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend, disposePrevious: true, disposeIsDelayed: false);
 
             return X.dataOnBackend as ComputeTensorData;
         }

@@ -4,7 +4,7 @@ Use the Model Visualizer to explore the internal structure of your machine learn
 
 With the Model Visualizer, you can:
 
-* Check how Inference Engine transforms your model during import, so you can inspect the actual structure that will run in your application.
+* Check how Sentis transforms your model during import, so you can inspect the actual structure that will run in your application.
 * Get a visual, node-based view of your model’s structure to understand complex architectures.
 * Trace data flow and tensor connectivity to debug issues, such as shape mismatches, disconnected layers, or unexpected operations.
 * Examine inputs, outputs, and constant tensors to understand what data the model consumes and how it's processed.
@@ -49,7 +49,7 @@ To use inspect your model with the Model Visualizer, follow these steps:
 
 ## Control scheme shortcuts
 
-The Model Visualizer supports two interaction modes: **Modern** (default) and **Editor**. You can change the active control scheme in **Project Settings > Inference Engine > Model Visualizer**.
+The Model Visualizer supports two interaction modes: **Modern** (default) and **Editor**. You can change the active control scheme in **Project Settings > Sentis > Model Visualizer**.
 
 | Action | Shortcut for Editor scheme | Shortcut for Modern scheme |
 | ------ | -------------------------- | ------------------ |
@@ -97,7 +97,7 @@ Use the navigation buttons in the **Properties** panel to move between related n
 
 ## Control scheme settings
 
-To configure how you interact with the Model Visualizer, go to **Project Settings** > **Inference Engine** > **Model Visualizer**.
+To configure how you interact with the Model Visualizer, go to **Project Settings** > **Sentis** > **Model Visualizer**.
 
 On the **Model Visualizer Settings** page, the **Canvas Control Scheme** has the following two options:
 

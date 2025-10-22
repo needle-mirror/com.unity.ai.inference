@@ -33,7 +33,7 @@ public class ModelExecution : MonoBehaviour
 
     void OnDisable()
     {
-        // Clean up Inference Engine resources.
+        // Clean up Sentis resources.
         m_Worker.Dispose();
         m_Input.Dispose();
     }

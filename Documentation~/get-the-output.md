@@ -1,6 +1,6 @@
 # Get output from a model
 
-Use this information to get the output from a model. To get intermediate tensors from layers other than the model outputs, refer to [Get output from any layer](profile-a-model.md#get-output-from-any-layer).
+Use this information to get the output from a model.
 
 ## Get the tensor output
 
@@ -21,7 +21,7 @@ worker.Schedule(inputTensor);
 Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 ```
 
-Inference Engine worker memory allocator owns the reference returned by [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*). It implies the following:
+Sentis worker memory allocator owns the reference returned by [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*). It implies the following:
 
 - You don't need to use `Dispose` on the output.
 - If you change the output or you rerun the worker, both the worker output and the [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*) copy change.
@@ -62,8 +62,8 @@ For more information, refer to [Read Outputs Asynchronously](read-output-async.m
 
 Use `CopyOutput` to copy the output of a worker into a tensor that you manage outside the scope of the worker.
 
-* If you pass in `null`, Inference Engine creates and returns a new tensor that contains a copy of the worker’s output.
-* If you pass in an existing tensor, Inference Engine reshapes it to match the output shape and copies the output data into it.
+* If you pass in `null`, Sentis creates and returns a new tensor that contains a copy of the worker’s output.
+* If you pass in an existing tensor, Sentis reshapes it to match the output shape and copies the output data into it.
 
 ```
 Tensor myOutputTensor;
@@ -104,4 +104,3 @@ If the model has multiple outputs, you can use each output name as a parameter i
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Use output data](use-model-output.md)
 - [Read output from a model asynchronously](read-output-async.md)
-- [Get output from any layer](profile-a-model.md#get-output-from-any-layer)

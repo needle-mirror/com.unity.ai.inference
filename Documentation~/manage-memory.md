@@ -1,6 +1,6 @@
 # Manage memory with tensors
 
-As an Inference Engine user, it's important to call [`Dispose`](xref:Unity.InferenceEngine.Worker.Dispose) on any workers and tensors you instantiate. Additionally, ensure you call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](Unity.InferenceEngine.Tensor.ReadbackAndClone*) method.
+As a Sentis user, it's important to call [`Dispose`](xref:Unity.InferenceEngine.Worker.Dispose) on any workers and tensors you instantiate. Additionally, ensure you call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](Unity.InferenceEngine.Tensor.ReadbackAndClone*) method.
 
 > [!NOTE]
 > You must call `Dispose` to free up graphics processing unit (GPU) resources.
@@ -24,7 +24,7 @@ When you get a handle to a tensor from a worker using the [`PeekOutput`](xref:Un
 
 ## Compute buffer size limit
 
-When working with tensors in Inference Engine, the size of the compute buffer is subject to certain limits. While these limits can vary depending on hardware and platform specifications, the following general guidelines apply:
+When working with tensors in Sentis, the size of the compute buffer is subject to certain limits. While these limits can vary depending on hardware and platform specifications, the following general guidelines apply:
 
 * **Maximum tensor size**: A tensor can have no more than 2^31 elements due to internal indexing limitations.
 * **Auxiliary resource allocations**: Some operators might require additional auxiliary resources, which can further reduce the maximum allowable size of tensors in specific scenarios. These resources depend on the input tensor size and the type of operation.

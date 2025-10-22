@@ -1,16 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.InferenceEngine.Compiler.Analyser;
-using Unity.InferenceEngine.Layers;
+using Unity.InferenceEngine.Graph;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class EinsumToMatMulPass : IModelPass
+    /// <summary>
+    /// Replaces an Einsum op with a MatMul op (plus transposes and reshapes) if the conditions are met.
+    /// </summary>
+    class EinsumToMatMulPass : GraphPass
     {
-        static int _isOperandA = 1 << 0;
-        static int _isOperandB = 1 << 1;
-        static int _isOutput = 1 << 2;
+        const int k_IsOperandA = 1 << 0;
+        const int k_IsOperandB = 1 << 1;
+        const int k_IsOutput = 1 << 2;
 
         static void CalculatePermutations(TensorIndex originalDims, TensorIndex[] transformedDims,
             out int[] permutation, out int[] inversePermutation, out bool isPermuted)
@@ -38,7 +40,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             }
         }
 
-        static bool InsertPermuteReshapeLayers(Model model, Einsum einsumLayer, int inputLayerIndex, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape, ref int uniqueIndex)
+        static bool InsertPermuteReshapeLayers(GraphModule gm, Node einsumNode, ref Node node, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape)
         {
             CalculatePermutations(originalDims, transformedDims, out _, out var inversePermutation, out var isPermuted);
 
@@ -62,33 +64,23 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             if (isReshaped && !shape.IsStatic())
                 return false;
 
-            var inputIndex = einsumLayer.inputs[inputLayerIndex];
-            var insertLayerIndex = model.layers.IndexOf(einsumLayer);
-
             if (isPermuted)
             {
-                var inputTransposeIndex = uniqueIndex++;
-                var transposeLayer = new Transpose(inversePermutation).SetInputs(inputIndex).SetOutputs(inputTransposeIndex);
-                inputIndex = inputTransposeIndex;
-                model.layers.Insert(insertLayerIndex, transposeLayer);
-                insertLayerIndex++;
+                gm.graph.InsertingBefore(einsumNode);
+                node = gm.graph.CallFunction("Transpose", new Argument[] { node, inversePermutation });
             }
 
             if (isReshaped)
             {
-                var shapeConstant = new Constant(uniqueIndex++, new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
-                model.AddConstant(shapeConstant);
-                var inputReshapeIndex = uniqueIndex++;
-                var reshapeLayer = new Reshape(false).SetInputs(inputIndex, shapeConstant.index).SetOutputs(inputReshapeIndex);
-                inputIndex = inputReshapeIndex;
-                model.layers.Insert(insertLayerIndex, reshapeLayer);
+                var shapeConstant = new ConstantTensor(new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
+                var shapeNode = GraphPassUtil.AddConstant(gm, einsumNode, shapeConstant);
+                node = gm.graph.CallFunction("Reshape", new Argument[] { node, shapeNode, false });
             }
 
-            einsumLayer.inputs[inputLayerIndex] = inputIndex;
             return true;
         }
 
-        static bool InsertInversePermuteReshapeLayers(Model model, Einsum einsumLayer, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape, ref int uniqueIndex)
+        static bool InsertInversePermuteReshapeLayers(GraphModule gm, ref Node node, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape)
         {
             CalculatePermutations(originalDims, transformedDims, out var permutation, out var inversePermutation, out var isPermuted);
 
@@ -108,44 +100,31 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             if (isReshaped && !shape.IsStatic())
                 return false;
 
-            var insertLayerIndex = model.layers.IndexOf(einsumLayer) + 1;
-            var outputIndex = einsumLayer.outputs[0];
+            if (isReshaped)
+            {
+                var shapeConstant = new ConstantTensor(new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
+                var shapeNode = GraphPassUtil.AddConstant(gm, node.next, shapeConstant);
+                gm.graph.InsertingAfter(shapeNode);
+                node = gm.graph.CallFunction("Reshape", new Argument[] { node, shapeNode, false });
+            }
 
             if (isPermuted)
             {
-                var outputTransposeIndex = uniqueIndex++;
-                var transposeLayer = new Transpose(inversePermutation).SetInputs(outputTransposeIndex).SetOutputs(outputIndex);
-                outputIndex = outputTransposeIndex;
-                model.layers.Insert(insertLayerIndex, transposeLayer);
+                gm.graph.InsertingAfter(node);
+                node = gm.graph.CallFunction("Transpose", new Argument[] { node, inversePermutation });
             }
 
-            if (isReshaped)
-            {
-                var constantIndex = uniqueIndex++;
-                var shapeConstant = new Constant(constantIndex, new TensorShape(shape.rank), shape.ToTensorShape().ToArray());
-                model.AddConstant(shapeConstant);
-                var outputReshapeIndex = uniqueIndex++;
-                var reshapeLayer = new Reshape(false).SetInputs(outputReshapeIndex, shapeConstant.index).SetOutputs(outputIndex);
-                outputIndex = outputReshapeIndex;
-                model.layers.Insert(insertLayerIndex, reshapeLayer);
-            }
-
-            einsumLayer.SetOutputs(outputIndex);
             return true;
         }
 
-        public void Run(ref Model model)
+        public override void Run(GraphModule gm)
         {
-            var einsumLayers = model.layers.Where(l => l is Einsum).ToList();
-            if (einsumLayers.Count == 0)
-                return;
+            var einsumNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Einsum");
 
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-
-            foreach (var layer in einsumLayers)
+            foreach (var einsumNode in einsumNodes)
             {
-                var einsumLayer = (Einsum)layer;
-                var numOperands = einsumLayer.inputs.Length;
+                var operands = einsumNode.args[0].AsNodeArray;
+                var numOperands = operands.Length;
                 if (numOperands != 2)
                 {
                     // only einsums with two operands can currently be reduced to matmul
@@ -153,10 +132,10 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 }
 
                 var isInputShapes = true;
-                var operandShapes = new DynamicTensorShape[numOperands];
+                var operandShapes = new DynamicTensorShape[2];
                 for (var i = 0; i < numOperands && isInputShapes; i++)
                 {
-                    var shape = ctx.GetPartialTensor(layer.inputs[i]).shape;
+                    var shape = operands[i].partialTensor.shape;
                     if (shape.hasRank)
                         operandShapes[i] = shape;
                     else
@@ -169,11 +148,9 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     continue;
                 }
 
-                var equation = einsumLayer.equation;
-
-                var operandIndices = new TensorIndex[numOperands];
+                var equation = (string)einsumNode.args[1];
+                var operandIndices = new TensorIndex[operands.Length];
                 EinsumHelper.ParseEquationStringShape(equation, operandShapes, ref operandIndices, out var outputIndices, out var numIndices);
-
                 var isUnsupportedConversion = false;
 
                 var operandPositions = new List<int>[numOperands];
@@ -216,10 +193,10 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 // classify einsum dimensions depending on type using flags
                 for (var i = 0; i < numIndices; i++)
                 {
-                    dimClassification[i] += operandPositions[0][i] >= 0 ? _isOperandA : 0;
-                    dimClassification[i] += operandPositions[1][i] >= 0 ? _isOperandB : 0;
-                    dimClassification[i] += outputPositions[i] >= 0 ? _isOutput : 0;
-                    if (dimClassification[i] == _isOperandA || dimClassification[i] == _isOperandB)
+                    dimClassification[i] += operandPositions[0][i] >= 0 ? k_IsOperandA : 0;
+                    dimClassification[i] += operandPositions[1][i] >= 0 ? k_IsOperandB : 0;
+                    dimClassification[i] += outputPositions[i] >= 0 ? k_IsOutput : 0;
+                    if (dimClassification[i] == k_IsOperandA || dimClassification[i] == k_IsOperandB)
                     {
                         // label only appears in one operand, not a matmul
                         isUnsupportedConversion = true;
@@ -231,10 +208,10 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                     continue;
 
                 // categorize dims into sum, broadcast and operandOut
-                var broadcastDims = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == _isOperandA + _isOperandB + _isOutput).ToList();
-                var sumDims = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == _isOperandA + _isOperandB).ToList();
-                var outputOperandDimsA = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == _isOperandA + _isOutput).ToList();
-                var outputOperandDimsB = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == _isOperandB + _isOutput).ToList();
+                var broadcastDims = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == k_IsOperandA + k_IsOperandB + k_IsOutput).ToList();
+                var sumDims = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == k_IsOperandA + k_IsOperandB).ToList();
+                var outputOperandDimsA = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == k_IsOperandA + k_IsOutput).ToList();
+                var outputOperandDimsB = Enumerable.Range(0, numIndices).Where(i => dimClassification[i] == k_IsOperandB + k_IsOutput).ToList();
 
                 // reorder dimensions within classifications to match given
                 // inputs and outputs as closely as possible
@@ -252,19 +229,22 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 var transformedDims1 = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, sumDimsIndex, outputOperandDimsBIndex } : new[] { sumDimsIndex, outputOperandDimsBIndex };
                 var transformedDimsOut = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, outputOperandDimsAIndex, outputOperandDimsBIndex } : new[] { outputOperandDimsAIndex, outputOperandDimsBIndex };
 
-                var uniqueIndex = model.GetUniqueIndex();
-
                 // insert permute and reshape layers to take inputs to desired matmul inputs
-                if (!InsertPermuteReshapeLayers(model, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.GetPartialTensor(einsumLayer.inputs[0]).shape, ref uniqueIndex))
+                if (!InsertPermuteReshapeLayers(gm, einsumNode, ref operands[0], operandIndices[0], transformedDims0, operandShapes[0]))
                     break;
-                if (!InsertPermuteReshapeLayers(model, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.GetPartialTensor(einsumLayer.inputs[1]).shape, ref uniqueIndex))
+                if (!InsertPermuteReshapeLayers(gm, einsumNode, ref operands[1], operandIndices[1], transformedDims1, operandShapes[1]))
                     break;
+
+                var einsumShape = einsumNode.partialTensor.shape;
+                gm.graph.InsertingAfter(einsumNode);
+                var outNode = gm.graph.CallFunction("MatMul", new Argument[] { operands[0], operands[1] });
 
                 // insert reshape and permute layers to get desired output from matmul output
-                if (!InsertInversePermuteReshapeLayers(model, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.outputs[0]).shape, ref uniqueIndex))
+                if (!InsertInversePermuteReshapeLayers(gm, ref outNode, outputIndices, transformedDimsOut, einsumShape))
                     break;
 
-                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul().SetInputs(einsumLayer.inputs[0], einsumLayer.inputs[1]).SetOutputs(einsumLayer.outputs[0]);
+                einsumNode.ReplaceAllUsesWith(outNode);
+                gm.graph.EraseNode(einsumNode);
             }
         }
     }

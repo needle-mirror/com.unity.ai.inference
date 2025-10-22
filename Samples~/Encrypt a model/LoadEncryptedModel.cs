@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 public class LoadEncryptedModel : MonoBehaviour
 {
     // A .bytes asset that has been saved with using AES encryption
-    // with the 'Inference Engine > Sample Model Encryption' editor window
+    // with the 'Sentis > Sample Model Encryption' editor window
     [SerializeField]
     public TextAsset encryptedModel;
 

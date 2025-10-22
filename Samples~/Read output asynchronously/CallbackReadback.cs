@@ -29,7 +29,7 @@ public class CallbackReadback : MonoBehaviour
         m_Worker = new Worker(model, BackendType.GPUCompute);
 
         m_Worker.Schedule(m_Input);
-        // Peek the value from Inference Engine, without taking ownership of the Tensor (see PeekOutput docs for details).
+        // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
         var result = m_Worker.PeekOutput() as Tensor<float>;
 
         #if UNITY_2023_2_OR_NEWER

@@ -3,79 +3,20 @@ using System;
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
-    /// Represents the abstract base class for reduction layers.
+    /// Represents a `ReduceL1` reduction layer along the given axes: f(x1, x2 ... xn) = |x1| + |x2| + ... + |xn|.
     /// </summary>
+    [Operator(category = "Reduction")]
     [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
-    abstract class Reduce : Layer
+    partial class ReduceL1 : Layer
     {
         public bool keepdims;
         public bool noopWithEmptyAxes;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
         {
-            var X = getPartialTensor(0);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
-            var axes = getPartialTensor(1) as PartialTensor<int>;
-            var shapeAxes = axes?.shape ?? new DynamicTensorShape(DynamicTensorDim.Zero);
-            if (axes != null && axes.isPartiallyKnown && axes.length != 0)
-            {
-                var reducedShape = new DynamicTensorShape(shapeX);
-                if (!axes.IsStatic() && reducedShape.hasRank)
-                {
-                    // replace any non 1 dims with unknown (1 stays the same whether reduced or not)
-                    for (var i = 0; i < reducedShape.rank; i++)
-                    {
-                        if (reducedShape[i] == 1)
-                            continue;
-                        reducedShape[i] = DynamicTensorDim.Unknown;
-                    }
-                }
-
-                for (var i = 0; i < axes.length; i++)
-                {
-                    if (!axes[i].isValue)
-                        continue;
-                    var axis = axes[i].value;
-                    reducedShape[axis] = DynamicTensorDim.One;
-                }
-
-                var tensorOut = PartialTensor.Create(dataType, reducedShape);
-                if (!keepdims)
-                {
-                    tensorOut = tensorOut.Reshape(!axes.IsStatic() ? DynamicTensorShape.DynamicOfRank(tensorOut.shape.rank - axes.length) : tensorOut.shape.Squeeze(axes));
-                }
-
-                setPartialTensor(0, tensorOut);
-                return;
-            }
-
-            if (shapeAxes.IsStatic())
-            {
-                if (shapeAxes[0].value != 0)
-                    setPartialTensor(0, PartialTensor.Create(dataType, keepdims ? DynamicTensorShape.DynamicOfRankLike(shapeX) : DynamicTensorShape.DynamicRank));
-                else if (noopWithEmptyAxes)
-                    setPartialTensor(0, PartialTensor.Create(dataType, shapeX));
-                else
-                    setPartialTensor(0, PartialTensor.Create(dataType, keepdims ? DynamicTensorShape.OnesLike(shapeX) : new DynamicTensorShape()));
-                return;
-            }
-
-            setPartialTensor(0, PartialTensor.Create(dataType, keepdims && !noopWithEmptyAxes ? DynamicTensorShape.DynamicOfRankLike(shapeX) : DynamicTensorShape.DynamicRank));
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
         }
 
-        public override string ToString()
-        {
-            return $"{base.ToString()}, keepdims: {keepdims}, noopWithEmptyAxes: {noopWithEmptyAxes}";
-        }
-    }
-
-    /// <summary>
-    /// Represents a `ReduceL1` reduction layer along the given axes: f(x1, x2 ... xn) = |x1| + |x2| + ... + |xn|.
-    /// </summary>
-    [Operator(category = "Reduction")]
-    partial class ReduceL1 : Reduce
-    {
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -105,8 +46,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceL2` reduction layer along the given axes: f(x1, x2 ... xn) = sqrt(x1² + x2² + ... + xn²).
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceL2 : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceL2 : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -131,8 +81,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceLogSum` reduction layer along the given axes: f(x1, x2 ... xn) = log(x1 + x2 + ... + xn).
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceLogSum : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceLogSum : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -157,8 +116,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceLogSumExp` reduction layer along the given axes: f(x1, x2 ... xn) = log(e^x1 + e^x2 + ... + e^xn).
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceLogSumExp : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceLogSumExp : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -183,8 +151,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceMax` reduction layer along the given axes: f(x1, x2 ... xn) = max(x1, x2, ... , xn).
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceMax : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceMax : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -219,8 +196,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceMean` reduction layer along the given axes: f(x1, x2 ... xn) = (x1 + x2 + ... + xn) / n.
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceMean : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceMean : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -245,8 +231,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceMin` reduction layer along the given axes: f(x1, x2 ... xn) = min(x1, x2, ... , xn).
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceMin : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceMin : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -281,8 +276,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceProd` reduction layer along the given axes: f(x1, x2 ... xn) = x1 * x2 * ... * xn.
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceProd : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceProd : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -317,8 +321,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceSum` reduction layer along the given axes: f(x1, x2 ... xn) = x1 + x2 + ... + xn.
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceSum : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceSum : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -348,8 +361,17 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `ReduceSumSquare` reduction layer along the given axes: f(x1, x2 ... xn) = x1² + x2² + ... + xn².
     /// </summary>
     [Operator(category = "Reduction")]
-    partial class ReduceSumSquare : Reduce
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceSumSquare : Layer
     {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -372,6 +394,60 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.ReduceSumSquare(X as Tensor<int>, O as Tensor<int>, axes);
             else
                 ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
+        }
+    }
+
+    /// <summary>
+    /// Represents a `ReduceVariance` reduction layer along the given axes: f(x1, x2, ..., xn) = ((x1 - μ)**2 + (x2 - μ)**2 + ... + (xn - μ)**2) / N where μ = (x1 + x2 + ... + xn) / N (use 1/(N-1) instead of 1/N for unbiased variance)
+    /// </summary>
+    [Operator(category = "Reduction")]
+    [Inputs(names = new[] { "data", "axes" }, inputCPURead = new[] { 1 })]
+    partial class ReduceVariance : Layer
+    {
+        public bool keepdims;
+        public bool noopWithEmptyAxes;
+        public float correction;
+
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes, float correction)
+        {
+            return PartialTensor.Reduce(data, axes, keepdims, noopWithEmptyAxes);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var axes = ctx.storage.GetInts(inputs[1], null);
+            if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
+            {
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+                ctx.backend.MemCopy(X, copyX);
+                return;
+            }
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+
+            var N = X.shape.length / O.shape.length;
+            var divisor = N - correction;
+            if (X.shape.HasZeroDims() || divisor <= 0)
+            {
+                ctx.backend.MemClear(O);
+                return;
+            }
+
+            var mean = ctx.storage.AllocateTensor(X.shape.Reduce(axes, true), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var subMean = ctx.storage.AllocateTensor(X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var reduceSumSquare = ctx.storage.AllocateTensor(O.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+
+            ctx.backend.ReduceMean(X, mean, axes);
+            ctx.backend.Sub(X, mean, subMean);
+            ctx.backend.ReduceSumSquare(subMean, reduceSumSquare, axes);
+            ctx.backend.ScalarMad(reduceSumSquare, O, 1 / divisor, 0);
+
+            ctx.storage.Dispose(mean);
+            ctx.storage.Dispose(subMean);
+            ctx.storage.Dispose(reduceSumSquare);
         }
     }
 }

@@ -161,6 +161,36 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an `AsStrided` layer. The output tensor with a given size filled with values from the input tensor with given stride and offsets.
+    /// </summary>
+    [Operator(category = "Transformation")]
+    [Inputs(names = new[] { "input", "shape", "strides", "offset" }, inputCPURead = new[] { 1, 2, 3 })]
+    partial class AsStrided : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor shape, PartialTensor strides, PartialTensor offset)
+        {
+            if (!shape.isPartiallyKnown)
+                return PartialTensor.Create(input.dataType, DynamicTensorShape.DynamicRank);
+            var outShape = DynamicTensorShape.DynamicOfRank(shape.length);
+            for (var i = 0; i < shape.length; i++)
+                outShape[i] = (DynamicTensorDim)shape.Get<int>(i);
+            return PartialTensor.Create(input.dataType, outShape);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var shape = ctx.storage.GetInts(inputs[1]);
+            var strides = ctx.storage.GetInts(inputs[2]);
+            var offset = ctx.storage.GetInt(inputs[3]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(shape), X.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.AsStrided(X, O, strides, offset);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Cast` layer: f(x) = (float)x or f(x) = (int)x depending on the value of `toType`.
     /// </summary>
     [Operator(category = "Transformation")]
@@ -168,9 +198,11 @@ namespace Unity.InferenceEngine.Layers
     {
         public DataType toType;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, DataType toType)
         {
-            setPartialTensor(0, PartialTensor.Create(toType, getPartialTensor(0).shape));
+            if (toType == DataType.Float)
+                return input.Cast<float>();
+            return input.Cast<int>();
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -200,10 +232,9 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "targetType" }, inputNoDataDependency = new[] { 1 })]
     partial class CastLike : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor targetType)
         {
-            var toType = getPartialTensor(1).dataType;
-            setPartialTensor(0, PartialTensor.Create(toType, getPartialTensor(0).shape));
+            return PartialTensor.Create(targetType.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -236,12 +267,9 @@ namespace Unity.InferenceEngine.Layers
     {
         public int axis;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor[] inputTensors, int axis)
         {
-            Logger.AssertIsTrue(inputs.Length > 0, "Concat.InputError: can't broadcast shapes array of size 0");
-            var inputTensors = new PartialTensor[inputs.Length];
-            for (var i = 0; i < inputs.Length; i++)
-                inputTensors[i] = getPartialTensor(i);
+            Logger.AssertIsTrue(inputTensors.Length > 0, "Concat.InputError: can't broadcast shapes array of size 0");
 
             var dataType = inputTensors[0].dataType;
 
@@ -253,10 +281,7 @@ namespace Unity.InferenceEngine.Layers
             }
 
             if (rank.isUnknown)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank));
-                return;
-            }
+                return PartialTensor.Create(dataType, DynamicTensorShape.DynamicRank);
 
             foreach (var tensorInput in inputTensors)
                 tensorInput.shape.DeclareRank(rank.value);
@@ -287,10 +312,7 @@ namespace Unity.InferenceEngine.Layers
             var tensorOut = PartialTensor.Create(dataType, shapeOut);
 
             if (shapeOut.rank != 1 || !tensorOut.isPartiallyKnown)
-            {
-                setPartialTensor(0, tensorOut);
-                return;
-            }
+                return tensorOut;
 
             var index = 0;
             foreach (var X in inputTensors)
@@ -301,7 +323,7 @@ namespace Unity.InferenceEngine.Layers
                 }
             }
 
-            setPartialTensor(0, tensorOut);
+            return tensorOut;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -340,12 +362,11 @@ namespace Unity.InferenceEngine.Layers
         public int blocksize;
         public DepthToSpaceMode mode;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int blocksize, DepthToSpaceMode mode)
         {
-            var X = getPartialTensor(0);
-            var shapeX = X.shape;
-            shapeX.DeclareRank(4);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, new DynamicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize)));
+            var shapeInput = input.shape;
+            shapeInput.DeclareRank(4);
+            return PartialTensor.Create(input.dataType, new DynamicTensorShape(shapeInput[0], shapeInput[1] / (blocksize * blocksize), shapeInput[2] * blocksize, shapeInput[3] * blocksize));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -359,17 +380,58 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents a `Diagonal` layer. The layer computes the output tensor by appending the diagonal elements with respect to dim1 and dim2 to the other dimensions.
+    /// </summary>
+    [Operator(category = "Transformation")]
+    partial class Diagonal : Layer
+    {
+        public int offset;
+        public int dim1;
+        public int dim2;
+
+        internal static PartialTensor InferPartial(PartialTensor input, int offset, int dim1, int dim2)
+        {
+            if (input.shape.isRankDynamic)
+                return PartialTensor.Create(input.dataType, DynamicTensorShape.DynamicRank);
+            var outShape = DynamicTensorShape.DynamicOfRank(input.shape.rank - 1);
+            dim1 = dim1 < 0 ? dim1 + input.shape.rank : dim1;
+            dim2 = dim2 < 0 ? dim2 + input.shape.rank : dim2;
+            var j = 0;
+            for (var i = 0; i < input.shape.rank; i++)
+            {
+                if (i == dim1 || i == dim2)
+                    continue;
+                outShape[j] = input.shape[i];
+                j++;
+            }
+            var size1 = input.shape[dim1];
+            var size2 = input.shape[dim2];
+            if (size1.isValue && size2.isValue)
+                outShape[-1] = DynamicTensorDim.Int(Mathf.Max(0, Mathf.Min(size1.value + Mathf.Min(0, offset), size2.value - Mathf.Max(0, offset))));
+            return PartialTensor.Create(input.dataType, outShape);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            Span<int> strides = stackalloc int[TensorShape.maxRank];
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Diagonal(offset, dim1, dim2, ref strides, out var storageOffset), X.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.AsStrided(X, O, strides.Slice(TensorShape.maxRank - O.shape.rank), storageOffset);
+        }
+    }
+
+    /// <summary>
     /// Represents an `Expand` layer. The layer computes the output tensor by broadcasting the input tensor into a given shape.
     /// </summary>
     [Operator(category = "Transformation")]
     [Inputs(names = new[] { "input", "shape" }, inputCPURead = new[] { 1 })]
     partial class Expand : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor shape)
         {
-            var X = getPartialTensor(0);
-            var shape = DynamicTensorShape.FromPartialTensor(getPartialTensor(1) as PartialTensor<int>);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, shape.Broadcast(X.shape)));
+            return PartialTensor.Create(input.dataType, DynamicTensorShape.FromPartialTensor(shape as PartialTensor<int>).Broadcast(input.shape));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -391,32 +453,29 @@ namespace Unity.InferenceEngine.Layers
     {
         public int axis;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int axis)
         {
-            var X = getPartialTensor(0);
-            var shapeX = X.shape;
-            if (!shapeX.hasRank)
+            var shapeInput = input.shape;
+            if (!shapeInput.hasRank)
             {
                 if (axis == 0)
-                    setPartialTensor(0, X.Reshape(new DynamicTensorShape(DynamicTensorDim.One, shapeX.Length())));
-                else
-                    setPartialTensor(0, X.Reshape(DynamicTensorShape.DynamicOfRank(2)));
-                return;
+                    return input.Reshape(new DynamicTensorShape(DynamicTensorDim.One, shapeInput.Length()));
+                return input.Reshape(DynamicTensorShape.DynamicOfRank(2));
             }
 
-            var axisX = axis >= 0 ? axis : shapeX.rank + axis;
+            var axisX = axis >= 0 ? axis : shapeInput.rank + axis;
 
             var shapeOut = DynamicTensorShape.Ones(2);
             for (var i = 0; i < axisX; i++)
             {
-                shapeOut[0] *= shapeX[i];
+                shapeOut[0] *= shapeInput[i];
             }
-            for (var i = axisX; i < shapeX.rank; i++)
+            for (var i = axisX; i < shapeInput.rank; i++)
             {
-                shapeOut[1] *= shapeX[i];
+                shapeOut[1] *= shapeInput[i];
             }
 
-            setPartialTensor(0, X.Reshape(shapeOut));
+            return input.Reshape(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -441,15 +500,12 @@ namespace Unity.InferenceEngine.Layers
         public PaddingMode paddingMode;
         public bool alignCorners;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor grid, InterpolationMode interpolationMode, PaddingMode paddingMode, bool alignCorners)
         {
-            var X = getPartialTensor(0);
-            var grid = getPartialTensor(1);
-
             var outShape = DynamicTensorShape.DynamicRank;
 
-            if (X.shape.hasRank)
-                outShape.DeclareRank(X.shape.rank);
+            if (input.shape.hasRank)
+                outShape.DeclareRank(input.shape.rank);
             if (grid.shape.hasRank)
                 outShape.DeclareRank(grid.shape.rank);
 
@@ -457,13 +513,13 @@ namespace Unity.InferenceEngine.Layers
             {
                 outShape[i] = i switch
                 {
-                    0 => DynamicTensorDim.MaxDefinedDim(X.shape[0], grid.shape[0]),
-                    1 => X.shape[i],
+                    0 => DynamicTensorDim.MaxDefinedDim(input.shape[0], grid.shape[0]),
+                    1 => input.shape[i],
                     _ => grid.shape[i - 1]
                 };
             }
 
-            setPartialTensor(0, PartialTensor.Create(X.dataType, outShape));
+            return PartialTensor.Create(input.dataType, outShape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -483,9 +539,9 @@ namespace Unity.InferenceEngine.Layers
     [Operator(category = "Transformation")]
     partial class Identity : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            setPartialTensor(0, getPartialTensor(0));
+            return input;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -509,34 +565,31 @@ namespace Unity.InferenceEngine.Layers
         public int[] source;
         public int[] destination;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int[] source, int[] destination)
         {
-            var shapeX = getPartialTensor(0).shape;
+            var shapeInput = input.shape;
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(getPartialTensor(0).dataType));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(input.dataType);
 
-            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeX.rank);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeInput.rank);
 
             // move given dims
             uint srcAxesBitMask = 0;
             uint dstAxesBitMask = 0;
             for (var i = 0; i < source.Length; i++)
             {
-                var srcAxis = shapeX.Axis(source[i]);
-                var dstAxis = shapeX.Axis(destination[i]);
+                var srcAxis = shapeInput.Axis(source[i]);
+                var dstAxis = shapeInput.Axis(destination[i]);
                 Logger.AssertIsTrue(((srcAxesBitMask >> srcAxis) & 1U) == 0, "MoveDim.ValueError: source dims may not repeat");
                 Logger.AssertIsTrue(((dstAxesBitMask >> dstAxis) & 1U) == 0, "MoveDim.ValueError: destination dims may not repeat");
                 srcAxesBitMask |= 1U << srcAxis;
                 dstAxesBitMask |= 1U << dstAxis;
-                shapeOut[dstAxis] = shapeX[srcAxis];
+                shapeOut[dstAxis] = shapeInput[srcAxis];
             }
 
             // fill remaining dims in order
-            for (int srcAxis = 0, dstAxis = 0; srcAxis < shapeX.rank; srcAxis++)
+            for (int srcAxis = 0, dstAxis = 0; srcAxis < shapeInput.rank; srcAxis++)
             {
                 if (((srcAxesBitMask >> srcAxis) & 1U) != 0)
                     continue;
@@ -544,11 +597,11 @@ namespace Unity.InferenceEngine.Layers
                     dstAxis++;
                 srcAxesBitMask |= 1U << srcAxis;
                 dstAxesBitMask |= 1U << dstAxis;
-                shapeOut[dstAxis] = shapeX[srcAxis];
+                shapeOut[dstAxis] = shapeInput[srcAxis];
                 dstAxis++;
             }
 
-            setPartialTensor(0, PartialTensor.Create(getPartialTensor(0).dataType, shapeOut));
+            return PartialTensor.Create(input.dataType, shapeOut);
         }
 
         internal override unsafe void Execute(ExecutionContext ctx)
@@ -572,42 +625,34 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "dim", "start", "length" }, inputCPURead = new[] { 1, 2, 3 })]
     partial class Narrow : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor dim, PartialTensor start, PartialTensor length)
         {
-            var X = getPartialTensor(0);
-            var dim = getPartialTensor(1) as PartialTensor<int>;
-            var start = getPartialTensor(2) as PartialTensor<int>;
-            var length = getPartialTensor(3) as PartialTensor<int>;
             if (!dim.IsStatic())
-            {
-                setPartialTensor(0, PartialTensor.Create(X.dataType, DynamicTensorShape.DynamicOfRank(X.shape.rank)));
-                return;
-            }
+                return PartialTensor.Create(input.dataType, DynamicTensorShape.DynamicOfRank(input.shape.rank));
 
-            var dimValue = dim[0].value;
+            var dimValue = dim.Get<int>(0).value;
 
-            var outShape = X.shape;
+            var outShape = input.shape;
             outShape[dimValue] = DynamicTensorDim.Unknown;
 
-            if (start.IsStatic() && length.IsStatic() && X.shape[dimValue].isValue)
+            if (start.IsStatic() && length.IsStatic() && input.shape[dimValue].isValue)
             {
-                var dimSize = X.shape[dimValue].value;
-                var startValue = (start[0].value + dimSize) % dimSize;
-                var end = Mathf.Min(startValue + length[0].value, dimSize);
+                var dimSize = input.shape[dimValue].value;
+                var startValue = (start.Get<int>(0).value + dimSize) % dimSize;
+                var end = Mathf.Min(startValue + length.Get<int>(0).value, dimSize);
                 var lengthValue = end - startValue;
                 outShape[dimValue] = DynamicTensorDim.FromInt(lengthValue);
 
-                if (X.isPartiallyKnown)
+                if (input.isPartiallyKnown)
                 {
-                    var tensorOut = PartialTensor.Create(X.dataType, outShape);
+                    var tensorOut = PartialTensor.Create(input.dataType, outShape);
                     for (var i = 0; i < lengthValue; i++)
-                        tensorOut.CopyElement(i, X, startValue + i);
-                    setPartialTensor(0, tensorOut);
-                    return;
+                        tensorOut.CopyElement(i, input, startValue + i);
+                    return tensorOut;
                 }
             }
 
-            setPartialTensor(0, PartialTensor.Create(X.dataType, outShape));
+            return PartialTensor.Create(input.dataType, outShape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -632,11 +677,9 @@ namespace Unity.InferenceEngine.Layers
     {
         public PadMode padMode;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor data, PartialTensor pads, PartialTensor constantValue, PartialTensor axes, PadMode padMode)
         {
-            var X = getPartialTensor(0);
-            var pads = getPartialTensor(1) as PartialTensor<int>;
-            var shapeX = X.shape;
+            var shapeData = data.shape;
             var shapePads = pads.shape;
             if (shapePads.hasRank)
             {
@@ -644,34 +687,29 @@ namespace Unity.InferenceEngine.Layers
                 Logger.AssertIsTrue(!shapePads[0].isValue || shapePads[0].value % 2 == 0, "Pad.ValueError: length of pads must divide by 2");
             }
 
-            var axes = getPartialTensor(3) as PartialTensor<int>;
-
             if (axes == null)
             {
-                shapeX.DeclareRank(shapePads[0] / 2);
-                axes = shapeX.hasRank ? PartialTensor.Range(0, shapeX.rank) : new PartialTensor<int>(DynamicTensorShape.DynamicOfRank(1));
+                shapeData.DeclareRank(shapePads[0] / 2);
+                axes = shapeData.hasRank ? PartialTensor.Range(0, shapeData.rank) : new PartialTensor<int>(DynamicTensorShape.DynamicOfRank(1));
             }
 
             if (!axes.isPartiallyKnown)
-            {
-                setPartialTensor(0, PartialTensor.Create(X.dataType, DynamicTensorShape.DynamicOfRankLike(shapeX)));
-                return;
-            }
+                return PartialTensor.Create(data.dataType, DynamicTensorShape.DynamicOfRankLike(shapeData));
 
             Logger.AssertIsTrue(!shapePads[0].isValue || shapePads[0].value == axes.length * 2, "Pad.ValueError: length of pads must be twice the length of the axes");
 
-            var shapeOut = new DynamicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeData);
 
             for (var i = 0; i < axes.length; i++)
             {
-                if (!axes[i].isValue)
+                if (!axes.Get<int>(i).isValue)
                     continue;
-                var axis = axes[i].value;
-                var dimPad = pads[i] + pads[i + axes.length];
-                shapeOut[axis] = (DynamicTensorDim)((PartialTensorElement<int>)shapeX[axis] + dimPad);
+                var axis = axes.Get<int>(i).value;
+                var dimPad = pads.Get<int>(i) + pads.Get<int>(i + axes.length);
+                shapeOut[axis] = (DynamicTensorDim)((PartialTensorElement<int>)shapeData[axis] + dimPad);
             }
 
-            setPartialTensor(0, PartialTensor.Create(X.dataType, shapeOut));
+            return PartialTensor.Create(data.dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -738,20 +776,16 @@ namespace Unity.InferenceEngine.Layers
     {
         public bool allowZero;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor shape, bool allowZero)
         {
-            var X = getPartialTensor(0);
-            var shape = getPartialTensor(1) as PartialTensor<int>;
-            var shapeX = X.shape;
+            var shapeInput = input.shape;
             shape.shape.DeclareRank(1);
 
             if (!shape.isPartiallyKnown)
             {
                 if (shape.shape[0].isValue)
-                    setPartialTensor(0, X.Reshape(DynamicTensorShape.DynamicOfRank(shape.shape[0].value)));
-                else
-                    setPartialTensor(0, X.Reshape(DynamicTensorShape.DynamicRank));
-                return;
+                    return input.Reshape(DynamicTensorShape.DynamicOfRank(shape.shape[0].value));
+                return input.Reshape(DynamicTensorShape.DynamicRank);
             }
 
             var shapeOut = DynamicTensorShape.DynamicOfRank(shape.length);
@@ -760,25 +794,26 @@ namespace Unity.InferenceEngine.Layers
 
             for (var i = 0; i < shapeOut.rank; i++)
             {
-                if (shape[i].Equals(-1))
+                if (shape.Get<int>(i).Equals(-1))
                     containsMinusOne = true;
             }
 
             for (var i = 0; i < shapeOut.rank; i++)
             {
-                if (shape[i].isUnknown)
+                var shapeDim = shape.Get<int>(i);
+                if (shapeDim.isUnknown)
                     continue;
 
-                var dim = (DynamicTensorDim)shape[i];
-                if (shape[i].isParam)
+                var dim = (DynamicTensorDim)shapeDim;
+                if (shapeDim.isParam)
                 {
-                    if (allowZero || (shapeX.hasRank && i >= shapeX.rank) || shapeX[i] == dim)
+                    if (allowZero || (shapeInput.hasRank && i >= shapeInput.rank) || shapeInput[i] == dim)
                         shapeOut[i] = dim;
                     else if (containsMinusOne)
                     {
-                        for (var j = 0; j < shapeX.rank; j++)
+                        for (var j = 0; j < shapeInput.rank; j++)
                         {
-                            if (shapeX[j] == dim)
+                            if (shapeInput[j] == dim)
                             {
                                 shapeOut[i] = dim;
                                 break;
@@ -788,13 +823,13 @@ namespace Unity.InferenceEngine.Layers
                     continue;
                 }
 
-                if (shape[i].value > 0)
+                if (shapeDim.value > 0)
                     shapeOut[i] = dim;
-                else if (shape[i].value == 0)
-                    shapeOut[i] = allowZero ? DynamicTensorDim.Zero : shapeX[i];
+                else if (shapeDim.value == 0)
+                    shapeOut[i] = allowZero ? DynamicTensorDim.Zero : shapeInput[i];
             }
 
-            setPartialTensor(0, X.Reshape(shapeOut, !containsMinusOne));
+            return input.Reshape(shapeOut, !containsMinusOne);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -821,34 +856,33 @@ namespace Unity.InferenceEngine.Layers
         public NearestMode nearestMode;
         public int[] axes;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor scalesOrSizes, ScaleMode scaleMode, CoordTransformMode coordTransformMode, InterpolationMode mode, NearestMode nearestMode, int[] axes)
         {
-            var dataType = getPartialTensor(0).dataType;
-            var shapeX = getPartialTensor(0).shape;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
 
-            var sizesOrScales = getPartialTensor(1);
-            sizesOrScales.shape.DeclareRank(1);
+            scalesOrSizes.shape.DeclareRank(1);
             if (axes == null)
-                shapeX.DeclareRank(sizesOrScales.shape[0]);
-            var shapeOut = new DynamicTensorShape(shapeX);
+                shapeInput.DeclareRank(scalesOrSizes.shape[0]);
+            var shapeOut = new DynamicTensorShape(shapeInput);
             if (shapeOut.hasRank)
             {
                 if (axes == null)
                 {
                     for (var i = 0; i < shapeOut.rank; i++)
-                        shapeOut[i] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)sizesOrScales.Get<int>(i) : shapeX[i].Resize(sizesOrScales.Get<float>(i));
+                        shapeOut[i] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)scalesOrSizes.Get<int>(i) : shapeInput[i].Resize(scalesOrSizes.Get<float>(i));
                 }
                 else
                 {
                     for (var i = 0; i < axes.Length; i++)
                     {
                         var axis = shapeOut.Axis(axes[i]);
-                        shapeOut[axis] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)sizesOrScales.Get<int>(i) : shapeX[axis].Resize(sizesOrScales.Get<float>(i));
+                        shapeOut[axis] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)scalesOrSizes.Get<int>(i) : shapeInput[axis].Resize(scalesOrSizes.Get<float>(i));
                     }
                 }
             }
 
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.Create(dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -899,32 +933,28 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "dim", "selectIndex" }, inputCPURead = new[] { 1, 2 })]
     partial class Select : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor dim, PartialTensor selectIndex)
         {
-            var X = getPartialTensor(0);
-            var dim = getPartialTensor(1) as PartialTensor<int>;
-            var selectIndex = getPartialTensor(2) as PartialTensor<int>;
-            var outShape = X.shape;
+            var outShape = input.shape;
             if (!dim.IsStatic())
             {
-                outShape = X.shape.hasRank ? DynamicTensorShape.DynamicOfRank(X.shape.rank - 1) : DynamicTensorShape.DynamicRank;
-                setPartialTensor(0, PartialTensor.Create(X.dataType, outShape));
-                return;
+                outShape = input.shape.hasRank ? DynamicTensorShape.DynamicOfRank(input.shape.rank - 1) : DynamicTensorShape.DynamicRank;
+                return PartialTensor.Create(input.dataType, outShape);
             }
 
-            var axis = dim[0].value;
+            var axis = dim.Get<int>(0).value;
             outShape[axis] = DynamicTensorDim.One;
             outShape = outShape.Squeeze(axis);
-            var tensorOut = PartialTensor.Create(X.dataType, outShape);
+            var tensorOut = PartialTensor.Create(input.dataType, outShape);
 
-            if (axis == 0 && X.isPartiallyKnown && selectIndex.IsStatic())
+            if (axis == 0 && input.isPartiallyKnown && selectIndex.IsStatic())
             {
-                var index = selectIndex[0].value;
-                index = index < 0 ? index + X.shape.Length().value : index;
-                tensorOut.CopyElement(0, X, index);
+                var index = selectIndex.Get<int>(0).value;
+                index = index < 0 ? index + input.shape.Length().value : index;
+                tensorOut.CopyElement(0, input, index);
             }
 
-            setPartialTensor(0, tensorOut);
+            return tensorOut;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -951,26 +981,20 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "starts", "ends", "axes", "steps" }, inputCPURead = new[] { 1, 2, 3, 4 })]
     partial class Slice : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor starts, PartialTensor ends, PartialTensor axes, PartialTensor steps)
         {
-            var data = getPartialTensor(0);
-            if (!data.shape.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(data.dataType));
-                return;
-            }
+            if (!input.shape.hasRank)
+                return PartialTensor.Create(input.dataType);
 
-            var starts = getPartialTensor(1) as PartialTensor<int>;
-            var ends = getPartialTensor(2) as PartialTensor<int>;
-            var axes = getPartialTensor(3) as PartialTensor<int> ?? PartialTensor.Range(0, data.shape.rank);
-            var steps = getPartialTensor(4) as PartialTensor<int> ?? PartialTensor.Ones(starts.shape);
+            axes ??= PartialTensor.Range(0, input.shape.rank);
+            steps ??= PartialTensor.Ones(starts.shape);
 
-            if (data.isPartiallyKnown && data.shape.rank == 1 && starts[0].isValue && ends[0].isValue && steps[0].isValue)
+            if (input.isPartiallyKnown && input.shape.rank == 1 && starts.Get<int>(0).isValue && ends.Get<int>(0).isValue && steps.Get<int>(0).isValue)
             {
-                var dim = data.shape[0].value;
-                var start = starts[0].value;
-                var end = ends[0].value;
-                var step = steps[0].value;
+                var dim = input.shape[0].value;
+                var start = starts.Get<int>(0).value;
+                var end = ends.Get<int>(0).value;
+                var step = steps.Get<int>(0).value;
 
                 var clampAdjustDirection = step < 0 ? -1 : 0;
 
@@ -983,38 +1007,34 @@ namespace Unity.InferenceEngine.Layers
                 var length = (int)Math.Ceiling((end - start) / (double)step);
                 length = Mathf.Max(length, 0);
 
-                var tensorOut = PartialTensor.Create(data.dataType, new DynamicTensorShape(length));
+                var tensorOut = PartialTensor.Create(input.dataType, new DynamicTensorShape(length));
 
                 for (var i = 0; i < length; i++)
                 {
-                    tensorOut.CopyElement(i, data, start + i * step);
+                    tensorOut.CopyElement(i, input, start + i * step);
                 }
 
-                setPartialTensor(0, tensorOut);
-                return;
+                return tensorOut;
             }
 
             if (!axes.isPartiallyKnown)
-            {
-                setPartialTensor(0, PartialTensor.Create(data.dataType, DynamicTensorShape.DynamicOfRank(data.shape.rank)));
-                return;
-            }
+                return PartialTensor.Create(input.dataType, DynamicTensorShape.DynamicOfRank(input.shape.rank));
 
-            var shapeOut = new DynamicTensorShape(data.shape);
+            var shapeOut = new DynamicTensorShape(input.shape);
 
             for (var i = 0; i < axes.length; i++)
             {
-                var axisElement = axes[i];
+                var axisElement = axes.Get<int>(i);
                 if (!axisElement.isValue)
                 {
-                    shapeOut = DynamicTensorShape.DynamicOfRank(data.shape.rank);
+                    shapeOut = DynamicTensorShape.DynamicOfRank(input.shape.rank);
                     continue;
                 }
                 var axis = shapeOut.Axis(axisElement.value);
-                shapeOut[axis] = data.shape[axis].Slice(starts[i], ends[i], steps[i]);
+                shapeOut[axis] = input.shape[axis].Slice(starts.Get<int>(i), ends.Get<int>(i), steps.Get<int>(i));
             }
 
-            setPartialTensor(0, PartialTensor.Create(data.dataType, shapeOut));
+            return PartialTensor.Create(input.dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1042,10 +1062,9 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "values", "starts", "ends", "axes", "steps" }, inputCPURead = new[] { 2, 3, 4, 5 })]
     partial class SliceSet : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor values, PartialTensor starts, PartialTensor ends, PartialTensor axes, PartialTensor steps)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1111,11 +1130,11 @@ namespace Unity.InferenceEngine.Layers
     {
         public int blocksize;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int blocksize)
         {
-            var shapeX = getPartialTensor(0).shape;
-            shapeX.DeclareRank(4);
-            setPartialTensor(0, PartialTensor.Create(getPartialTensor(0).dataType, new DynamicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize)));
+            var shapeInput = input.shape;
+            shapeInput.DeclareRank(4);
+            return PartialTensor.Create(input.dataType, new DynamicTensorShape(shapeInput[0], shapeInput[1] * (blocksize * blocksize), shapeInput[2] / blocksize, shapeInput[3] / blocksize));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1141,15 +1160,14 @@ namespace Unity.InferenceEngine.Layers
 
         internal override int OutputCount => numOutputs;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor[] InferPartial(PartialTensor input, PartialTensor split, int axis, int numOutputs)
         {
-            var X = getPartialTensor(0);
-            var partialSplit = getPartialTensor(1) as PartialTensor<int>;
+            var partialSplit = split as PartialTensor<int>;
             if (partialSplit == null)
             {
                 partialSplit = new PartialTensor<int>(new DynamicTensorShape(numOutputs));
 
-                var dim = X.shape[axis];
+                var dim = input.shape[axis];
                 if (dim.isParam && numOutputs == 1)
                 {
                     partialSplit[0] = PartialTensorElement<int>.Param(dim.param);
@@ -1170,12 +1188,15 @@ namespace Unity.InferenceEngine.Layers
                 }
             }
 
-            for (var i = 0; i < outputs.Length; i++)
+            var outputTensors = new PartialTensor[numOutputs];
+            for (var i = 0; i < outputTensors.Length; i++)
             {
-                var outputShape = new DynamicTensorShape(X.shape);
+                var outputShape = new DynamicTensorShape(input.shape);
                 outputShape[axis] = (DynamicTensorDim)partialSplit[i];
-                setPartialTensor(i, PartialTensor.Create(X.dataType, outputShape));
+                outputTensors[i] = PartialTensor.Create(input.dataType, outputShape);
             }
+
+            return outputTensors;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1210,22 +1231,18 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "axes" }, inputCPURead = new[] { 1 })]
     partial class Squeeze : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor axes)
         {
-            var X = getPartialTensor(0);
-            var axes = getPartialTensor(1) as PartialTensor<int>;
             if (axes != null)
             {
                 if (!axes.isPartiallyKnown)
-                    setPartialTensor(0, X.Reshape(DynamicTensorShape.DynamicRank));
-                else if (!axes.IsStatic())
-                    setPartialTensor(0, X.Reshape(DynamicTensorShape.DynamicOfRank(X.shape.rank - axes.length)));
-                else
-                    setPartialTensor(0, X.Reshape(X.shape.Squeeze(axes)));
-                return;
+                    return input.Reshape(DynamicTensorShape.DynamicRank);
+                if (!axes.IsStatic())
+                    return input.Reshape(DynamicTensorShape.DynamicOfRank(input.shape.rank - axes.length));
+                return input.Reshape(input.shape.Squeeze(axes as PartialTensor<int>));
             }
 
-            setPartialTensor(0, X.Reshape(X.shape.Squeeze()));
+            return input.Reshape(input.shape.Squeeze());
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1247,31 +1264,29 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "repeats" }, inputCPURead = new[] { 1 })]
     partial class Tile : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor repeats)
         {
-            var dataType = getPartialTensor(0).dataType;
-            var shapeX = getPartialTensor(0).shape;
-            var repeats = getPartialTensor(1) as PartialTensor<int>;
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
             repeats.shape.DeclareRank(1);
 
             if (!repeats.isPartiallyKnown)
             {
-                if (repeats.shape[0].isValue && !shapeX.hasRank)
-                    shapeX = DynamicTensorShape.DynamicOfRank(repeats.shape[0].value);
-                if (shapeX.hasRank)
-                    Logger.AssertIsFalse(repeats.shape[0] != shapeX.rank, "Tile.InputError: repeats value must be equal to input rank");
-                setPartialTensor(0, PartialTensor.Create(dataType, DynamicTensorShape.DynamicOfRankLike(shapeX)));
-                return;
+                if (repeats.shape[0].isValue && !shapeInput.hasRank)
+                    shapeInput = DynamicTensorShape.DynamicOfRank(repeats.shape[0].value);
+                if (shapeInput.hasRank)
+                    Logger.AssertIsFalse(repeats.shape[0] != shapeInput.rank, "Tile.InputError: repeats value must be equal to input rank");
+                return PartialTensor.Create(dataType, DynamicTensorShape.DynamicOfRankLike(shapeInput));
             }
 
-            shapeX.DeclareRank(repeats.length);
+            shapeInput.DeclareRank(repeats.length);
 
-            var shapeOut = new DynamicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeInput);
             for (var i = 0; i < shapeOut.rank; i++)
             {
-                shapeOut[i] *= (DynamicTensorDim)repeats[i];
+                shapeOut[i] *= (DynamicTensorDim)repeats.Get<int>(i);
             }
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.Create(dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1293,26 +1308,23 @@ namespace Unity.InferenceEngine.Layers
     {
         public int[] permutations;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int[] permutations)
         {
-            var shapeX = getPartialTensor(0).shape;
+            var shapeInput = input.shape;
             if (permutations != null)
-                shapeX.DeclareRank(permutations.Length);
+                shapeInput.DeclareRank(permutations.Length);
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(getPartialTensor(0).dataType));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return PartialTensor.Create(input.dataType);
 
-            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeX.rank);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeInput.rank);
 
             if (permutations == null || permutations.Length == 0)
             {
                 // reverse axes
-                for (var i = 0; i < shapeX.rank; i++)
+                for (var i = 0; i < shapeInput.rank; i++)
                 {
-                    shapeOut[i] = shapeX[shapeX.rank - 1 - i];
+                    shapeOut[i] = shapeInput[shapeInput.rank - 1 - i];
                 }
             }
             else
@@ -1320,14 +1332,14 @@ namespace Unity.InferenceEngine.Layers
                 uint axesBitMask = 0;
                 for (var i = 0; i < permutations.Length; i++)
                 {
-                    var axis = shapeX.Axis(permutations[i]);
+                    var axis = shapeInput.Axis(permutations[i]);
                     Logger.AssertIsTrue(((axesBitMask >> axis) & 1U) == 0, "Transpose.ValueError: permutation must be a permutation of the axis (0, rank-1)");
                     axesBitMask |= 1U << axis;
-                    shapeOut[i] = shapeX[axis];
+                    shapeOut[i] = shapeInput[axis];
                 }
             }
 
-            setPartialTensor(0, PartialTensor.Create(getPartialTensor(0).dataType, shapeOut));
+            return PartialTensor.Create(input.dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1361,10 +1373,9 @@ namespace Unity.InferenceEngine.Layers
     {
         public TriluMode mode;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor k, TriluMode mode)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -1388,11 +1399,9 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "axes" }, inputCPURead = new[] { 1 })]
     partial class Unsqueeze : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor axes)
         {
-            var X = getPartialTensor(0);
-            var shape = getPartialTensor(1) as PartialTensor<int>;
-            setPartialTensor(0, X.Reshape(X.shape.Unsqueeze(shape)));
+            return input.Reshape(input.shape.Unsqueeze(axes as PartialTensor<int>));
         }
 
         internal override void Execute(ExecutionContext ctx)

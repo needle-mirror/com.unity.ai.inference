@@ -14,7 +14,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == dataType)
                 return input;
-            return FromLayer(new Layers.Cast(dataType), input);
+            return FunctionalLayer.Cast(input, dataType);
         }
 
         /// <summary>

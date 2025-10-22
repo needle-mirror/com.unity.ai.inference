@@ -1,3 +1,25 @@
+# What's new in Sentis 2.4
+
+Sentis is the new name for this package.
+
+This is a summary of the changes from Inference Engine 2.3 to Sentis 2.4.
+
+## Added
+
+- Tokenizer API for tokenization and detokenization of strings with language models.
+- LiteRT model import to directly import .tflite files to Sentis without using ONNX.
+- Spectral operators to enable audio models.
+- Many new operators corresponding to LiteRT and torch operators with functional API and optimization passes.
+
+## Updated
+
+- Import of ONNX models has been greatly sped up and optimized to match the ONNX specification.
+
+## Fixed
+
+- Many small import, inference and documation issues.
+
+
 # What's new in Inference Engine 2.3
 
 This is a summary of the changes from Inference Engine 2.2 to Inference Engine 2.3.
@@ -11,7 +33,7 @@ This is a summary of the changes from Inference Engine 2.2 to Inference Engine 2
 
 # What's new in Inference Engine 2.2
 
-Inference Engine is the new name for the [Sentis package](https://docs.unity3d.com/Packages/com.unity.sentis@latest/manual/index.html).
+Inference Engine is the new name for the [Sentis package](https://docs.unity3d.com/Packages/com.unity.sentis@2.1/manual/index.html).
 
 This is a summary of the changes from Sentis 2.1 to Inference Engine 2.2.
 

@@ -6,7 +6,7 @@ using UnityEngine.Assertions;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents the shape of an input tensor, or the predicted shape of a tensor before Inference Engine executes.
+    /// Represents the shape of an input tensor, or the predicted shape of a tensor before Sentis executes.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     [Serializable]
@@ -825,7 +825,7 @@ namespace Unity.InferenceEngine
                 // Raise an error if the last dimension of a is not the same size as the second-to-last dimension of b.
                 var mulThisDim = fixedThis[TensorShape.maxRank - 1];
                 var mulOtherDim = fixedOther[TensorShape.maxRank - 2];
-                Logger.AssertIsTrue(!mulThisDim.isValue || !mulOtherDim.isValue || mulThisDim == mulOtherDim, "MatMul2D.ValueError: mul dims not equal");
+                Logger.AssertIsFalse(mulThisDim != mulOtherDim, "MatMul2D.ValueError: mul dims not equal");
 
                 fixedOut[TensorShape.maxRank - 2] = fixedThis[TensorShape.maxRank - 2];
                 fixedOut[TensorShape.maxRank - 1] = fixedOther[TensorShape.maxRank - 1];

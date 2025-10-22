@@ -1,3 +1,9 @@
+# Upgrade to Sentis 2.4
+
+ONNX model input and output names have been fixed to match the spec exactly. If you use hardcoded input and output names in your code these may also need updating to match the corrected versions.
+
+In very rare cases where a model has been serialized as a .sentis file in versions of Sentis before 2.3, and then loaded and reserialized as a .sentis file in version 2.3, and the model contains the ConvTranspose operator, the model may be corrupted. In this case you will need to use the original .sentis file and reimport.
+
 # Upgrade to Inference Engine 2.3
 
 You do not need to take any actions to upgrade your project when upgrading from Inference Engine 2.2. If you are upgrading from Sentis 2.1 please follow the instructions below.

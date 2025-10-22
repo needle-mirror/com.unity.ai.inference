@@ -1,127 +1,159 @@
 using System;
 using System.Collections.Generic;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class FuseConstantsPass : IModelPass
+    /// <summary>
+    /// Calculates partial tensor inference and full tensor inference on the graph.
+    /// Tensors that can be fully known at runtime are baked into the graph as attributes rather than calculated.
+    /// </summary>
+    class FuseConstantsPass : GraphPass
     {
-        public void Run(ref Model model)
+        public override void Run(GraphModule gm)
         {
-            FuseConstants(ref model);
-        }
+            var tensorIndex = 0;
 
-        static void FuseConstants(ref Model model)
-        {
-            var ctx = new PartialInferenceContext();
-            var backend = new CPUBackend();
-            var vars = new ModelStorage();
-            var executionContext = new ExecutionContext
+            var partialTensorArrays = new Dictionary<Node, PartialTensor[]>();
+            var tensorArrays = new Dictionary<Node, Tensor[]>();
+            var constantTensors = new Dictionary<Node, Tensor>();
+            var calculatedTensors = new Dictionary<Node, Tensor>();
+
+            foreach (var node in gm.graph.Nodes())
             {
-                backend = backend,
-                cpuBackend = backend,
-                storage = vars
-            };
-
-            var constantTensors = new Dictionary<int, Tensor>();
-            var calculatedTensors = new Dictionary<int, Tensor>();
-
-            // model constants
-            foreach (var constant in model.constants)
-            {
-                var constantTensor = constant.WeightsToTensorWithSharedTensorData();
-                constantTensors.Add(constant.index, constantTensor);
-                ctx.AddPartialTensor(constant.index, PartialTensor.FromTensor(constantTensor));
-            }
-
-            // model inputs
-            foreach (var input in model.inputs)
-            {
-                ctx.AddPartialTensor(input.index, PartialTensor.Create(input.dataType, input.shape));
-            }
-
-            // iterate through layers executing if layer inputs are all known
-            foreach (var layer in model.layers)
-            {
-                var isDeterministic = layer is not Layers.RandomLayer;
-                for (var i = 0; i < layer.inputs.Length && isDeterministic; i++)
+                switch (node.op)
                 {
-                    isDeterministic &= (layer.inputs[i] == -1) || calculatedTensors.ContainsKey(layer.inputs[i]) || constantTensors.ContainsKey(layer.inputs[i]);
-                }
-
-                if (!isDeterministic)
-                {
-                    // partial tensor inference
-                    layer.InferPartial(i => ctx.GetPartialTensor(layer.inputs[i]), (i, partialTensor) => ctx.AddPartialTensor(layer.outputs[i], partialTensor));
-                    for (var i = 0; i < layer.outputs.Length; i++)
+                    case Node.kOpPlaceholder:
                     {
-                        var outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
-                        if (outputPartialTensor.IsStatic())
-                            calculatedTensors.Add(layer.outputs[i], outputPartialTensor.ToTensor());
+                        break;
                     }
-                    continue;
-                }
+                    case Node.kOpGetAttr:
+                    {
+                        var constantTensor = gm.attributes[node.target];
+                        constantTensors[node] = constantTensor.ToTensor();
+                        node.partialTensor = constantTensor.GetPartialTensor();
+                        break;
+                    }
+                    case Node.kOpCallFunction:
+                    {
+                        if (node.target == "getitem")
+                        {
+                            if (tensorArrays.TryGetValue((Node)node.args[0], out var tensors))
+                            {
+                                var tensor = tensors[(int)node.args[1]];
+                                calculatedTensors[node] = tensor;
+                                node.partialTensor = PartialTensor.FromTensor(tensor);
+                            }
+                            else
+                            {
+                                node.partialTensor = partialTensorArrays[(Node)node.args[0]][(int)node.args[1]];
+                                if (node.partialTensor.IsStatic())
+                                {
+                                    var tensor = node.partialTensor.ToTensor();
+                                    calculatedTensors[node] = tensor;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var layer = GraphConverter.NodeToLayer(node, _ => 0);
 
-                for (var i = 0; i < layer.inputs.Length; i++)
-                {
-                    Tensor tensor = null;
-                    if (layer.inputs[i] == -1)
-                        continue;
-                    if (calculatedTensors.TryGetValue(layer.inputs[i], out var calculatedInputTensor))
-                        tensor = calculatedInputTensor;
-                    else
-                        tensor = constantTensors[layer.inputs[i]];
+                            var isDeterministic = layer is not Layers.RandomLayer;
+                            var inputArgs = node.args;
+                            // TODO better determination of variadic input
+                            if (inputArgs[0] != null && inputArgs[0].IsArguments && inputArgs[0].AsArguments[0].IsNode)
+                                inputArgs = inputArgs[0].AsArguments;
+                            for (var i = 0; i < layer.inputs.Length && isDeterministic; i++)
+                            {
+                                isDeterministic &= inputArgs[i] is null || calculatedTensors.ContainsKey((Node)inputArgs[i]) || constantTensors.ContainsKey((Node)inputArgs[i]);
+                            }
 
-                    executionContext.storage.SetInput(layer.inputs[i], tensor);
-                }
+                            if (!isDeterministic)
+                            {
+                                // partial tensor inference
+                                var output = FunctionalLayer.InferPartial(node.target, node.args);
+                                if (output is PartialTensor partialTensor)
+                                {
+                                    node.partialTensor = partialTensor;
+                                    if (node.partialTensor.IsStatic())
+                                        calculatedTensors[node] = node.partialTensor.ToTensor();
+                                }
+                                else if (output is PartialTensor[] outputPartialTensors)
+                                {
+                                    partialTensorArrays[node] = outputPartialTensors;
+                                }
+                                continue;
+                            }
 
-                // full inference
-                layer.Execute(executionContext);
+                            using var backend = new CPUBackend();
+                            var vars = new ModelStorage();
+                            var executionContext = new ExecutionContext
+                            {
+                                backend = backend,
+                                cpuBackend = backend,
+                                storage = vars
+                            };
 
-                for (var i = 0; i < layer.outputs.Length; i++)
-                {
-                    var outputTensor = executionContext.storage.GetTensor(layer.outputs[i]);
-                    outputTensor.CompleteAllPendingOperations();
-                    calculatedTensors.Add(layer.outputs[i], outputTensor);
-                    ctx.AddPartialTensor(layer.outputs[i], PartialTensor.FromTensor(outputTensor));
+                            for (var i = 0; i < layer.inputs.Length; i++)
+                            {
+                                var inputNode = (Node)inputArgs[i];
+                                if (inputArgs[i] is null)
+                                {
+                                    layer.inputs[i] = -1;
+                                    continue;
+                                }
+                                Tensor tensor;
+                                if (calculatedTensors.TryGetValue(inputNode, out var calculatedInputTensor))
+                                    tensor = calculatedInputTensor;
+                                else
+                                    tensor = constantTensors[inputNode];
+
+                                layer.inputs[i] = tensorIndex++;
+                                executionContext.storage.SetInput(layer.inputs[i], tensor);
+                            }
+
+                            layer.outputs = new int[layer.OutputCount];
+                            for (var i = 0; i < layer.outputs.Length; i++)
+                                layer.outputs[i] = tensorIndex++;
+
+                            // full inference
+                            layer.Execute(executionContext);
+
+                            if (layer.IsOutputList)
+                            {
+                                var tensors = new Tensor[layer.outputs.Length];
+                                for (var i = 0; i < layer.outputs.Length; i++)
+                                {
+                                    var outputTensor = executionContext.storage.TakeTensorOwnership(layer.outputs[i]);
+                                    outputTensor.CompleteAllPendingOperations();
+                                    tensors[i] = outputTensor;
+                                }
+
+                                tensorArrays[node] = tensors;
+                            }
+                            else
+                            {
+                                var outputTensor = executionContext.storage.TakeTensorOwnership(layer.outputs[0]);
+                                outputTensor.CompleteAllPendingOperations();
+                                calculatedTensors[node] = outputTensor;
+                                node.partialTensor = PartialTensor.FromTensor(outputTensor);
+                            }
+                        }
+                        break;
+                    }
                 }
             }
 
-            // remove precalculated layers
-            model.layers.RemoveAll(x =>
+            foreach (var (node, tensor) in calculatedTensors)
             {
-                var isLayerCalculated = true;
-                foreach (var output in x.outputs)
-                {
-                    if (output == -1)
-                        continue;
-                    isLayerCalculated &= calculatedTensors.ContainsKey(output);
-                }
-                return isLayerCalculated;
-            });
-
-            // add precalculated constants
-            foreach (var kvp in calculatedTensors)
-            {
-                var tensor = kvp.Value;
-                if (tensor.shape.HasZeroDims())
-                    model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, 0));
-                else
-                    model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, (tensor.dataOnBackend as CPUTensorData).array));
+                var constantNode = GraphPassUtil.AddConstant(gm, node, new ConstantTensor(tensor));
                 tensor.Dispose();
+                node.ReplaceAllUsesWith(constantNode);
+                gm.graph.EraseNode(node);
             }
 
-            // remove unused constants
-            var removeUnusedPass = new Cleanup.RemoveUnusedPass();
-            removeUnusedPass.Run(ref model);
-
-            foreach (var constantTensor in constantTensors.Values)
-            {
-                constantTensor.Dispose();
-            }
-
-            backend.Dispose();
-            vars.Dispose();
+            gm.graph.EliminateDeadCode();
         }
     }
 }

@@ -79,8 +79,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
             var indexLabel = new InspectorProperty("index", tensorIndex.ToString());
             m_ScrollView.Add(indexLabel);
 
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-            var partialTensor = ctx.GetPartialTensor(tensorIndex);
+            var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
+            var partialTensor = state.PartialInferenceContext.GetPartialTensor(tensorIndex);
 
             var dataTypeLabel = new InspectorProperty("dataType", partialTensor.dataType.ToString());
             m_ScrollView.Add(dataTypeLabel);
@@ -149,8 +149,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
         void AddPartialTensorValue(Model model, int tensorIndex)
         {
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-            var partialTensor = ctx.GetPartialTensor(tensorIndex);
+            var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
+            var partialTensor = state.PartialInferenceContext.GetPartialTensor(tensorIndex);
 
             if (!partialTensor.isPartiallyKnown) return;
 

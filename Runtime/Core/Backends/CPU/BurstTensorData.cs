@@ -95,7 +95,8 @@ namespace Unity.InferenceEngine
             m_IsDisposed = false;
             if (data == null)
             {
-                m_Count = 0; m_Array = null;
+                m_Count = 0;
+                m_Array = null;
                 return;
             }
             m_Count = data.Length;
@@ -236,7 +237,7 @@ namespace Unity.InferenceEngine
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AdoptTensorData(new CPUTensorData(X.count, clearOnInit));
+                X.AdoptTensorData(new CPUTensorData(X.count, clearOnInit), disposePrevious: true, disposeIsDelayed: false);
                 return X.dataOnBackend as CPUTensorData;
             }
 
@@ -252,7 +253,7 @@ namespace Unity.InferenceEngine
                 dataOnBackend = new CPUTensorData(X.count, clearOnInit: false);
                 dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
             }
-            X.AdoptTensorData(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend, disposePrevious: true, disposeIsDelayed: onDevice is ComputeTensorData);
 
             return X.dataOnBackend as CPUTensorData;
         }

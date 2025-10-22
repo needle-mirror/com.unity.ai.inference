@@ -1,291 +1,429 @@
-using System.Linq;
 using System.Collections.Generic;
 using System;
-using Unity.InferenceEngine.Compiler.Analyser;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class ContractToSimplerLayerPass : IModelPass
+    /// <summary>
+    /// Replaces a single op with another simpler op if certain conditions are met.
+    /// </summary>
+    class ContractToSimplerLayerPass : GraphPass
     {
-        public void Run(ref Model model)
+        // All the reduction ops, by name.
+        static string[] s_ReductionTargets = { "ReduceMax", "ReduceMin", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceMean", "ReduceProd", "ReduceSum", "ReduceSumSquare", "ReduceVariance" };
+
+        public override void Run(GraphModule gm)
         {
-            var op = new CPUOps();
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-
-            var modelConstants = new Dictionary<int, Constant>();
-            foreach (var c in model.constants)
-                modelConstants.Add(c.index, c);
-
-            for (int l = 0; l < model.layers.Count; ++l)
+            var concatNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Concat");
+            foreach (var concatNode in concatNodes)
             {
-                var layer = model.layers[l];
+                var inputNodes = concatNode.args[0].AsNodeArray;
 
-                if (layer is Layers.Concat concatLayer)
+                // replace concat with one input with identity
+                if (inputNodes.Length == 1)
                 {
-                    // replace concat with one input with identity
-                    if (layer.inputs.Length == 1)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(concatLayer.inputs[0]).SetOutputs(concatLayer.outputs[0]);
-                        continue;
-                    }
-
-                    // replace Concat layer which concatenates the only same tensor multiple times with Tile layer
-                    var shape = ctx.GetPartialTensor(concatLayer.outputs[0]).shape;
-                    if (!shape.hasRank || concatLayer.inputs.Any(o => o != layer.inputs[0]))
-                        continue;
-
-                    var tileShape = TensorShape.Ones(shape.rank);
-                    tileShape[concatLayer.axis] = concatLayer.inputs.Length;
-
-                    var repeatsConstant = new Constant(model.GetUniqueIndex(), new TensorShape(tileShape.rank), tileShape.ToArray());
-                    model.AddConstant(repeatsConstant);
-                    model.layers[l] = new Layers.Tile().SetInputs(concatLayer.inputs[0], repeatsConstant.index).SetOutputs(concatLayer.outputs[0]);
+                    GraphPassUtil.ReplaceNode(concatNode, "Identity", new Argument[] { inputNodes[0] });
                     continue;
                 }
-                if (layer is Layers.Transpose transposeLayer)
-                {
-                    // replace Transpose layer which does not actually transpose the dimensions with the identity
-                    // TODO: can add cases such as tensor.shape = (1, 1, 4) permutation = [1, 0, 2]
-                    if (transposeLayer.permutations == null)
-                        continue;
 
-                    bool nopTranspose = true;
-                    for (int i = 0; i < transposeLayer.permutations.Length; ++i)
-                    {
-                        if (transposeLayer.permutations[i] == i)
-                            continue;
+                // replace Concat layer which concatenates the only same tensor multiple times with Tile layer
+                var isConcatTile = true;
+                for (var i = 0; i < inputNodes.Length && isConcatTile; i++)
+                    if (inputNodes[i] != inputNodes[0])
+                        isConcatTile = false;
+
+                if (!isConcatTile)
+                    continue;
+
+                var shape = concatNode.partialTensor.shape;
+                if (!shape.hasRank)
+                    continue;
+
+                var repeatsTensorShape = TensorShape.Ones(shape.rank);
+                var axis = (int)concatNode.args[1];
+                repeatsTensorShape[axis] = inputNodes.Length;
+                var repeatsNode = GraphPassUtil.AddConstant(gm, concatNode, new TensorShape(repeatsTensorShape.rank), repeatsTensorShape.ToArray());
+                GraphPassUtil.ReplaceNode(concatNode, "Tile", new Argument[] { inputNodes[0], repeatsNode });
+            }
+
+            var transposeNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Transpose");
+            foreach (var transposeNode in transposeNodes)
+            {
+                // replace Transpose layer which does not actually transpose the dimensions with the identity
+                // TODO: can add cases such as tensor.shape = (1, 1, 4) permutation = [1, 0, 2]
+                if (transposeNode.args[1] == null)
+                    continue;
+                var permutations = transposeNode.args[1].AsIntArray;
+
+                var nopTranspose = true;
+                for (var i = 0; i < permutations.Length && nopTranspose; ++i)
+                {
+                    if (permutations[i] != i && permutations[i] + permutations.Length != i)
                         nopTranspose = false;
-                        break;
-                    }
-
-                    if (nopTranspose)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(transposeLayer.inputs[0]).SetOutputs(transposeLayer.outputs[0]);
-                    }
-                    continue;
                 }
-                if (layer is Layers.Reshape reshapeLayer)
+
+                if (!nopTranspose)
+                    continue;
+
+                GraphPassUtil.ReplaceNode(transposeNode, "Identity", new[] { transposeNode.args[0] });
+            }
+
+            var reshapeNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Reshape");
+            foreach (var reshapeNode in reshapeNodes)
+            {
+                // replace Reshape layer which does not reshape with identity layer
+                var outputShape = reshapeNode.partialTensor.shape;
+                var inputNode = (Node)reshapeNode.args[0];
+                var inputShape = inputNode.partialTensor.shape;
+                if (!outputShape.hasRank || !inputShape.hasRank || outputShape.rank != inputShape.rank)
+                    continue;
+
+                var shapeTensor = ((Node)reshapeNode.args[1]).partialTensor;
+                var allowZero = (bool)reshapeNode.args[2];
+
+                var nonMatches = 0;
+                for (var i = 0; i < outputShape.rank && nonMatches < 2; i++)
                 {
-                    // replace Reshape layer which does not reshape with identity layer
-                    var outputShape = ctx.GetPartialTensor(reshapeLayer.outputs[0]).shape;
-                    var inputShape = ctx.GetPartialTensor(reshapeLayer.inputs[0]).shape;
-                    if (!outputShape.hasRank || !inputShape.hasRank || outputShape.rank != inputShape.rank)
+                    if (outputShape[i] == inputShape[i] || (!allowZero && shapeTensor.Get<int>(i).Equals(0)))
                         continue;
+                    nonMatches++;
+                }
 
-                    var shapeTensor = ctx.GetPartialTensor(reshapeLayer.inputs[1]) as PartialTensor<int>;
+                if (nonMatches > 1)
+                    continue;
 
+                GraphPassUtil.ReplaceNode(reshapeNode, "Identity", new[] { reshapeNode.args[0] });
+            }
+
+            var expandNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Expand");
+            foreach (var expandNode in expandNodes)
+            {
+                // replace Expand layer which does not change the number of elements with a reshape or identity layer
+                // TODO: add support for cases such as tensor.shape = (A), expandShape = [1, A] which is a Reshape
+                var outputShape = expandNode.partialTensor.shape;
+                var inputNode = (Node)expandNode.args[0];
+                var inputShape = inputNode.partialTensor.shape;
+                if (!outputShape.hasRank || !inputShape.hasRank)
+                    continue;
+
+                var shape = ((Node)expandNode.args[1]).partialTensor;
+
+                if (outputShape.rank == inputShape.rank)
+                {
                     var isIdentity = true;
                     for (var i = 0; i < outputShape.rank && isIdentity; i++)
                     {
-                        if (outputShape[i] == inputShape[i] || (!reshapeLayer.allowZero && shapeTensor[i].Equals(0)))
+                        if (outputShape[i] == inputShape[i] || (i < shape.length && shape.Get<int>(i).Equals(1)))
                             continue;
                         isIdentity = false;
                     }
 
                     if (isIdentity)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(layer.inputs[0]).SetOutputs(layer.outputs[0]);
-                    }
-                    continue;
-                }
-                if (layer is Layers.Expand expandLayer)
-                {
-                    // replace Expand layer which does not change the number of elements with a reshape or identity layer
-                    // TODO: add support for cases such as tensor.shape = (A), expandShape = [1, A] which is a Reshape
-                    var outputShape = ctx.GetPartialTensor(expandLayer.outputs[0]).shape;
-                    var inputShape = ctx.GetPartialTensor(expandLayer.inputs[0]).shape;
-                    if (!outputShape.hasRank || !inputShape.hasRank)
-                        continue;
-
-                    var shapeTensor = ctx.GetPartialTensor(expandLayer.inputs[1]) as PartialTensor<int>;
-
-                    if (outputShape.rank == inputShape.rank)
-                    {
-                        var isIdentity = true;
-                        for (var i = 0; i < outputShape.rank && isIdentity; i++)
-                        {
-                            if (i < shapeTensor.length && shapeTensor[i].Equals(1))
-                                continue;
-                            if (!(outputShape[i] == inputShape[i]))
-                                isIdentity = false;
-                        }
-
-                        if (isIdentity)
-                        {
-                            model.layers[l] = new Layers.Identity().SetInputs(layer.inputs[0]).SetOutputs(layer.outputs[0]);
-                            continue;
-                        }
-                    }
-
-                    if (outputShape.IsStatic() && inputShape.IsStatic() && outputShape.Length() == inputShape.Length())
-                    {
-                        var shapeConstant = new Constant(model.GetUniqueIndex(), new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray());
-                        model.AddConstant(shapeConstant);
-                        model.layers[l] = new Layers.Reshape(false).SetInputs(layer.inputs[0], shapeConstant.index).SetOutputs(layer.outputs[0]);
-                    }
+                        GraphPassUtil.ReplaceNode(expandNode, "Identity", new Argument[] { inputNode });
 
                     continue;
                 }
-                if (layer is Layers.ScalarMad scalarMadLayer)
+
+                if (outputShape.IsStatic() && inputShape.IsStatic() && outputShape.Length() == inputShape.Length())
                 {
-                    // replace ScalarMad layer with scale 1 and bias 0 with identity
-                    if (scalarMadLayer.dataType == DataType.Float && (scalarMadLayer.sFloat != 1f || scalarMadLayer.bFloat != 0))
-                        continue;
+                    var shapeNode = GraphPassUtil.AddConstant(gm, expandNode, new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray());
+                    GraphPassUtil.ReplaceNode(expandNode, "Reshape", new Argument[] { inputNode, shapeNode, false });
+                }
+            }
 
-                    if (scalarMadLayer.dataType == DataType.Int && (scalarMadLayer.sInt != 1 || scalarMadLayer.bInt != 0))
-                        continue;
+            var scalarMadNodes = gm.graph.FindNodes(Node.kOpCallFunction, "ScalarMad");
+            foreach (var scalarMadNode in scalarMadNodes)
+            {
+                var dataType = (DataType)scalarMadNode.args[1].AsInt;
 
-                    model.layers[l] = new Layers.Identity().SetInputs(scalarMadLayer.inputs[0]).SetOutputs(scalarMadLayer.outputs[0]);
+                // replace ScalarMad layer with scale 1 and bias 0 with identity
+                if (dataType == DataType.Float && ((float)scalarMadNode.args[2] != 1f || (float)scalarMadNode.args[3] != 0f))
+                    continue;
+
+                if (dataType == DataType.Int && ((int)scalarMadNode.args[4] != 1 || (int)scalarMadNode.args[5] != 0))
+                    continue;
+
+                GraphPassUtil.ReplaceNode(scalarMadNode, "Identity", new[] { scalarMadNode.args[0] });
+            }
+
+            var tileNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Tile");
+            foreach (var tileNode in tileNodes)
+            {
+                // replace Tile layer where the tile values are all 1 with Identity
+                var repeatsNode = (Node)tileNode.args[1];
+                var repeats = repeatsNode.partialTensor;
+
+                if (!repeats.IsStatic())
+                    continue;
+                var allOnes = true;
+                for (var i = 0; i < repeats.length; i++)
+                {
+                    allOnes &= repeats.Get<int>(i).value == 1;
+                }
+                if (!allOnes)
+                    continue;
+
+                GraphPassUtil.ReplaceNode(tileNode, "Identity", new[] { tileNode.args[0] });
+            }
+
+            var reduceNodes = new List<Node>();
+            foreach (var reductionTarget in s_ReductionTargets)
+                reduceNodes.AddRange(gm.graph.FindNodes(Node.kOpCallFunction, reductionTarget));
+            foreach (var reduceNode in reduceNodes)
+            {
+                // replace Reduce layer which does not perform any reduction with Identity
+                var axesNode = (Node)reduceNode.args[1];
+                var axes = axesNode?.partialTensor;
+                var keepdims = (bool)reduceNode.args[2];
+                var noopWithEmptyAxes = (bool)reduceNode.args[3];
+                var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
+                if (noopWithEmptyAxes && isEmptyAxes)
+                {
+                    GraphPassUtil.ReplaceNode(reduceNode, "Identity", new[] { reduceNode.args[0] });
                     continue;
                 }
-                if (layer is Layers.Tile tileLayer)
-                {
-                    // replace Tile layer where the tile values are all 1 with Identity
-                    var repeats = ctx.GetPartialTensor(tileLayer.inputs[1]) as PartialTensor<int>;
 
-                    if (!repeats.IsStatic())
-                        continue;
-                    var allOnes = true;
-                    for (var i = 0; i < repeats.length; i++)
-                    {
-                        allOnes &= repeats[i].value == 1;
-                    }
-                    if (!allOnes)
-                        continue;
-
-                    model.layers[l] = new Layers.Identity().SetInputs(tileLayer.inputs[0]).SetOutputs(tileLayer.outputs[0]);
+                if (isEmptyAxes || !axes.IsStatic())
                     continue;
-                }
-                if (layer is Layers.Reduce reduceLayer)
-                {
-                    // replace Reduce layer which does not perform any reduction with Identity
-                    var axes = ctx.GetPartialTensor(reduceLayer.inputs[1]) as PartialTensor<int>;
-                    var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
-                    if (reduceLayer.noopWithEmptyAxes && isEmptyAxes)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(reduceLayer.inputs[0]).SetOutputs(reduceLayer.outputs[0]);
-                        continue;
-                    }
-
-                    // these reductions don't change the values if we reduce along a 0 or 1 length axis
-                    if (isEmptyAxes || !axes.IsStatic() || !(reduceLayer is Layers.ReduceMin or Layers.ReduceMax || reduceLayer is Layers.ReduceSum || reduceLayer is Layers.ReduceLogSumExp || reduceLayer is Layers.ReduceProd))
-                        continue;
-
-                    var input = ctx.GetPartialTensor(reduceLayer.inputs[0]);
-                    if (!input.shape.hasRank)
-                        continue;
-
-                    var isTrivialReduction = true;
-                    for (var i = 0; i < axes.length && isTrivialReduction; i++)
-                    {
-                        if (input.shape[axes[i].value] <= 1)
-                            continue;
-                        isTrivialReduction = false;
-                    }
-
-                    if (!isTrivialReduction)
-                        continue;
-
-                    if (reduceLayer.keepdims)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(reduceLayer.inputs[0]).SetOutputs(reduceLayer.outputs[0]);
-                    }
-                    else
-                    {
-                        model.layers[l] = new Layers.Squeeze().SetInputs(reduceLayer.inputs[0], reduceLayer.inputs[1]).SetOutputs(reduceLayer.outputs[0]);
-                    }
-
+                // these reductions would simplify to another value, not identity
+                if (reduceNode.target is "ReduceL1" or "ReduceL2" or "ReduceSumSquare" or "ReduceLogSum" or "ReduceVariance")
                     continue;
-                }
-                if (layer is Layers.Cast castLayer)
-                {
-                    // replace Cast which casts to same type as input with Identity
-                    var input = ctx.GetPartialTensor(castLayer.inputs[0]);
-                    if (input.dataType != castLayer.toType)
-                        continue;
 
-                    model.layers[l] = new Layers.Identity().SetInputs(castLayer.inputs[0]).SetOutputs(castLayer.outputs[0]);
+                var inputNode = (Node)reduceNode.args[0];
+                var input = inputNode.partialTensor;
+                if (!input.shape.hasRank)
                     continue;
-                }
-                if (layer is Layers.CastLike castLikeLayer)
-                {
-                    // replace CastLike with Cast or Identity
-                    var input = ctx.GetPartialTensor(castLikeLayer.inputs[0]);
-                    var targetType = ctx.GetPartialTensor(castLikeLayer.inputs[1]);
-                    if (input.dataType == targetType.dataType)
-                    {
-                        model.layers[l] = new Layers.Identity().SetInputs(castLikeLayer.inputs[0]).SetOutputs(castLikeLayer.outputs[0]);
-                        continue;
-                    }
 
-                    model.layers[l] = new Layers.Cast(targetType.dataType).SetInputs(castLikeLayer.inputs[0]).SetOutputs(castLikeLayer.outputs[0]);
+                var isTrivialReduction = true;
+                for (var i = 0; i < axes.length && isTrivialReduction; i++)
+                {
+                    if (input.shape[axes.Get<int>(i).value] == 1)
+                        continue;
+                    isTrivialReduction = false;
+                }
+
+                if (!isTrivialReduction)
                     continue;
-                }
-                if (layer is Layers.BatchNormalization bnLayer)
+
+                if (keepdims)
                 {
-                    bool allConstInputs = true;
-                    for (int i = 1; i < bnLayer.inputs.Length; i++)
-                    {
-                        allConstInputs &= modelConstants.ContainsKey(bnLayer.inputs[i]);
-                    }
-                    if (!allConstInputs)
-                        continue;
+                    GraphPassUtil.ReplaceNode(reduceNode, "Identity", new Argument[] { inputNode });
+                }
+                else
+                {
+                    GraphPassUtil.ReplaceNode(reduceNode, "Squeeze", new Argument[] { inputNode, axesNode });
+                }
+            }
 
-                    var c1 = modelConstants[bnLayer.inputs[1]];
-                    var c2 = modelConstants[bnLayer.inputs[2]];
-                    var c3 = modelConstants[bnLayer.inputs[3]];
-                    var c4 = modelConstants[bnLayer.inputs[4]];
-
-                    using var gamma = c1.WeightsToTensorWithSharedTensorData() as Tensor<float>;
-                    using var beta = c2.WeightsToTensorWithSharedTensorData() as Tensor<float>;
-                    using var mean = c3.WeightsToTensorWithSharedTensorData() as Tensor<float>;
-                    using var variance = c4.WeightsToTensorWithSharedTensorData() as Tensor<float>;
-
-                    using var epsilonTensor = op.ConstantOfShape(new TensorShape(1), bnLayer.epsilon);
-                    using var a0 = op.Add(variance, epsilonTensor);
-                    using var sqrtVar = op.Sqrt(a0);
-                    using var scale = op.Div(gamma, sqrtVar);
-                    using var m0 = op.Mul(scale, mean);
-                    using var bias = op.Sub(beta, m0);
-
-                    var scaleConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Constant(scaleConstantIndex, scale.shape, scale.DownloadToArray()));
-
-                    var biasConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Constant(biasConstantIndex, bias.shape, bias.DownloadToArray()));
-
-                    model.layers[l] = new Layers.ScaleBias().SetInputs(bnLayer.inputs[0], scaleConstantIndex, biasConstantIndex).SetOutputs(bnLayer.outputs[0]);
+            var castNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Cast");
+            foreach (var castNode in castNodes)
+            {
+                // replace Tile layer where the tile values are all 1 with Identity
+                var inputNode = (Node)castNode.args[0];
+                var dataType = (DataType)castNode.args[1].AsInt;
+                if (inputNode.partialTensor.dataType != dataType)
                     continue;
-                }
-                if (layer is Layers.Gather gatherLayer)
+
+                GraphPassUtil.ReplaceNode(castNode, "Identity", new Argument[] { inputNode });
+            }
+
+            var castLikeNodes = gm.graph.FindNodes(Node.kOpCallFunction, "CastLike");
+            foreach (var castLikeNode in castLikeNodes)
+            {
+                // replace CastLike with Identity or Cast
+                var inputNode = (Node)castLikeNode.args[0];
+                if (inputNode.partialTensor.dataType == castLikeNode.partialTensor.dataType)
                 {
-                    // replace Gather with single index value with Split or Narrow
-                    if (!modelConstants.TryGetValue(gatherLayer.inputs[1], out var indices))
-                        continue;
+                    GraphPassUtil.ReplaceNode(castLikeNode, "Identity", new Argument[] { inputNode });
+                }
+                else
+                {
+                    GraphPassUtil.ReplaceNode(castLikeNode, "Cast", new Argument[] { inputNode, (int)castLikeNode.partialTensor.dataType });
+                }
+            }
 
-                    if (indices.shape.length != 1 || indices.shape.rank > 1)
-                        continue;
+            var batchNormalizationNodes = gm.graph.FindNodes(Node.kOpCallFunction, "BatchNormalization");
+            foreach (var batchNormalizationNode in batchNormalizationNodes)
+            {
+                var allConstInputs = true;
+                for (var i = 1; i < 5; i++)
+                {
+                    allConstInputs &= ((Node)batchNormalizationNode.args[i]).op == Node.kOpGetAttr;
+                }
+                if (!allConstInputs)
+                    continue;
 
-                    var dimConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Constant(dimConstantIndex, new TensorShape(), new[] { gatherLayer.axis }));
+                var gamma = GraphPassUtil.GetConstantInput(gm, batchNormalizationNode, 1) as Tensor<float>;
+                var beta = GraphPassUtil.GetConstantInput(gm, batchNormalizationNode, 2) as Tensor<float>;
+                var mean = GraphPassUtil.GetConstantInput(gm, batchNormalizationNode, 3) as Tensor<float>;
+                var variance = GraphPassUtil.GetConstantInput(gm, batchNormalizationNode, 4) as Tensor<float>;
+                var epsilon = (float)batchNormalizationNode.args[5];
 
-                    if (indices.shape.rank == 0)
+                var op = new CPUOps();
+                using var epsilonTensor = op.ConstantOfShape(new TensorShape(1), epsilon);
+                using var a0 = op.Add(variance, epsilonTensor);
+                using var sqrtVar = op.Sqrt(a0);
+                using var scale = op.Div(gamma, sqrtVar);
+                using var m0 = op.Mul(scale, mean);
+                using var bias = op.Sub(beta, m0);
+
+                var scaleNode = GraphPassUtil.AddConstant(gm, batchNormalizationNode, scale);
+                var biasNode = GraphPassUtil.AddConstant(gm, batchNormalizationNode, bias);
+
+                GraphPassUtil.ReplaceNode(batchNormalizationNode, "ScaleBias", new[] { batchNormalizationNode.args[0], scaleNode, biasNode });
+            }
+
+            var gatherNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Gather");
+            foreach (var gatherNode in gatherNodes)
+            {
+                // replace Gather with single index value with Split or Narrow
+                var indicesNode = (Node)gatherNode.args[1];
+                if (!indicesNode.partialTensor.IsStatic())
+                    continue;
+                var indicesShape = indicesNode.partialTensor.shape;
+                if (!indicesShape.hasRank || indicesShape.rank > 1 || !(indicesShape.Length() == 1))
+                    continue;
+
+                var axis = (int)gatherNode.args[2];
+                var dimNode = GraphPassUtil.AddConstant(gm, gatherNode, new TensorShape(), new[] { axis });
+
+                if (indicesShape.rank == 0)
+                {
+                    GraphPassUtil.ReplaceNode(gatherNode, "Select", new[] { gatherNode.args[0], dimNode, gatherNode.args[1] });
+                }
+                else if (indicesShape.rank == 1)
+                {
+                    var lengthNode = GraphPassUtil.AddConstant(gm, gatherNode, new TensorShape(), new[] { 1 });
+                    GraphPassUtil.ReplaceNode(gatherNode, "Narrow", new[] { gatherNode.args[0], dimNode, gatherNode.args[1], lengthNode });
+                }
+            }
+
+            var powNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Pow");
+            foreach (var powNode in powNodes)
+            {
+                var baseNode = (Node)powNode.args[0];
+                var exponentNode = (Node)powNode.args[1];
+                if (!exponentNode.partialTensor.IsStatic())
+                    continue;
+                var exponentShape = exponentNode.partialTensor.shape.ToTensorShape();
+                if (exponentShape.length > 1 || !powNode.partialTensor.shape.hasRank || exponentShape.rank > powNode.partialTensor.shape.rank)
+                    continue;
+                if (exponentNode.partialTensor.dataType == DataType.Float && baseNode.partialTensor.dataType == DataType.Float)
+                {
+                    var exponent = exponentNode.partialTensor.Get<float>().value;
+                    switch (exponent)
                     {
-                        model.layers[l] = new Layers.Select().SetInputs(gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1]).SetOutputs(gatherLayer.outputs[0]);
-                        continue;
+                        case -1f:
+                            GraphPassUtil.ReplaceNode(powNode, "Reciprocal", new[] { powNode.args[0] });
+                            break;
+                        case -0.5f:
+                            GraphPassUtil.ReplaceNode(powNode, "Rsqrt", new[] { powNode.args[0] });
+                            break;
+                        case 0.5f:
+                            GraphPassUtil.ReplaceNode(powNode, "Sqrt", new[] { powNode.args[0] });
+                            break;
+                        case 1f:
+                            GraphPassUtil.ReplaceNode(powNode, "Identity", new[] { powNode.args[0] });
+                            break;
+                        case 2f:
+                            GraphPassUtil.ReplaceNode(powNode, "Square", new[] { powNode.args[0] });
+                            break;
                     }
-
-                    if (indices.shape.rank == 1)
+                }
+                if (exponentNode.partialTensor.dataType == DataType.Int)
+                {
+                    var exponent = exponentNode.partialTensor.Get<int>().value;
+                    switch (exponent)
                     {
-                        var lengthConstantIndex = model.GetUniqueIndex();
-                        model.AddConstant(new Constant(lengthConstantIndex, new TensorShape(), new[] { 1 }));
-                        model.layers[l] = new Layers.Narrow().SetInputs(gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1], lengthConstantIndex).SetOutputs(gatherLayer.outputs[0]);
+                        case -1:
+                            GraphPassUtil.ReplaceNode(powNode, "Reciprocal", new[] { powNode.args[0] });
+                            break;
+                        case 1:
+                            GraphPassUtil.ReplaceNode(powNode, "Identity", new[] { powNode.args[0] });
+                            break;
+                        case 2:
+                            GraphPassUtil.ReplaceNode(powNode, "Square", new[] { powNode.args[0] });
+                            break;
                     }
                 }
             }
 
-            op.Dispose();
+            var addNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Add");
+            foreach (var addNode in addNodes)
+            {
+                for (var index = 0; index < 2 && !addNode.erased; index++)
+                {
+                    var inputNode = (Node)addNode.args[index];
+                    var constantNode = (Node)addNode.args[1 - index];
+                    if (!constantNode.partialTensor.IsStatic())
+                        continue;
+                    var constantShape = constantNode.partialTensor.shape.ToTensorShape();
+                    if (constantShape.length > 1 || !inputNode.partialTensor.shape.hasRank || constantShape.rank > inputNode.partialTensor.shape.rank)
+                        continue;
+                    var dataType = constantNode.partialTensor.dataType;
+                    if (dataType == DataType.Float)
+                        GraphPassUtil.ReplaceNode(addNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 1f, constantNode.partialTensor.Get<float>().value, 0, 0 });
+                    if (dataType == DataType.Int)
+                        GraphPassUtil.ReplaceNode(addNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 0f, 0f, 1, constantNode.partialTensor.Get<int>().value });
+                }
+            }
+
+            var subNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Sub");
+            foreach (var subNode in subNodes)
+            {
+                var dataType = subNode.partialTensor.dataType;
+                for (var index = 0; index < 2 && !subNode.erased; index++)
+                {
+                    var inputNode = (Node)subNode.args[index];
+                    var constantNode = (Node)subNode.args[1 - index];
+                    if (!constantNode.partialTensor.IsStatic())
+                        continue;
+                    var constantShape = constantNode.partialTensor.shape.ToTensorShape();
+                    if (constantShape.length > 1 || !inputNode.partialTensor.shape.hasRank || constantShape.rank > inputNode.partialTensor.shape.rank)
+                        continue;
+                    if (dataType == DataType.Float)
+                        GraphPassUtil.ReplaceNode(subNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 1f - 2f * index, (-1f + 2f * index) * constantNode.partialTensor.Get<float>().value, 0, 0 });
+                    if (dataType == DataType.Int)
+                        GraphPassUtil.ReplaceNode(subNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 0f, 0f, 1 - 2 * index, (-1 + 2 * index) * constantNode.partialTensor.Get<int>().value });
+                }
+            }
+
+            var mulNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Mul");
+            foreach (var mulNode in mulNodes)
+            {
+                var dataType = mulNode.partialTensor.dataType;
+                for (var index = 0; index < 2 && !mulNode.erased; index++)
+                {
+                    var inputNode = (Node)mulNode.args[index];
+                    var constantNode = (Node)mulNode.args[1 - index];
+                    if (!constantNode.partialTensor.IsStatic())
+                        continue;
+                    var constantShape = constantNode.partialTensor.shape.ToTensorShape();
+                    if (constantShape.length > 1 || !inputNode.partialTensor.shape.hasRank || constantShape.rank > inputNode.partialTensor.shape.rank)
+                        continue;
+                    if (dataType == DataType.Float)
+                        GraphPassUtil.ReplaceNode(mulNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, constantNode.partialTensor.Get<float>().value, 0f, 0, 0 });
+                    if (dataType == DataType.Int)
+                        GraphPassUtil.ReplaceNode(mulNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 0f, 0f, constantNode.partialTensor.Get<int>().value, 0 });
+                }
+            }
+
+            var divNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Div");
+            foreach (var divNode in divNodes)
+            {
+                var inputNode = (Node)divNode.args[0];
+                var dataType = divNode.partialTensor.dataType;
+                if (dataType != DataType.Float)
+                    continue;
+                var constantNode = (Node)divNode.args[1];
+                if (!constantNode.partialTensor.IsStatic())
+                    continue;
+                var constantShape = constantNode.partialTensor.shape.ToTensorShape();
+                if (constantShape.length > 1 || !inputNode.partialTensor.shape.hasRank || constantShape.rank > inputNode.partialTensor.shape.rank)
+                    continue;
+                GraphPassUtil.ReplaceNode(divNode, "ScalarMad", new Argument[] { inputNode, (int)dataType, 1f / constantNode.partialTensor.Get<float>().value, 0f, 0, 0 });
+            }
         }
     }
 }

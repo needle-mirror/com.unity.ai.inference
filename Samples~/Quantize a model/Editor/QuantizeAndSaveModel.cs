@@ -10,7 +10,7 @@ public class QuantizeAndSaveModel : EditorWindow
     public ModelAsset modelAsset;
     public QuantizationType quantizationType;
 
-    [MenuItem("Inference Engine/Sample/Quantize and save model")]
+    [MenuItem("Sentis/Sample/Quantize and save model")]
     public static void ShowExample()
     {
         QuantizeAndSaveModel wnd = GetWindow<QuantizeAndSaveModel>();

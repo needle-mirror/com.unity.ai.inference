@@ -1,12 +1,12 @@
 # Supported ONNX operators
 
-When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes an Inference Engine layer. An Inference Engine layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer.
+When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer.
 
-For more information, refer to [How Inference Engine optimizes a model](models-concept.md#how-inference-engine-optimizes-a-model).
+For more information, refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model).
 
 ## Supported ONNX operators
 
-The following table lists the ONNX operators that Inference Engine supports and the data types supported for each [backend type](create-an-engine.md#back-end-types).
+The following table lists the ONNX operators that Sentis supports and the data types supported for each [backend type](create-an-engine.md#back-end-types).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)|Notes|
 |-|-|-|-|-|
@@ -24,6 +24,11 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[AveragePool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#AveragePool) | float | float (1D and 2D only) | float (1D and 2D only) | The `ceil_mode` and `count_include_pad` parameters aren't supported. |
 |[BatchNormalization](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BatchNormalization) | float | float | float | The `momentum`, `spatial` and `training_mode` parameters aren't supported. |
 |[Bernoulli](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Bernoulli) | float, int | float, int | float, int | |
+|[BitwiseAnd](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BitwiseAnd) | int | int | int | |
+|[BitwiseNot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BitwiseNot) | int | int | int | |
+|[BitwiseOr](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BitwiseOr) | int | int | int | |
+|[BitwiseXor](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BitwiseXor) | int | int | int | |
+|[BlackmanWindow](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BlackmanWindow) | float | float | float | |
 |[Cast](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cast) | float, int, short | float, int, short | float, int, short | |
 |[CastLike](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CastLike) | float, int, short | float, int, short | float, int, short | |
 |[Ceil](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Ceil) | float | float | float | |
@@ -39,8 +44,9 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Cosh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cosh) | float | float | float | |
 |[CumSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CumSum) | float, int | float, int | float, int | |
 |[DepthToSpace](https://github.com/onnx/onnx/blob/main/docs/Operators.md#DepthToSpace) | float, int | float, int | float, int | |
+|[DFT](https://github.com/onnx/onnx/blob/main/docs/Operators.md#DFT) | float | float | float | |
 |[Div](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Div) | float, int | float, int | float, int | |
-|[Dropout](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Dropout) | - | - | - | The operator maps to the Inference Engine layer `Identity`|
+|[Dropout](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Dropout) | - | - | - | The operator maps to the Sentis layer `Identity`|
 |[Einsum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Einsum) | float | float (1 or 2 inputs only) | Not supported | |
 |[Elu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Elu) | float | float | float | |
 |[Equal](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Equal) | float, int | float, int | float, int | |
@@ -58,6 +64,8 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Greater](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Greater) | float, int | float, int | float, int | |
 |[GreaterOrEqual](https://github.com/onnx/onnx/blob/main/docs/Operators.md#GreaterOrEqual) | float, int | float, int | float, int | |
 |[GridSample](https://github.com/onnx/onnx/blob/main/docs/Operators.md#GridSample) | float | float | float | |
+|[HammingWindow](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HammingWindow) | float | float | float | |
+|[HannWindow](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HannWindow) | float | float | float | |
 |[Hardmax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Hardmax) | float | float | float | |
 |[HardSigmoid](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HardSigmoid) | float | float | float | |
 |[HardSwish](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HardSwish) | float | float | float | |
@@ -76,12 +84,13 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[MatMul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MatMul) | float | float* | float | |
 |[Max](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Max) | float, int | float, int | float, int | |
 |[MaxPool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MaxPool) | float | float (1D and 2D only) | float (1D and 2D only) | The `ceil_mode`, `dilations` and `storage_order` parameters aren't supported. |
-|[Mean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mean) | float | float | float | The operator maps to the Inference Engine layers `Add` and `ScalarMad`. |
+|[Mean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mean) | float | float | float | The operator maps to the Sentis layers `Add` and `ScalarMad`. |
+|[MelWeightMatrix](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MelWeightMatrix) | float | float | float | |
 |[Min](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Min) | float, int | float, int | float, int | |
 |[Mod](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mod) | float, int | float, int | float, int | |
 |[Mish](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mish) | float | float | float | |
 |[Mul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mul) | float, int | float, int | float, int | |
-|[Multinomial](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Multinomial) | float | Not supported | Not supported | |
+|[Multinomial](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Multinomial) | float | float | float | |
 |[Neg](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Neg) | float, int | float, int | float, int | |
 |[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | float | Not supported | |
 |[NonZero](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonZero) | float, int | Not supported | Not supported | |
@@ -112,7 +121,7 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float | float | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. The `half_pixel_symmetric` option for `coordinate_transform_mode` is not supported.  |
 |[RoiAlign](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RoiAlign) | float | float | float | |
 |[Round](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Round) | float | float | float | |
-|[Scatter (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Scatter) | float, int | float, int | float, int | The operator maps to the Inference Engine layer `ScatterElements`. |
+|[Scatter (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Scatter) | float, int | float, int | float, int | The operator maps to the Sentis layer `ScatterElements`. |
 |[ScatterElements](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ScatterElements) | float, int | float, int (no ScatterReductionMode) | float, int | |
 |[ScatterND](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ScatterND) | float, int | float, int | float, int | |
 |[Selu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Selu) | float | float | float | |
@@ -131,8 +140,9 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Split](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Split) | float, int | float, int | float, int | |
 |[Sqrt](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sqrt) | float | float | float | |
 |[Squeeze](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Squeeze) | float, int | float, int | float, int | |
+|[STFT](https://github.com/onnx/onnx/blob/main/docs/Operators.md#STFT) | float | float | float | |
 |[Sub](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sub) | float, int | float, int | float, int | |
-|[Sum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sum) | float, int | float, int | float, int | The operator maps to the Inference Engine layer `Add`. |
+|[Sum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sum) | float, int | float, int | float, int | The operator maps to the Sentis layer `Add`. |
 |[Tan](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tan) | float | float | float | |
 |[Tanh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tanh) | float | float | float | |
 |[ThresholdedRelu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ThresholdedRelu) | float | float | float | |
@@ -141,26 +151,29 @@ The following table lists the ONNX operators that Inference Engine supports and 
 |[Transpose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Transpose) | float, int | float, int | float, int | |
 |[Trilu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Trilu) | float, int | float, int | float, int | |
 |[Unsqueeze](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Unsqueeze) | float, int | float, int | float, int | |
-|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float | float | The operator maps to the Inference Engine layer `Resize`. |
+|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float | float | The operator maps to the Sentis layer `Resize`. |
 |[Where](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Where) | float, int | float, int | float, int | |
 |[Xor](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Xor) | int | int | int | |
 
-\* Inference Engine uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
+\* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
 
-### Inference Engine-only layers
+### Sentis-only layers
 
-Inference Engine might create the following layers when it [optimizes the model](models-concept.md).
+Sentis might create the following layers when it [optimizes the model](models-concept.md).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)|
 |-|-|-|-|
+|Atan2 | float | float | float |
 |BroadcastArgs | int | - | - |
 |Dense | float | float* | float |
 |DequantizeUint8 | byte | byte | byte |
+|FloorDiv | float, int | float, int | float, int |
 |Gelu | float | float | float |
 |GeluFast | float | float | float |
 |MatMul2D | float | float* | float |
 |MoveDim | float, int | float, int | float, int |
 |Narrow | float, int | float, int | float, int |
+|NotEqual | float, int | float, int | float, int |
 |RandomChoice | float, int | float, int | float, int |
 |Relu6 | float | float | float |
 |RMSNormalization | float | float | float |
@@ -168,21 +181,18 @@ Inference Engine might create the following layers when it [optimizes the model]
 |Select | float, int | float, int | float, int |
 |SliceSet | float, int | float, int | float, int |
 |Square | float, int | float, int | float, int |
+|TrueDiv | float, int | float, int | float, int |
 |Swish | float | float | float |
 |ScaleBias | float | float | float |
 
-\* Inference Engine uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
+\* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
 
 ## Unsupported operators
 
-The following ONNX operators aren't supported in the current version of Inference Engine.
+The following ONNX operators aren't supported in the current version of Sentis.
 
 - AffineGrid
 - BitShift
-- BitwiseAnd
-- BitwiseNot
-- BitwiseOr
-- BitwiseXor
 - CenterCropPad
 - Col2Im
 - ConcatFromSequence

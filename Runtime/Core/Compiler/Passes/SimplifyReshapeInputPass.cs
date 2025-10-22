@@ -1,33 +1,32 @@
 using System;
-using System.Linq;
-using Unity.InferenceEngine.Compiler.Analyser;
-using Unity.InferenceEngine.Layers;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class SimplifyReshapeInputPass : IModelPass
+    /// <summary>
+    /// Replaces shape tensors for Reshape nodes with constant tensors where possible by using 0 and -1 values.
+    /// </summary>
+    class SimplifyReshapeInputPass : GraphPass
     {
-        public void Run(ref Model model)
+        public override void Run(GraphModule gm)
         {
-            var reshapeLayers = model.layers.Where(l => l is Reshape).ToList();
-            if (reshapeLayers.Count == 0)
-                return;
+            var reshapeNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Reshape");
 
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-
-            foreach (var layer in reshapeLayers)
+            foreach (var reshapeNode in reshapeNodes)
             {
-                var reshapeLayer = (Reshape)layer;
-                var shapePartialTensor = ctx.GetPartialTensor(reshapeLayer.inputs[1]) as PartialTensor<int>;
+                var inputNode = (Node)reshapeNode.args[0];
+                var shapeNode = (Node)reshapeNode.args[1];
+                var allowZero = (bool)reshapeNode.args[2];
+                var shapePartialTensor = shapeNode.partialTensor;
                 if (!shapePartialTensor.isPartiallyKnown)
                     continue;
                 var newShape = new PartialTensor<int>(shapePartialTensor.shape);
                 for (var i = 0; i < shapePartialTensor.length; i++)
-                    newShape[i] = shapePartialTensor[i];
+                    newShape[i] = shapePartialTensor.Get<int>(i);
 
-                var input = ctx.GetPartialTensor(reshapeLayer.inputs[0]);
-                var output = ctx.GetPartialTensor(reshapeLayer.outputs[0]);
+                var input = inputNode.partialTensor;
+                var output = reshapeNode.partialTensor;
 
                 // try and replace params and unknowns with values
                 for (var i = 0; i < output.shape.rank; i++)
@@ -38,7 +37,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 }
 
                 // try and replace params with 0
-                if (input.shape.hasRank && !reshapeLayer.allowZero)
+                if (input.shape.hasRank && !allowZero)
                 {
                     for (var i = 0; i < Mathf.Min(input.shape.rank, shapePartialTensor.length); i++)
                     {
@@ -67,16 +66,14 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                         numMinusOne++;
                 }
 
-                if (numMinusOne == 0 && numUnknown == 1 && (!reshapeLayer.allowZero || numZero == 0))
+                if (numMinusOne == 0 && numUnknown == 1 && (!allowZero || numZero == 0))
                     newShape[unknownIndex] = PartialTensorElement<int>.Value(-1);
 
                 if (!newShape.IsStatic())
                     continue;
 
-                var shapeIndex = model.GetUniqueIndex();
-                var shapeConstant = new Constant(model.GetUniqueIndex(), newShape.shape.ToTensorShape(), newShape.ToArray());
-                reshapeLayer.inputs[1] = shapeIndex;
-                model.AddConstant(shapeConstant);
+                var newShapeNode = GraphPassUtil.AddConstant(gm, reshapeNode, newShape.shape.ToTensorShape(), newShape.ToArray());
+                reshapeNode.UpdateArgs(new Argument[] { inputNode, newShapeNode, allowZero });
             }
         }
     }

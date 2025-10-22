@@ -12,10 +12,8 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "a", "b" }, inputCPURead = new[] { 0, 1 })]
     partial class BroadcastArgs : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            var a = getPartialTensor(0) as PartialTensor<int>;
-            var b = getPartialTensor(1) as PartialTensor<int>;
             var shapeOut = DynamicTensorShape.DynamicOfRank(1);
             if (a.shape.IsStatic() && b.shape.IsStatic())
                 shapeOut[0] = DynamicTensorDim.Int(Mathf.Max(a.shape[0].ToInt(), b.shape[0].ToInt()));
@@ -25,11 +23,12 @@ namespace Unity.InferenceEngine.Layers
                 for (var i = 0; i < tensorOut.length; i++)
                     tensorOut[i] = PartialTensorElement<int>.Value(1);
                 for (var i = 0; i < a.length; i++)
-                    tensorOut[tensorOut.length - 1 - i] = (PartialTensorElement<int>)DynamicTensorDim.Broadcast((DynamicTensorDim)a[a.length - 1 - i], (DynamicTensorDim)tensorOut[tensorOut.length - 1 - i]);
+                    tensorOut[tensorOut.length - 1 - i] = (PartialTensorElement<int>)DynamicTensorDim.Broadcast((DynamicTensorDim)(a as PartialTensor<int>)[a.length - 1 - i], (DynamicTensorDim)tensorOut[tensorOut.length - 1 - i]);
                 for (var i = 0; i < b.length; i++)
-                    tensorOut[tensorOut.length - 1 - i] = (PartialTensorElement<int>)DynamicTensorDim.Broadcast((DynamicTensorDim)b[b.length - 1 - i], (DynamicTensorDim)tensorOut[tensorOut.length - 1 - i]);
+                    tensorOut[tensorOut.length - 1 - i] = (PartialTensorElement<int>)DynamicTensorDim.Broadcast((DynamicTensorDim)(b as PartialTensor<int>)[b.length - 1 - i], (DynamicTensorDim)tensorOut[tensorOut.length - 1 - i]);
             }
-            setPartialTensor(0, tensorOut);
+
+            return tensorOut;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -55,36 +54,30 @@ namespace Unity.InferenceEngine.Layers
         public int start;
         public int end;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int start, int end)
         {
             if (start == end)
-            {
-                setPartialTensor(0, new PartialTensor<int>(new DynamicTensorShape(DynamicTensorDim.Zero)));
-                return;
-            }
+                return new PartialTensor<int>(new DynamicTensorShape(DynamicTensorDim.Zero));
 
-            var shapeX = getPartialTensor(0).shape;
+            var shapeInput = input.shape;
 
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, new PartialTensor<int>(DynamicTensorShape.DynamicOfRank(1)));
-                return;
-            }
+            if (!shapeInput.hasRank)
+                return new PartialTensor<int>(DynamicTensorShape.DynamicOfRank(1));
 
-            var startX = start < 0 ? start + shapeX.rank : start;
-            var endX = end < 0 ? end + shapeX.rank : end;
-            startX = Mathf.Clamp(startX, 0, shapeX.rank);
-            endX = Mathf.Clamp(endX, 0, shapeX.rank);
+            var startX = start < 0 ? start + shapeInput.rank : start;
+            var endX = end < 0 ? end + shapeInput.rank : end;
+            startX = Mathf.Clamp(startX, 0, shapeInput.rank);
+            endX = Mathf.Clamp(endX, 0, shapeInput.rank);
 
             Logger.AssertIsTrue(endX >= startX, "PartialTensorFromSymbolicShape.InputError: start value cannot be greater than end value for shape slicing");
 
             var tensorOut = new PartialTensor<int>(new DynamicTensorShape(endX - startX));
             for (var i = startX; i < endX; i++)
             {
-                tensorOut[i - startX] = (PartialTensorElement<int>)shapeX[i];
+                tensorOut[i - startX] = (PartialTensorElement<int>)shapeInput[i];
             }
 
-            setPartialTensor(0, tensorOut);
+            return tensorOut;
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -108,19 +101,18 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
-    /// Represents a `Size` layer. This computes the number of elements of an input tensor as a scalar `Tensor<int>`.
+    /// Represents a `Size` layer. This computes the number of elements of an input tensor as a scalar `Tensor&lt;int&gt;`.
     /// </summary>
     [Operator(category = "Dimension")]
     [Inputs(names = new[] { "input" }, inputNoDataDependency = new[] { 0 })]
     partial class Size : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, new PartialTensor<int>(new DynamicTensorShape())
+            return new PartialTensor<int>(new DynamicTensorShape())
             {
-                [0] = (PartialTensorElement<int>)X.shape.Length()
-            });
+                [0] = (PartialTensorElement<int>)input.shape.Length()
+            };
         }
 
         internal override void Execute(ExecutionContext ctx)

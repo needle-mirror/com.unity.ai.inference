@@ -9,7 +9,7 @@ namespace Unity.InferenceEngine
     // How to debug: https://docs.editor-data.unity3d.com/Contribute/EditorAnalytics/debugger_guide/
     // Make sure to update the version if you duplicate the schema instead of updating it.
     [AnalyticInfo(eventName: k_EventName, vendorKey: k_VendorKey, version: 3)]
-    internal class InferenceEngineAnalytics : IAnalytic
+    internal class SentisAnalytics : IAnalytic
     {
         private const string k_EventName = "sentisModelImport";
         private const string k_VendorKey = "unity.sentis";
@@ -36,7 +36,7 @@ namespace Unity.InferenceEngine
 
         public static void SendEvent(Data data)
         {
-            InferenceEngineAnalytics analytic = new InferenceEngineAnalytics();
+            SentisAnalytics analytic = new SentisAnalytics();
             analytic.m_Data = data;
             EditorAnalytics.SendAnalytic(analytic);
         }

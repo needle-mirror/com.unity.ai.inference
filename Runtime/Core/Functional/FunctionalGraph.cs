@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Unity.InferenceEngine.Compiler.Passes.Optimization;
+using Unity.InferenceEngine.Graph;
 using UnityEngine.Assertions;
 
 namespace Unity.InferenceEngine
@@ -8,13 +10,13 @@ namespace Unity.InferenceEngine
     ///
     /// Input functional tensors can be added to the graph, then manipulated using the functional API methods.
     ///
-    /// The functional graph can be compiled to return an optimized Inference Engine runtime model.
+    /// The functional graph can be compiled to return an optimized Sentis runtime model.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class FunctionalGraph
     {
         List<InputNode> m_Inputs = new();
-        List<OutputNode> m_Outputs = new();
+        List<FunctionalTensor> m_OutputTensors = new();
 
         /// <summary>
         /// Append an input to the graph with an input def.
@@ -26,9 +28,9 @@ namespace Unity.InferenceEngine
         public FunctionalTensor AddInput(DataType dataType, DynamicTensorShape shape, string name = null)
         {
             var index = m_Inputs.Count;
-            var input = new InputNode(index, dataType, shape, name);
-            m_Inputs.Add(input);
-            return input.CreateOutputs()[0];
+            var inputNode = new InputNode(dataType, shape, name ?? $"input_{index}");
+            m_Inputs.Add(inputNode);
+            return new FunctionalTensor(PartialTensor.Create(dataType, shape), inputNode);
         }
 
         /// <summary>
@@ -74,7 +76,7 @@ namespace Unity.InferenceEngine
         /// <param name="index">The input index of the input in the provided model.</param>
         /// <param name="name">Name to use for this input.
         ///
-        /// If name is null Inference Engine uses the name from the model.</param>
+        /// If name is null Sentis uses the name from the model.</param>
         /// <returns>The functional tensor input.</returns>
         public FunctionalTensor AddInput(Model model, int index, string name = null)
         {
@@ -104,10 +106,12 @@ namespace Unity.InferenceEngine
         /// If null the name will be "output_{idx}" or inferred from the original model in case this functional tensor is the output of a forward pass of an existing model.</param>
         public void AddOutput(FunctionalTensor output, string name = null)
         {
-            if (output.source is not LayerNode)
+            if (output.source is InputNode or ConstantNode)
                 output = output.Clone();
 
-            m_Outputs.Add(new OutputNode(m_Outputs.Count, output, name));
+            if (name is not null)
+                output.SetName(name);
+            m_OutputTensors.Add(output.Copy());
         }
 
         /// <summary>
@@ -126,8 +130,9 @@ namespace Unity.InferenceEngine
         /// <returns>The compiled runtime model.</returns>
         public Model Compile()
         {
-            var model = Build();
-            ModelOptimizer.OptimizeModel(ref model);
+            var gm = BuildGraphModule();
+            ModelOptimizer.OptimizeGraph(gm);
+            var model = GraphConverter.GraphToModel(gm);
             return model;
         }
 
@@ -138,7 +143,7 @@ namespace Unity.InferenceEngine
         /// <returns>The compiled runtime model.</returns>
         public Model Compile(params FunctionalTensor[] outputs)
         {
-            Logger.AssertIsTrue(m_Outputs.Count == 0, "Graph outputs have already been added using FunctionalGraph.AddOutput. Call FunctionalGraph.Compile() with no arguments to compile the graph.");
+            Logger.AssertIsTrue(m_OutputTensors.Count == 0, "Graph outputs have already been added using FunctionalGraph.AddOutput. Call FunctionalGraph.Compile() with no arguments to compile the graph.");
             AddOutputs(outputs);
             return Compile();
         }
@@ -152,25 +157,32 @@ namespace Unity.InferenceEngine
 
         internal Model Build()
         {
+            var gm = BuildGraphModule();
+            return GraphConverter.GraphToModel(gm);
+        }
+
+        internal GraphModule BuildGraphModule()
+        {
             // create empty model
-            var model = new Model();
+            var gm = new GraphModule();
+            var nodes = new Dictionary<FunctionalNode, Node>();
+            var constantNameIndex = 0;
 
             // create for post order traversal algorithm
-            var nodeStack = new Stack<Node>(); // stack of nodes to inspect and then process
-            var nodeProgress = new Dictionary<Node, NodeProgress>(); // nodes which have been processed and added to the model
-
-            var tensorIndex = 0;
+            var nodeStack = new Stack<FunctionalNode>(); // stack of nodes to inspect and then process
+            var nodeProgress = new Dictionary<FunctionalNode, NodeProgress>(); // nodes which have been processed and added to the model
 
             // iterate inputs to ensure they are in the right order on the model
             foreach (var input in m_Inputs)
             {
-                input.AddToModel(model, ref tensorIndex);
+                var inputNode = gm.Input(input.name, input.dataType, input.shape);
+                nodes[input] = inputNode;
                 nodeProgress[input] = NodeProgress.Done;
             }
 
             // queue nodes for the output expressions in reverse order
-            for (var i = m_Outputs.Count - 1; i >= 0; i--)
-                nodeStack.Push(m_Outputs[i]);
+            for (var i = m_OutputTensors.Count - 1; i >= 0; i--)
+                nodeStack.Push(m_OutputTensors[i].source);
 
             // push dependency nodes ahead of current node in stack
             // only process node once dependencies have been processed
@@ -181,7 +193,22 @@ namespace Unity.InferenceEngine
                 {
                     // add node to model
                     Logger.AssertIsTrue(n is not InputNode, "Input expression from incorrect source.");
-                    n.AddToModel(model, ref tensorIndex);
+                    if (n is ConstantNode constantNode)
+                    {
+                        var name = constantNameIndex.ToString();
+                        constantNameIndex++;
+                        gm.attributes[name] = constantNode.constant;
+                        nodes[constantNode] = gm.graph.GetAttr(name);
+                    }
+                    else if (n is LayerNode layerNode)
+                    {
+                        var args = GraphUtils.MapArg(layerNode.args, fakeNode => nodes[((FakeNode)fakeNode).functionalTensor.source]);
+                        nodes[layerNode] = gm.graph.CallFunction(layerNode.target, args);
+                    }
+                    else if (n is IndexerNode indexerNode)
+                    {
+                        nodes[indexerNode] = gm.graph.CallFunction("getitem", new Argument[] { nodes[indexerNode.layerNode], indexerNode.index });
+                    }
                     nodeProgress[n] = NodeProgress.Done;
                     nodeStack.Pop();
                     continue;
@@ -197,20 +224,40 @@ namespace Unity.InferenceEngine
                 // node is not visited, iterate descendants
                 nodeProgress[n] = NodeProgress.InProgress;
 
-                for (var i = n.Inputs.Length - 1; i >= 0; i--)
+                void Visit(FunctionalNode node)
                 {
-                    if (n.Inputs[i] is null)
-                        continue;
-                    var m = n.Inputs[i].source;
-                    var mProgress = nodeProgress.GetValueOrDefault(m, NodeProgress.NotVisited);
+                    var mProgress = nodeProgress.GetValueOrDefault(node, NodeProgress.NotVisited);
                     if (mProgress == NodeProgress.NotVisited)
-                        nodeStack.Push(m);
+                        nodeStack.Push(node);
                     else
                         Assert.IsTrue(mProgress != NodeProgress.InProgress, "Model graph has cycle");
                 }
+
+                if (n is LayerNode lNode)
+                {
+                    GraphUtils.VisitArg(lNode.args, node =>
+                    {
+                        var fakeNode = (FakeNode)node;
+                        Visit(fakeNode.functionalTensor.source);
+                    }, reverse: true);
+                }
+                else if (n is IndexerNode iNode)
+                {
+                    Visit(iNode.layerNode);
+                }
             }
 
-            return model;
+            var outputTensors = new Node[m_OutputTensors.Count];
+            var outputNames = new string[m_OutputTensors.Count];
+            for (var i = 0; i < outputTensors.Length; i++)
+            {
+                outputTensors[i] = nodes[m_OutputTensors[i].source];
+                outputNames[i] = m_OutputTensors[i].name ?? $"output_{i}";
+            }
+
+            gm.Outputs(outputNames, outputTensors);
+
+            return gm;
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Unity.InferenceEngine
             DeclareRank(scores, 1);
             boxes = boxes.Float();
             scores = scores.Float();
-            return FromLayer(new Layers.NonMaxSuppression(Layers.CenterPointBox.Corners), new[] { boxes.Unsqueeze(0), scores.Reshape(new[] { 1, 1, -1 }), Constant(-1), Constant(iouThreshold), scoreThreshold.HasValue ? Constant(scoreThreshold.Value) : null }).Select(1, 2);
+            return FunctionalLayer.NonMaxSuppression(boxes.Unsqueeze(0), scores.Reshape(new[] { 1, 1, -1 }), Constant(-1), Constant(iouThreshold), scoreThreshold.HasValue ? Constant(scoreThreshold.Value) : null, Layers.CenterPointBox.Corners).Select(1, 2);
         }
     }
 }

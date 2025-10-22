@@ -55,7 +55,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Editor
         {
             if (IsSettingsAvailable())
             {
-                var provider = new ModelVisualizerSettingsProvider("Project/Inference Engine/Model Visualizer");
+                var provider = new ModelVisualizerSettingsProvider("Project/Sentis/Model Visualizer");
                 provider.keywords = new[] { "inference", "graph", "visualization", "node", "visualizer" };
                 return provider;
             }

@@ -106,16 +106,8 @@ namespace Unity.InferenceEngine.Layers
 
         internal override int OutputCount => 3;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor[] InferPartial(PartialTensor X, PartialTensor W, PartialTensor R, PartialTensor B, PartialTensor sequenceLens, PartialTensor initialH, PartialTensor initialC, PartialTensor P, int hiddenSize, RnnDirection direction, RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, float clip, bool inputForget, RnnLayout layout)
         {
-            var X = getPartialTensor(0);
-            var W = getPartialTensor(1);
-            var R = getPartialTensor(2);
-            var B = getPartialTensor(3);
-            var sequenceLens = getPartialTensor(4);
-            var initialH = getPartialTensor(5);
-            var initialC = getPartialTensor(6);
-            var P = getPartialTensor(7);
             var shapeX = X.shape;
             var shapeW = W.shape;
             var shapeR = R.shape;
@@ -157,15 +149,21 @@ namespace Unity.InferenceEngine.Layers
 
             if (layout == RnnLayout.SequenceFirst)
             {
-                setPartialTensor(0, new PartialTensor<float>(new DynamicTensorShape(seqLength, numDirectionsDim, batchSize, hiddenSizeDim)));
-                setPartialTensor(1, new PartialTensor<float>(new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
-                setPartialTensor(2, new PartialTensor<float>(new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
+                return new PartialTensor[]
+                {
+                    new PartialTensor<float>(new DynamicTensorShape(seqLength, numDirectionsDim, batchSize, hiddenSizeDim)),
+                    new PartialTensor<float>(new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)),
+                    new PartialTensor<float>(new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim))
+                };
             }
             else
             {
-                setPartialTensor(0, new PartialTensor<float>(new DynamicTensorShape(batchSize, seqLength, numDirectionsDim, hiddenSizeDim)));
-                setPartialTensor(1, new PartialTensor<float>(new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
-                setPartialTensor(2, new PartialTensor<float>(new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
+                return new PartialTensor[]
+                {
+                    new PartialTensor<float>(new DynamicTensorShape(batchSize, seqLength, numDirectionsDim, hiddenSizeDim)),
+                    new PartialTensor<float>(new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)),
+                    new PartialTensor<float>(new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim))
+                };
             }
         }
 

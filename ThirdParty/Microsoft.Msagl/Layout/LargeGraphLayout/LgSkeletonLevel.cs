@@ -9,8 +9,8 @@ using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.Layout.OverlapRemovalFixedSegments;
 using Microsoft.Msagl.Routing;
 using Microsoft.Msagl.Routing.Visibility;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 namespace Microsoft.Msagl.Layout.LargeGraphLayout {
+    using SymmetricSegment = SymmetricTuple<Point>;
     internal class LgSkeletonLevel {
         //internal RTree<Rail,Point> RailTree = new RTree<Rail,Point>();
 

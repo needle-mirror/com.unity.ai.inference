@@ -1,12 +1,12 @@
 # Encrypt a model
 
-Encrypt a model so that only a user with the correct key can read the model description and weights from disk. You can encrypt an Inference Engine model to disk with the [`ModelWriter`](xref:Unity.InferenceEngine.ModelWriter) and [`ModelLoader`](xref:Unity.InferenceEngine.ModelLoader) APIs.
+Encrypt a model so that only a user with the correct key can read the model description and weights from disk. You can encrypt a Sentis model to disk with the [`ModelWriter`](xref:Unity.InferenceEngine.ModelWriter) and [`ModelLoader`](xref:Unity.InferenceEngine.ModelLoader) APIs.
 
 ## Encrypt a model and save to disk
 
 Use the following steps to encrypt and save a model to disk, typically in the Unity Editor before you build and distribute your project:
 
-1. To get an Inference Engine model, import an ONNX file or use the Inference Engine model API.
+1. To get a Sentis model, import an ONNX or LiteRT file or use the Sentis functional API.
 2. Create a `Stream` object for the encrypted model with a cryptography API and your encryption key.
 3. Call [`ModelWriter.Save`](xref:Unity.InferenceEngine.ModelWriter.Save*) to serialize and encrypt the model to the stream.
 

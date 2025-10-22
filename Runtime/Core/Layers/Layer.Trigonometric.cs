@@ -6,8 +6,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Acos` trigonometric layer: f(x) = acos(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Acos : Activation
+    partial class Acos : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -22,8 +27,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Acosh` trigonometric layer: f(x) = acosh(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Acosh : Activation
+    partial class Acosh : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -38,8 +48,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Asin` trigonometric layer: f(x) = asin(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Asin : Activation
+    partial class Asin : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -54,8 +69,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Asinh` trigonometric layer: f(x) = asinh(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Asinh : Activation
+    partial class Asinh : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -70,8 +90,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Atan` trigonometric layer: f(x) = atan(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Atan : Activation
+    partial class Atan : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -86,8 +111,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Atanh` trigonometric layer: f(x) = atanh(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Atanh : Activation
+    partial class Atanh : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -102,8 +132,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Cos` trigonometric layer: f(x) = cos(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Cos : Activation
+    partial class Cos : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -118,8 +153,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Cosh` trigonometric layer: f(x) = cosh(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Cosh : Activation
+    partial class Cosh : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -134,8 +174,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Sin` trigonometric layer: f(x) = sin(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Sin : Activation
+    partial class Sin : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -150,8 +195,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Sinh` trigonometric layer: f(x) = sinh(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Sinh : Activation
+    partial class Sinh : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -166,8 +216,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Tan` trigonometric layer: f(x) = tan(x).
     /// </summary>
     [Operator(category = "Trigonometric")]
-    partial class Tan : Activation
+    partial class Tan : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;

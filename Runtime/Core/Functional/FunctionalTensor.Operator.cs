@@ -384,7 +384,7 @@ namespace Unity.InferenceEngine
         /// </summary>
         /// <param name="a">The operand tensor.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator ~(FunctionalTensor a) => Functional.LogicalNot(a);
+        public static FunctionalTensor operator ~(FunctionalTensor a) => Functional.BitwiseNot(a);
 
         /// <summary>
         /// Xor operator.
@@ -392,7 +392,7 @@ namespace Unity.InferenceEngine
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator ^(FunctionalTensor a, FunctionalTensor b) => Functional.LogicalXor(a, b);
+        public static FunctionalTensor operator ^(FunctionalTensor a, FunctionalTensor b) => Functional.BitwiseXor(a, b);
 
         /// <summary>
         /// Xor operator.
@@ -400,7 +400,15 @@ namespace Unity.InferenceEngine
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator ^(FunctionalTensor a, bool b) => a ^ Functional.Constant(b ? 1 : 0);
+        public static FunctionalTensor operator ^(FunctionalTensor a, bool b) => a ^ (b ? 1 : 0);
+
+        /// <summary>
+        /// Xor operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator ^(FunctionalTensor a, int b) => a ^ Functional.Constant(b);
 
         /// <summary>
         /// Xor operator.
@@ -411,12 +419,12 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor operator ^(bool a, FunctionalTensor b) => b ^ a;
 
         /// <summary>
-        /// And operator.
+        /// Xor operator.
         /// </summary>
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator &(FunctionalTensor a, FunctionalTensor b) => Functional.LogicalAnd(a, b);
+        public static FunctionalTensor operator ^(int a, FunctionalTensor b) => b ^ a;
 
         /// <summary>
         /// And operator.
@@ -424,7 +432,23 @@ namespace Unity.InferenceEngine
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator &(FunctionalTensor a, bool b) => a & Functional.Constant(b ? 1 : 0);
+        public static FunctionalTensor operator &(FunctionalTensor a, FunctionalTensor b) => Functional.BitwiseAnd(a, b);
+
+        /// <summary>
+        /// And operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator &(FunctionalTensor a, bool b) => a & (b ? 1 : 0);
+
+        /// <summary>
+        /// And operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator &(FunctionalTensor a, int b) => a & Functional.Constant(b);
 
         /// <summary>
         /// And operator.
@@ -435,12 +459,12 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor operator &(bool a, FunctionalTensor b) => b & a;
 
         /// <summary>
-        /// Or operator.
+        /// And operator.
         /// </summary>
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator |(FunctionalTensor a, FunctionalTensor b) => Functional.LogicalOr(a, b);
+        public static FunctionalTensor operator &(int a, FunctionalTensor b) => b & a;
 
         /// <summary>
         /// Or operator.
@@ -448,7 +472,23 @@ namespace Unity.InferenceEngine
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator |(FunctionalTensor a, bool b) => a | Functional.Constant(b ? 1 : 0);
+        public static FunctionalTensor operator |(FunctionalTensor a, FunctionalTensor b) => Functional.BitwiseOr(a, b);
+
+        /// <summary>
+        /// Or operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator |(FunctionalTensor a, bool b) => a | (b ? 1 : 0);
+
+        /// <summary>
+        /// Or operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator |(FunctionalTensor a, int b) => a | Functional.Constant(b);
 
         /// <summary>
         /// Or operator.
@@ -458,11 +498,19 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor operator |(bool a, FunctionalTensor b) => b | a;
 
+        /// <summary>
+        /// Or operator.
+        /// </summary>
+        /// <param name="a">The first operand.</param>
+        /// <param name="b">The second operand.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor operator |(int a, FunctionalTensor b) => b | a;
+
         // helper for operators with float values
         static FunctionalTensor ScalarMad(FunctionalTensor input, float s, float b)
         {
             input = input.Float();
-            return Functional.FromLayer(new Layers.ScalarMad(DataType.Float, s, b, 0, 0), new[] { input });
+            return FunctionalLayer.ScalarMad(input, DataType.Float, s, b, 0, 0);
         }
 
         // helper for operators with int values, type promotion to floats if needed
@@ -470,7 +518,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Float)
                 return ScalarMad(input, (float)s, b);
-            return Functional.FromLayer(new Layers.ScalarMad(DataType.Int, 0, 0, s, b), new[] { input });
+            return FunctionalLayer.ScalarMad(input, DataType.Int, 0, 0, s, b);
         }
     }
 }

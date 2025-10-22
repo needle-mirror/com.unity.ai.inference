@@ -35,6 +35,7 @@ namespace Unity.InferenceEngine
         IModelStorage m_Storage;
         CPUBackend m_FallbackBackend;
         HashSet<int> m_LayerCPUFallback;
+        HashSet<int> m_LayerCPUFallbackShouldFlushGPU;
 
         /// <summary>
         /// Returns the backend type of the worker.
@@ -47,8 +48,7 @@ namespace Unity.InferenceEngine
         /// <param name="model">The model to execute.</param>
         /// <param name="backend">The backend to use for execution.</param>
         /// <param name="storage">The stored tensor variables to use for execution.</param>
-        /// <param name="takeoverWeights">Whether to allow the worker to take ownership of the model weights during execution.</param>
-        internal Worker(Model model, IBackend backend, IModelStorage storage, bool takeoverWeights = false)
+        internal Worker(Model model, IBackend backend, IModelStorage storage)
         {
             m_Model = model;
 
@@ -63,9 +63,9 @@ namespace Unity.InferenceEngine
             else
                 m_FallbackBackend = new CPUBackend();
 
-            m_LayerCPUFallback = CPUFallbackCalculator.Calculate(model, backend.backendType);
+            m_LayerCPUFallback = CPUFallbackCalculator.Calculate(model, backend.backendType, out m_LayerCPUFallbackShouldFlushGPU);
 
-            m_Storage.PrepareStorage(m_Model, takeoverWeights);
+            m_Storage.PrepareStorage(m_Model);
         }
 
         /// <summary>
@@ -208,30 +208,56 @@ namespace Unity.InferenceEngine
                 cpuBackend = m_FallbackBackend,
             };
 
+            var originalBackendAsGPUBackend = m_Backend as GPUComputeBackend;
             foreach (var l in m_Model.layers)
             {
                 ctx.backend = m_Backend;
                 if (m_LayerCPUFallback.Contains(l.outputs[0]))
+                {
+                    if (m_LayerCPUFallbackShouldFlushGPU.Contains(l.outputs[0]))
+                    {
+                        //D.Log($"Layer {l}: About to do CPU fallback for output {l.outputs[0]} but some of its input is used earlier by other backend, flushing GPU command queue.");
+                        var gpubackend = ctx.backend as GPUComputeBackend;
+                        if (gpubackend != null)
+                            gpubackend.ExecuteCommandBufferAndClear();
+                        else
+                            D.LogWarning($"m_LayerCPUFallbackShouldFlushGPU... but no gpubackend?");
+                    }
                     ctx.backend = m_FallbackBackend;
+                }
 
                 var markerType = l.profilerMarker;
                 markerType.Begin();
-#if INFERENCE_ENGINE_DEBUG
+#if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
 #endif
+                //string strBackend = ctx.backend is GPUComputeBackend ? "GPU backend" : "CPU FALLBACK";
+                //D.Log($"Layer {l} about to execute, outputs to generate on {strBackend}");
+
                 l.Execute(ctx);
-#if INFERENCE_ENGINE_DEBUG
+
+#if SENTIS_DEBUG
                 Profiler.EndSample();
 #endif
+                // If we used the CPU fallback backend, we could have pending GPU buffer disposes to do:
+                if (!ComputeTensorDataReaper.IsDisposeQueueEmpty)
+                {
+                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer());
+                }
                 markerType.End();
 
                 m_Storage.DisposeAfterLayer(l);
             }
 
+            // Make sure to restore the original backend:
+            ctx.backend = m_Backend;
+
             // gpucompute: need to execute commandbuffer and flush.
             if (ctx.backend is GPUComputeBackend gpuBackend && gpuBackend.InternalCommandBuffer())
                 gpuBackend.ExecuteCommandBufferAndClear();
 
+            // Note: if ComputeTensorData.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer())
+            // isn't used like above, it should be done here.
             ProfilerMarkers.Schedule.End();
         }
 
@@ -273,25 +299,43 @@ namespace Unity.InferenceEngine
                 cpuBackend = m_FallbackBackend
             };
 
+            var originalBackendAsGPUBackend = m_Backend as GPUComputeBackend;
             foreach (var l in m_Model.layers)
             {
                 ctx.backend = m_Backend;
                 bool cpuLayer = m_LayerCPUFallback.Contains(l.outputs[0]);
                 if (cpuLayer)
+                {
+                    if (m_LayerCPUFallbackShouldFlushGPU.Contains(l.outputs[0]))
+                    {
+                        var gpubackend = ctx.backend as GPUComputeBackend;
+                        if (gpubackend != null)
+                            gpubackend.ExecuteCommandBufferAndClear();
+                        else
+                            D.LogWarning($"m_LayerCPUFallbackShouldFlushGPU... but no gpubackend?");
+                    }
                     ctx.backend = m_FallbackBackend;
+                }
 
                 var markerType = l.profilerMarker;
                 markerType.Begin();
-#if INFERENCE_ENGINE_DEBUG
+#if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
 #endif
                 l.Execute(ctx);
-#if INFERENCE_ENGINE_DEBUG
+#if SENTIS_DEBUG
                 Profiler.EndSample();
 #endif
+                // If we used the CPU fallback backend, we could have pending GPU buffer disposes to do:
+                if (!ComputeTensorDataReaper.IsDisposeQueueEmpty)
+                {
+                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer());
+                }
                 markerType.End();
 
                 m_Storage.DisposeAfterLayer(l);
+                // Make sure to restore the original backend:
+                ctx.backend = m_Backend;
 
                 if (!cpuLayer)
                 {
@@ -382,10 +426,10 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Schedule a copy of the output tensor at an index into a tensor.
         ///
-        /// If, the input tensor is null, Inference Engine will allocate a new one
+        /// If, the input tensor is null, Sentis will allocate a new one
         /// If not, the input tensor dataType must match the output and have large enough capacity for the output shape.
         ///
-        /// Inference Engine reshapes the provided tensor if the shape does not match.
+        /// Sentis reshapes the provided tensor if the shape does not match.
         /// </summary>
         /// <param name="index">The index of the output.</param>
         /// <param name="tensor">The tensor to copy the output into.</param>
@@ -407,10 +451,10 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Schedule a copy of the output tensor with a name into a tensor.
         ///
-        /// If, the input tensor is null, Inference Engine will allocate a new one
+        /// If the input tensor is null, Sentis will allocate a new one
         /// If not, the input tensor dataType must match the output and have large enough capacity for the output shape.
         ///
-        /// Inference Engine reshapes the provided tensor if the shape does not match.
+        /// Sentis reshapes the provided tensor if the shape does not match.
         /// </summary>
         /// <param name="name">The name of the output.</param>
         /// <param name="tensor">The tensor to copy the output into.</param>

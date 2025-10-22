@@ -3,11 +3,13 @@ using System.Collections.Generic;
 
 namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
-    record GraphState
+    record GraphState: IDisposable
     {
         [NonSerialized]
         public Model Model;
         public ModelAsset ModelAsset;
+        [NonSerialized]
+        public PartialInferenceContext PartialInferenceContext;
         public Graph Graph;
         public object FocusedObject = null;
         public List<object> SelectionHistory = new();
@@ -27,6 +29,14 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
                     return null;
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            Graph?.Dispose();
+            PartialInferenceContext = null;
+            Model = null;
+            ModelAsset = null;
         }
     }
 }

@@ -1,22 +1,15 @@
 # Create a model
 
-Create a runtime model by importing an ONNX model file or using the Inference Engine functional API.
+Use the Sentis API to bring machine learning (ML) models into Unity. You can import models from ML frameworks, create models from scratch, or prepare them for runtime performance.
 
-|Page |Description  |
-|-----|-------------|
-|[Understand models in Inference Engine](models-concept.md)| Understand how Inference Engine optimizes models, and information about fixed and dynamic input dimensions. |
-|[Export and convert a file to ONNX](export-convert-onnx.md)| Export an ONNX file from a machine learning framework and convert other file types to the ONNX format. |
-|[Import an ONNX file](import-a-model-file.md)| Import an ONNX file and create a runtime model.                                        |
-|[Supported models](supported-models.md)| Understand the models Inference Engine supports and find a model for your project.|
-|[Serialize a model](serialize-a-model)| Create a serialized model (.sentis file) in the `StreamingAssets` folder.           |
-|[Inspect a model](inspect-a-model.md)| Check the inputs, outputs and layers of a model.                                       |
-|[Create a new model](create-a-new-model.md)| Create a new runtime model with the Inference Engine functional API.                                       |
-|[Edit a model](edit-a-model.md)| Make changes to an existing runtime model.                                             |
-|[Encrypt a model](encrypt-a-model.md)| Encrypt and decrypt an Inference Engine model.                                                    |
-|[Quantize a model](quantize-a-model.md)| Quantize the weights of an Inference Engine model.                                                    |
-|[Supported ONNX operators](supported-operators.md)| Understand which ONNX operators Inference Engine supports.                                                  |
-|[Supported functional methods](supported-functional-methods.md)| Understand which functional methods Inference Engine supports.                                                  |
-|[Model Asset Inspector](model-asset-inspector.md)| Understand the settings and properties of an imported model in the Unity Inspector.    |
+This section provides information on model workflow, supported model types, and helps you understand how to import, modify, and run models in Unity.
+
+|Page| Description |
+|----|-------------|
+| [Understand model formats and operators](model-formats.md) | Learn about the supported model types, file formats, functional methods, and operators that Sentis uses. |
+| [Export and import a model](export-import.md) | Convert models from machine learning frameworks and import them into Unity in a compatible format. |
+| [Transform, optimize, and inspect a model](model-transformation.md) | Prepare your model for runtime with Unity tools. Use these tools to serialize, quantize, encrypt, or inspect the model. |
+| [Create or edit a model in Unity](custom-models.md) | Build a model from scratch or modify an existing one directly with Sentis APIs. |
 
 ## Additional resources
 

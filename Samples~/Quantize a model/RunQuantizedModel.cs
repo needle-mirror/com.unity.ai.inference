@@ -4,7 +4,7 @@ using Unity.InferenceEngine;
 public class RunQuantizedModel : MonoBehaviour
 {
     // 1. Download a .sentis or .onnx model you want to quantize and bring into your Unity Project.
-    // 2. Open the Editor window 'Inference Engine > Sample > Quantize and Save Model' and reference your model as the source model.
+    // 2. Open the Editor window 'Sentis > Sample > Quantize and Save Model' and reference your model as the source model.
     // 3. Select the desired quantization type and click 'Quantize and Save'.
 
     // Reference your quantized tiny stories here in the RunQuantizedModel scene.
@@ -17,7 +17,7 @@ public class RunQuantizedModel : MonoBehaviour
 
     void OnEnable()
     {
-        // Load the quantized model as any other Inference Engine model.
+        // Load the quantized model as any other Sentis model.
         var model = ModelLoader.Load(modelAsset);
         m_Worker = new Worker(model, BackendType.GPUCompute);
 
@@ -27,14 +27,14 @@ public class RunQuantizedModel : MonoBehaviour
 
     void Update()
     {
-        // Execute worker and peek output as with any other Inference Engine model.
+        // Execute worker and peek output as with any other Sentis model.
         m_Worker.Schedule(m_Input);
         var output = m_Worker.PeekOutput() as Tensor<float>;
     }
 
     void OnDisable()
     {
-        // Clean up Inference Engine resources.
+        // Clean up Sentis resources.
         m_Worker.Dispose();
         m_Input.Dispose();
     }

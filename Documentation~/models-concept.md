@@ -1,20 +1,21 @@
-# Understand models in Inference Engine
+# Sentis models
 
-Inference Engine can import and run trained machine learning model files in Open Neural Network Exchange (ONNX) format.
+Sentis can import and run trained machine learning model files in Open Neural Network Exchange (ONNX) and LiteRT (formerly TensorFlow Lite) formats.
 
-To get a model that's compatible with Inference Engine, you can do one of the following:
+To get a model that's compatible with Sentis, you can do one of the following:
 
-- Train a model with a framework like TensorFlow, PyTorch, or Keras, and subsequently [export it in ONNX format](export-convert-onnx.md).
+- Train a model with a framework like TensorFlow, PyTorch, or Keras, and subsequently [export it in ONNX format](export-convert-onnx.md) or [export it in LiteRT format](export-convert-litert.md).
 - Download a trained model file and [convert to ONNX format](export-convert-onnx.md). For more information, refer to the [ONNXXMLTools](https://github.com/onnx/onnxmltools) Python package.
-- Download a trained model that's already in ONNX format, such as those available in the [ONNX Model Zoo](https://github.com/onnx/models). For more resources, refer to [supported models](supported-models.md).
+- Download a trained model file and [convert to LiteRT format](export-convert-litert.md).
+- Download a trained model that's already in ONNX or LiteRT format, such as those available in the [ONNX Model Zoo](https://github.com/onnx/models). For more resources, refer to [supported models](supported-models.md).
 
-## How Inference Engine optimizes a model
+## How Sentis optimizes a model
 
-When you import a model, each ONNX operator in the model graph becomes an Inference Engine layer.
+When you import an ONNX model, each ONNX operator in the model graph becomes a Sentis layer. Similarly, when you import a LiteRT model, each LiteRT operator is mapped to one or more Sentis layers.
 
-To check the list of layers in the imported model, in the order Inference Engine runs them, open the **[Model Asset Inspector](model-asset-inspector.md)**. For more information, refer to [Supported ONNX operators](supported-operators.md).
+To check the list of layers in the imported model, in the order Sentis runs them, open the **[Model Asset Inspector](model-asset-inspector.md)**. For more information, refer to [Supported ONNX operators](supported-operators.md).
 
-Inference Engine optimizes models to make them smaller and more efficient. For example, Inference Engine might do the following to an imported model:
+Sentis optimizes models to make them smaller and more efficient. For example, Sentis might do the following to an imported model:
 
 - Remove a layer or subgraph and turn it into a constant.
 - Replace a layer or subgraph with a simpler layer or subgraph that works the same way.
@@ -25,10 +26,10 @@ The optimization doesn't affect what the model inputs or outputs.
 ## Model inputs
 
 You can get the shape of your model inputs in one of two ways:
-- [Inspect a model](inspect-a-model.md) to use the [`inputs`](xref:Unity.Inference Engine.Model.inputs) property of the runtime model.
+- [Inspect a model](inspect-a-model.md) to use the [`inputs`](xref:Unity.InferenceEngine.Model.inputs) property of the runtime model.
 - Select your model from the **Project** window to open the [Model Asset Inspector](model-asset-inspector.md) and view the **Inputs** section.
 
-The shape of a model input consists of multiple dimensions, defined as a [`DynamicTensorShape`](xref:Unity.Inference Engine.DynamicTensorShape).
+The shape of a model input consists of multiple dimensions, defined as a [`DynamicTensorShape`](xref:Unity.InferenceEngine.DynamicTensorShape).
 
  The dimensions of a model input are either [static](#static-dimensions) or [dynamic](#dynamic-dimensions):
 - An `int` denotes a static dimension.
@@ -61,13 +62,16 @@ If you change the size of another dimension, however, the input tensor isn't val
 ```
 
 > [!NOTE]
-> If a model uses inputs with dynamic input dimensions, Inference Engine might not be able to optimize the model as efficiently as a model that uses static input dimensions. This might slow down the model.
+> If a model uses inputs with dynamic input dimensions, Sentis might not be able to optimize the model as efficiently as a model that uses static input dimensions. This might slow down the model.
 
 For more information on how to set a static value for a dynamic dimension, refer to [Import settings for ONNX models](onnx-import-settings.md).
 
 ## Additional resources
 
 - [Import a model](import-a-model-file.md)
-* [Import settings for ONNX models](onnx-import-settings.md)
+- [Import settings for ONNX models](onnx-import-settings.md)
+- [Import settings for LiteRT models](litert-import-settings.md)
 - [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
+- [Export a LiteRT file from a machine learning framework](export-convert-litert.md)
 - [Supported ONNX operators](supported-operators.md)
+- [Supported LiteRT operators](supported-litert-operators.md)

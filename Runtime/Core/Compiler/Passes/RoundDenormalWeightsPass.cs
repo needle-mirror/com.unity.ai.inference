@@ -1,15 +1,18 @@
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Burst;
+using Unity.InferenceEngine.Graph;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 {
-    class RoundDenormalWeightsPass : IModelPass
+    class RoundDenormalWeightsPass : GraphPass
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        internal unsafe struct RoundDenormalJob : IJobParallelFor
+        unsafe struct RoundDenormalJob : IJobParallelFor
         {
-            [NoAlias] [NativeDisableUnsafePtrRestriction] public uint* ptr;
+            [NoAlias]
+            [NativeDisableUnsafePtrRestriction]
+            public uint* ptr;
 
             public void Execute(int index)
             {
@@ -18,21 +21,28 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             }
         }
 
-        public void Run(ref Model model)
+        /// <summary>
+        /// Makes subnormal float values in constant tensors equal to 0.
+        /// </summary>
+        public override void Run(GraphModule gm)
         {
-            foreach (var constant in model.constants)
+            foreach (var constantTensor in gm.attributes.Values)
             {
-                if (constant.weights == null || constant.dataType != DataType.Float)
+                if (constantTensor.shape.length == 0)
                     continue;
 
                 unsafe
                 {
-                    var job = new RoundDenormalJob
+                    fixed (byte* basePtr = constantTensor.array.Array)
                     {
-                        ptr = (uint*)constant.weights.RawPtr
-                    };
-                    var jobHandle = job.Schedule(constant.shape.length, 32);
-                    jobHandle.Complete();
+                        byte* segmentPtr = basePtr + constantTensor.array.Offset;
+                        var job = new RoundDenormalJob
+                        {
+                            ptr = (uint*)segmentPtr
+                        };
+                        var jobHandle = job.Schedule(constantTensor.shape.length, 32);
+                        jobHandle.Complete();
+                    }
                 }
             }
         }

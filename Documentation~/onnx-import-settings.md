@@ -4,7 +4,7 @@ You can import machine learning (ML) models in the `.onnx` format with **Model A
 
 ## Dynamic input shape support
 
-Inference Engine supports ONNX models with dynamic input dimensions. This means that the model is compatible with input tensors of different shapes that match a given pattern. Dynamic dimensions in ONNX models are named, such as `batch_size` or `sequence_length`.
+Sentis supports ONNX models with dynamic input dimensions. This means that the model is compatible with input tensors of different shapes that match a given pattern. Dynamic dimensions in ONNX models are named, such as `batch_size` or `sequence_length`.
 
 For example, an input with shape (batch_size, 3, 256, 256) can accept an input tensors with different batch sizes, such as:
 
@@ -12,7 +12,7 @@ For example, an input with shape (batch_size, 3, 256, 256) can accept an input t
 * (2, 3, 256, 256)
 * (4, 3, 256, 256), and other values for the batch dimension.
 
-If you know the value of a dynamic dimension in advance, for example, if the batch dimension will always be `1`, you can set it to a static value. This enables Inference Engine to optimize the model for better inference speed and memory efficiency.
+If you know the value of a dynamic dimension in advance, for example, if the batch dimension will always be `1`, you can set it to a static value. This enables Sentis to optimize the model for better inference speed and memory efficiency.
 
 ## Configure import settings
 
@@ -24,7 +24,7 @@ To set static values for dynamic dimensions, follow these steps:
 2. Set a static value for any dynamic input dimensions.
 3. Select **Apply**.
 
-The updated value will reflect in the **Inspector** for the Inference Engine model.
+The updated value will reflect in the **Inspector** for the Sentis model.
 
 When you serialize the model to a `.sentis` file, the assigned static values are saved. However, you can’t modify input dimensions after serialization.
 
@@ -44,4 +44,4 @@ For more information on the shape of your model inputs, refer to [Model inputs](
 - [Import a model](import-a-model-file.md)
 - [Supported models](supported-models.md)
 - [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
-- [Understand models in Inference Engine](models-concept.md)
+- [Sentis models](models-concept.md)

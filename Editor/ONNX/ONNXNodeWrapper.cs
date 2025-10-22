@@ -1,61 +1,30 @@
-using Onnx;
 using UnityEngine;
 using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Unity.Mathematics;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.EditorTests")]
 
-namespace Unity.InferenceEngine.ONNX.Editor
+namespace Unity.InferenceEngine.Editor.Onnx
 {
-    internal class ONNXNodeWrapper
+    class ONNXNodeWrapper
     {
-        // Layer identification (name and op)
-        public string GetName()
-        {
-            var name = m_ONNXNode.Output.Count > 0 ? m_ONNXNode.Output[0] : "";
-            if (string.IsNullOrEmpty(name))
-                return $"{m_ONNXNode.OpType}_{m_ONNXNode.ToString().GetHashCode()}";
-            return name;
-        }
-        public string Name => GetName();
+        NodeProto m_ONNXNode;
+        List<ONNXModelConverter.ImporterWarning> m_ImporterWarnings;
+
         public string OperatorType => m_ONNXNode.OpType;
 
         // Outputs
-        public string[] Outputs
-        {
-            get
-            {
-                var outputs = new string[m_ONNXNode.Output.Count];
-                for (var i = 0; i < m_ONNXNode.Output.Count; i++)
-                    outputs[i] = OptionalOutput(i);
-                return outputs;
-            }
-        }
         public int OutputCount => m_ONNXNode.Output.Count;
-        public string Output0 => RequiredOutput(0);
-        public string Output1 => RequiredOutput(1);
-        public string Output2 => RequiredOutput(2);
+        public string[] Outputs => m_ONNXNode.Output.ToArray();
 
         // Inputs
         public int InputCount => m_ONNXNode.Input.Count;
         public string[] Inputs => m_ONNXNode.Input.ToArray();
-        public string Input0 => RequiredInput(0);
-        public string Input1 => RequiredInput(1);
-        public string Input2 => RequiredInput(2);
-        public string Input3 => RequiredInput(3);
-        public string Input4 => RequiredInput(4);
-        public string Input5 => RequiredInput(5);
-        public string Input6 => RequiredInput(6);
-        public string Input7 => RequiredInput(7);
-        public string Input8 => RequiredInput(8);
 
         // ---------------------------------------------------------------------------------
         // Implementation
-        private NodeProto m_ONNXNode;
-        private List<ONNXModelConverter.ImporterWarning> m_ImporterWarnings;
 
         public ONNXNodeWrapper(NodeProto ONNXNode)
         {
@@ -72,85 +41,52 @@ namespace Unity.InferenceEngine.ONNX.Editor
 
         public bool HasAttribute(string name)
         {
-            AttributeProto attr;
-            return TryFindAttribute(name, out attr);
+            return TryFindAttribute(name, out _);
         }
 
         public void UnsupportedAttribute(string name)
         {
-            AttributeProto attr;
-            if (TryFindAttribute(name, out attr))
+            if (HasAttribute(name))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored.", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, int defaultValue)
         {
-            if (GetOptionalInt(name, defaultValue) != defaultValue)
+            if (HasAttribute(name))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, float defaultValue)
         {
-            if (GetOptionalFloat(name, defaultValue) != defaultValue)
+            if (HasAttribute(name))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, string defaultValue)
         {
-            if (GetOptionalString(name, defaultValue) != defaultValue)
+            if (HasAttribute(name))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, int[] defaultValue)
         {
             var valueArray = GetOptionalIntArray(name, defaultValue);
             if (!Enumerable.SequenceEqual(valueArray, defaultValue))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, string[] defaultValue)
         {
             var stringArray = GetOptionalStringArray(name, defaultValue);
             if (!Enumerable.SequenceEqual(stringArray, defaultValue))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
         }
+
         public void UnsupportedAttribute(string name, Func<int, bool> predicate, int[] defaultValue)
         {
             var valueArray = GetOptionalIntArray(name, defaultValue);
             if (!Enumerable.All(valueArray, predicate))
                 Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", ONNXModelConverter.WarningType.Warning);
-        }
-        public void IgnoredAttribute(string name, string reasonToIgnore) { }
-
-        // Input helpers
-        internal string RequiredInput(int inputIndex)
-        {
-            if ((inputIndex >= m_ONNXNode.Input.Count) || (m_ONNXNode.Input[inputIndex] == ""))
-                throw new OnnxLayerImportException($"required Input {inputIndex} was not found.");
-
-            return m_ONNXNode.Input[inputIndex];
-        }
-        internal string OptionalInput(int inputIndex)
-        {
-            if (inputIndex >= m_ONNXNode.Input.Count || string.IsNullOrEmpty(m_ONNXNode.Input[inputIndex]))
-                return string.Empty;
-
-            return m_ONNXNode.Input[inputIndex];
-        }
-
-        // Output helpers
-        internal string RequiredOutput(int outputIndex)
-        {
-            if (outputIndex == 0)
-                return GetName();
-            if (outputIndex >= m_ONNXNode.Output.Count || string.IsNullOrEmpty(m_ONNXNode.Output[outputIndex]))
-                throw new OnnxLayerImportException($"required Output {outputIndex} was not found.");
-
-            return m_ONNXNode.Output[outputIndex];
-        }
-        internal string OptionalOutput(int outputIndex)
-        {
-            if (outputIndex == 0)
-                return GetName();
-            if (outputIndex >= m_ONNXNode.Output.Count || string.IsNullOrEmpty(m_ONNXNode.Output[outputIndex]))
-                return string.Empty;
-
-            return m_ONNXNode.Output[outputIndex];
         }
 
         // Attribute helpers
@@ -158,6 +94,7 @@ namespace Unity.InferenceEngine.ONNX.Editor
         {
             return TryFindAttribute(name, AttributeProto.Types.AttributeType.Undefined, out attr);
         }
+
         internal bool TryFindAttribute(string name, AttributeProto.Types.AttributeType type, out AttributeProto attr)
         {
             const AttributeProto.Types.AttributeType undefined = AttributeProto.Types.AttributeType.Undefined;
@@ -168,87 +105,93 @@ namespace Unity.InferenceEngine.ONNX.Editor
                 if (attr.Name == name && (attr.Type == type || attr.Type == undefined || type == undefined))
                     return true;
             }
+
             attr = null;
             return false;
         }
+
         internal AttributeProto FindAttribute(string name, AttributeProto.Types.AttributeType type = AttributeProto.Types.AttributeType.Undefined)
         {
-            AttributeProto attr = null;
-            if (TryFindAttribute(name, type, out attr))
+            if (TryFindAttribute(name, type, out var attr))
                 return attr;
 
             throw new OnnxLayerImportException($"Couldn't find attribute {name} of type {type}");
         }
+
         public float GetOptionalFloat(string name, float defaultValue)
         {
-            try { return GetRequiredFloat(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
+            return TryFindAttribute(name, AttributeProto.Types.AttributeType.Float, out var attr) ? attr.F : defaultValue;
         }
+
         public float GetRequiredFloat(string name)
         {
             return FindAttribute(name, AttributeProto.Types.AttributeType.Float).F;
         }
+
         public float[] GetOptionalFloatArray(string name, float[] defaultValue)
         {
-            try { return GetRequiredFloatArray(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
+            return TryFindAttribute(name, AttributeProto.Types.AttributeType.Float, out var attr) ? attr.Floats.ToArray() : defaultValue;
         }
+
         public float[] GetRequiredFloatArray(string name)
         {
-            var attribute = FindAttribute(name, AttributeProto.Types.AttributeType.Floats);
-            return attribute.Floats.ToArray();
+            return FindAttribute(name, AttributeProto.Types.AttributeType.Floats).Floats.ToArray();
         }
+
         public TensorProto GetRequiredTensor(string name)
         {
             return FindAttribute(name, AttributeProto.Types.AttributeType.Tensor).T;
         }
+
         public int GetOptionalInt(string name, int defaultValue)
         {
-            try { return GetRequiredInt(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
-        }
-        public int GetRequiredInt(string name)
-        {
-            long v = FindAttribute(name, AttributeProto.Types.AttributeType.Int).I;
+            var v = TryFindAttribute(name, AttributeProto.Types.AttributeType.Int, out var attr) ? attr.I : defaultValue;
             return v < int.MinValue ? int.MinValue : v > int.MaxValue ? int.MaxValue : (int)v;
         }
+
+        public int GetRequiredInt(string name)
+        {
+            var v = FindAttribute(name, AttributeProto.Types.AttributeType.Int).I;
+            return v < int.MinValue ? int.MinValue : v > int.MaxValue ? int.MaxValue : (int)v;
+        }
+
         public int[] GetOptionalIntArray(string name, int[] defaultValue)
         {
-            try { return GetRequiredIntArray(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
+            if (!TryFindAttribute(name, AttributeProto.Types.AttributeType.Ints, out var attr))
+                return defaultValue;
+            return attr.Ints.Select(v => v < int.MinValue ? int.MinValue : v > int.MaxValue ? int.MaxValue : (int)v).ToArray();
         }
+
         public int[] GetRequiredIntArray(string name)
         {
-            var attribute = FindAttribute(name,AttributeProto.Types.AttributeType.Ints);
+            var attribute = FindAttribute(name, AttributeProto.Types.AttributeType.Ints);
             return attribute.Ints.Select(v => v < int.MinValue ? int.MinValue : v > int.MaxValue ? int.MaxValue : (int)v).ToArray();
         }
+
         public string GetOptionalString(string name, string defaultValue)
         {
-            try { return GetRequiredString(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
+            if (!TryFindAttribute(name, AttributeProto.Types.AttributeType.String, out var attr))
+                return defaultValue;
+            return attr.S.ToStringUtf8();
         }
+
         public string GetRequiredString(string name)
         {
             var raw = FindAttribute(name, AttributeProto.Types.AttributeType.String).S;
             return raw.ToStringUtf8();
         }
+
         public string[] GetOptionalStringArray(string name, string[] defaultValue)
         {
-            try { return GetRequiredStringArray(name); }
-            catch (OnnxLayerImportException) { return defaultValue; }
-        }
-        public string[] GetRequiredStringArray(string name)
-        {
-            var attribute = FindAttribute(name,AttributeProto.Types.AttributeType.Strings);
-            return attribute.Strings.Select(s => s.ToStringUtf8()).ToArray();
+            if (!TryFindAttribute(name, AttributeProto.Types.AttributeType.Strings, out var attr))
+                return defaultValue;
+            return attr.Strings.Select(s => s.ToStringUtf8()).ToArray();
         }
 
-        public DataType GetDataType(DataType defaultValue)
+        public string[] GetRequiredStringArray(string name)
         {
-            if (!HasAttribute("dtype"))
-                return defaultValue;
-            var dtype = (TensorProto.Types.DataType)GetRequiredInt("dtype");
-            return DataTypeFromOnnxDataType(dtype, defaultValue, () => Warn($"DataType `{dtype}` is not supported.", ONNXModelConverter.WarningType.Warning));
+            var attribute = FindAttribute(name, AttributeProto.Types.AttributeType.Strings);
+            return attribute.Strings.Select(s => s.ToStringUtf8()).ToArray();
         }
 
         public static DataType DataTypeFromOnnxDataType(TensorProto.Types.DataType dataType, DataType defaultValue = DataType.Float, Action OnUnsupported = null)
@@ -279,126 +222,6 @@ namespace Unity.InferenceEngine.ONNX.Editor
                     OnUnsupported?.Invoke();
                     return defaultValue;
             }
-        }
-
-        public Layers.AutoPad AutoPadMode()
-        {
-            var autoPad = GetOptionalString("auto_pad", "NOTSET");
-            Layers.AutoPad autoPadType = Layers.AutoPad.NotSet;
-            if (autoPad == "VALID")
-                autoPadType = Layers.AutoPad.Valid;
-            else if (autoPad == "SAME_UPPER")
-                autoPadType = Layers.AutoPad.SameUpper;
-            else if (autoPad == "SAME_LOWER")
-                autoPadType = Layers.AutoPad.SameLower;
-
-            return autoPadType;
-        }
-
-        public Layers.PadMode PadMode()
-        {
-            var mode = GetOptionalString("mode", "constant");
-            var modeType = Layers.PadMode.Constant;
-            switch (mode)
-            {
-                case "constant":
-                    modeType = Layers.PadMode.Constant;
-                    break;
-                case "reflect":
-                    modeType = Layers.PadMode.Reflect;
-                    break;
-                case "edge":
-                    modeType = Layers.PadMode.Edge;
-                    break;
-                case "wrap":
-                    modeType = Layers.PadMode.Wrap;
-                    break;
-            }
-            return modeType;
-        }
-
-        public Layers.RnnDirection Direction()
-        {
-            return GetOptionalString("direction", "forward") switch
-            {
-                "forward" => Layers.RnnDirection.Forward,
-                "reverse" => Layers.RnnDirection.Reverse,
-                "bidirectional" => Layers.RnnDirection.Bidirectional,
-                _ => Layers.RnnDirection.Forward
-            };
-        }
-
-        public Layers.RnnLayout Layout()
-        {
-            return (Layers.RnnLayout)GetOptionalInt("layout", 0);
-        }
-
-        public Layers.RnnActivation[] Activations()
-        {
-            if (!HasAttribute("activations"))
-                return null;
-            var activationStrings = GetRequiredStringArray("activations");
-            var activations = new Layers.RnnActivation[activationStrings.Length];
-            for (var i = 0; i < activations.Length; i++)
-            {
-                if (Enum.TryParse<Layers.RnnActivation>(activationStrings[i], out var activation))
-                    activations[i] = activation;
-                else
-                    Warn($"RnnActivation `{activationStrings[i]}` is not supported for type {OperatorType}.", ONNXModelConverter.WarningType.Warning);
-            }
-
-            return activations;
-        }
-
-        public Layers.InterpolationMode InterpolationMode()
-        {
-            string mode = GetOptionalString("mode", "nearest");
-
-            Layers.InterpolationMode outputMode = Layers.InterpolationMode.Nearest;
-            if (mode == "linear" || mode == "bilinear")
-                outputMode = Layers.InterpolationMode.Linear;
-            else if (mode != "nearest")
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", ONNXModelConverter.WarningType.Warning);
-
-            return outputMode;
-        }
-
-        public Layers.CoordTransformMode CoordinateTransformMode()
-        {
-            string mode = GetOptionalString("coordinate_transformation_mode", "half_pixel");
-
-            Layers.CoordTransformMode outputMode = Layers.CoordTransformMode.HalfPixel;
-            if (mode == "half_pixel")
-                outputMode = Layers.CoordTransformMode.HalfPixel;
-            else if (mode == "pytorch_half_pixel")
-                outputMode = Layers.CoordTransformMode.PytorchHalfPixel;
-            else if (mode == "align_corners")
-                outputMode = Layers.CoordTransformMode.AlignCorners;
-            else if (mode == "asymmetric")
-                outputMode = Layers.CoordTransformMode.Asymmetric;
-            else
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", ONNXModelConverter.WarningType.Warning);
-
-            return outputMode;
-        }
-
-        public Layers.NearestMode NearestMode()
-        {
-            string mode = GetOptionalString("nearest_mode", "round_prefer_floor");
-
-            Layers.NearestMode outputMode = Layers.NearestMode.RoundPreferFloor;
-            if (mode == "round_prefer_floor")
-                outputMode = Layers.NearestMode.RoundPreferFloor;
-            else if (mode == "round_prefer_ceil")
-                outputMode = Layers.NearestMode.RoundPreferCeil;
-            else if (mode == "floor")
-                outputMode = Layers.NearestMode.Floor;
-            else if (mode == "ceil")
-                outputMode = Layers.NearestMode.Ceil;
-            else
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", ONNXModelConverter.WarningType.Warning);
-
-            return outputMode;
         }
     }
 }

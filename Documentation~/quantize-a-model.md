@@ -1,12 +1,12 @@
 # Quantize a Model
 
-Inference Engine imports model constants and weights as 32-bit values. To reduce the model's storage size on disk and memory, use model quantization.
+Sentis imports model constants and weights as 32-bit values. To reduce the model's storage size on disk and memory, use model quantization.
 
-Quantization represents the weight values in a lower-precision format. At runtime, Inference Engine converts these values back to a higher-precision format before processing the operations.
+Quantization represents the weight values in a lower-precision format. At runtime, Sentis converts these values back to a higher-precision format before processing the operations.
 
 ## Quantization types
 
-Inference Engine currently supports the following quantization types.
+Sentis currently supports the following quantization types.
 
 | Quantization type | Bits per value | Description |
 | ----------------- |--------------- | ----------- |
@@ -17,7 +17,7 @@ Inference Engine currently supports the following quantization types.
 A lower bit count per value decreases your model’s disk and memory usage without significantly affecting inference speed.
 
 > [!NOTE]
-> Inference Engine only quantizes float weights used as inputs to specific operations, such as Dense, MatMul, or Conv. Integer constants remain unchanged.
+> Sentis only quantizes float weights used as inputs to specific operations, such as Dense, MatMul, or Conv. Integer constants remain unchanged.
 
 The impact of quantization on model accuracy varies depending on the model type. The best way to evaluate model quantization is to test it and compare performance and accuracy.
 
@@ -33,7 +33,7 @@ using Unity.InferenceEngine;
 
 void QuantizeAndSerializeModel(Model model, string path)
 {
-    // Inference Engine destructively edits the source model in memory when quantizing.
+    // Sentis destructively edits the source model in memory when quantizing.
     ModelQuantizer.QuantizeWeights(QuantizationType.Float16, ref model);
 
     // Serialize the quantized model to a file.

@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Unity.InferenceEngine.Compiler.Passes.Optimization;
+using Unity.InferenceEngine.Graph;
 using Unity.InferenceEngine.Layers;
 using Unity.Jobs;
 using UnityEngine;
@@ -14,104 +16,98 @@ namespace Unity.InferenceEngine
             m_QuantizationType = quantizationType;
         }
 
+        static HashSet<string> layersToQuantize = new() { "Conv", "ConvTranspose", "Gather", "Dense", "MatMul", "MatMul2D" };
+
         public void Run(ref Model model)
         {
-            var constants = new Dictionary<int, (Constant, int)>();
-            for (var i = 0; i < model.constants.Count; i++)
+            var gm = GraphConverter.ModelToGraphModule(model);
+
+            var constantsToQuantize = new HashSet<Node>();
+
+            foreach (var node in gm.graph.Nodes())
             {
-                var c = model.constants[i];
-                constants.Add(c.index, (c, i));
+                if (node.op != Node.kOpCallFunction || !layersToQuantize.Contains(node.target))
+                    continue;
+
+                foreach (var inputNode in node.inputNodes)
+                {
+                    if (inputNode.op != Node.kOpGetAttr || inputNode.partialTensor.dataType != DataType.Float)
+                        continue;
+                    constantsToQuantize.Add(inputNode);
+                }
             }
 
             using var backend = new CPUBackend();
             using var min = new Tensor<float>(new TensorShape());
             using var max = new Tensor<float>(new TensorShape());
 
-            var quantizeTensors = new HashSet<int>();
-            for (var i = 0; i < model.layers.Count; i++)
+            foreach (var constantNode in constantsToQuantize)
             {
-                var layer = model.layers[i];
-
-                if (!(layer is Conv || layer is ConvTranspose || layer is Gather || layer is Dense || layer is MatMul || layer is MatMul2D))
-                    continue;
-
-                foreach (var input in layer.inputs)
+                var constantTensor = gm.attributes[constantNode.name];
+                if (m_QuantizationType == QuantizationType.Float16)
                 {
-                    if ((input == -1) || quantizeTensors.Contains(input) || !constants.ContainsKey(input))
-                        continue;
-
-                    quantizeTensors.Add(input);
-
-                    var constantIndex = constants[input];
-                    var constant = constantIndex.Item1;
-                    var index = constantIndex.Item2;
-                    if (constant.dataType != DataType.Float)
-                        continue;
-
-                    if (m_QuantizationType == QuantizationType.Float16)
+                    var quantizedTensor = new Tensor<short>(constantTensor.shape, data: null);
+                    var data = new byte[sizeof(int) * quantizedTensor.count];
+                    unsafe
                     {
-                        var quantizedTensor = new Tensor<short>(constant.shape, data: null);
-                        var data = new int[quantizedTensor.count];
-                        unsafe
+                        fixed (void* dataPtr = &data[0])
+                        fixed (byte* basePtr = constantTensor.array.Array)
                         {
-                            fixed (void* dataPtr = &data[0])
+                            var job = new BurstJobsQuantizeTensor.CastFloatToHalfJob
                             {
-                                var job = new BurstJobsQuantizeTensor.CastFloatToHalfJob
-                                {
-                                    src = (float*)constant.weights.RawPtr,
-                                    dst = (ushort*)(dataPtr)
-                                };
-                                var jobHandle = job.Schedule(constant.shape.length, 32);
-                                jobHandle.Complete();
-                            }
+                                src = (float*)(basePtr + constantTensor.array.Offset),
+                                dst = (ushort*)(dataPtr)
+                            };
+                            var jobHandle = job.Schedule(constantTensor.shape.length, 32);
+                            jobHandle.Complete();
                         }
-
-                        var newIndex = model.GetUniqueIndex();
-                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Short, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
-                        model.constants[index] = quantizedConstant;
-                        var castLayer = new Cast(DataType.Float).SetInputs(newIndex).SetOutputs(constant.index);
-                        model.layers.Insert(i, castLayer);
-                        i++;
                     }
-                    else if (m_QuantizationType == QuantizationType.Uint8)
+
+                    var quantizedConstantTensor = new ConstantTensor(constantTensor.shape, DataType.Short, data);
+                    var quantizedConstantNode = GraphPassUtil.AddConstant(gm, constantNode, quantizedConstantTensor);
+                    GraphPassUtil.ReplaceNode(constantNode, "Cast", new Argument[] { quantizedConstantNode, DataType.Float });
+                }
+                else if (m_QuantizationType == QuantizationType.Uint8)
+                {
+                    using var X = constantTensor.ToTensor() as Tensor<float>;
+                    backend.ReduceMin(X, min, null);
+                    backend.ReduceMax(X, max, null);
+                    min.CompleteAllPendingOperations();
+                    max.CompleteAllPendingOperations();
+                    var minValue = min.GetItem<float>(0);
+                    var maxValue = max.GetItem<float>(0);
+                    float scale = (Mathf.Max(0, maxValue) - Mathf.Min(0, minValue)) / 255f;
+                    byte zeroPoint = (byte)Mathf.RoundToInt(Mathf.Clamp(-minValue / scale, 0, 255));
+
+                    var quantizedTensor = new Tensor<byte>(constantTensor.shape, null);
+                    var data = new byte[sizeof(int) * quantizedTensor.count];
+                    unsafe
                     {
-                        using var X = constant.WeightsToTensorWithSharedTensorData() as Tensor<float>;
-                        backend.ReduceMin(X, min, null);
-                        backend.ReduceMax(X, max, null);
-                        min.CompleteAllPendingOperations();
-                        max.CompleteAllPendingOperations();
-                        var minValue = min.GetItem<float>(0);
-                        var maxValue = max.GetItem<float>(0);
-                        float scale = (Mathf.Max(0, maxValue) - Mathf.Min(0, minValue)) / 255f;
-                        byte zeroPoint = (byte)Mathf.RoundToInt(Mathf.Clamp(-minValue / scale, 0, 255));
-
-                        var quantizedTensor = new Tensor<byte>(constant.shape, null);
-                        var data = new int[quantizedTensor.count];
-                        unsafe
+                        fixed (void* dataPtr = &data[0])
+                        fixed (byte* basePtr = constantTensor.array.Array)
                         {
-                            fixed (void* dataPtr = &data[0])
+                            var job = new BurstJobsQuantizeTensor.QuantizeUint8Job
                             {
-                                var job = new BurstJobsQuantizeTensor.QuantizeUint8Job
-                                {
-                                    src = (float*)constant.weights.RawPtr,
-                                    dst = (byte*)(dataPtr),
-                                    scale = scale,
-                                    zeroPoint = zeroPoint
-                                };
-                                var jobHandle = job.Schedule(constant.shape.length, 32);
-                                jobHandle.Complete();
-                            }
+                                src = (float*)(basePtr + constantTensor.array.Offset),
+                                dst = (byte*)(dataPtr),
+                                scale = scale,
+                                zeroPoint = zeroPoint
+                            };
+                            var jobHandle = job.Schedule(constantTensor.shape.length, 32);
+                            jobHandle.Complete();
                         }
-
-                        var newIndex = model.GetUniqueIndex();
-                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Byte, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
-                        model.constants[index] = quantizedConstant;
-                        var dequantizeLayer = new DequantizeUint8(scale, zeroPoint).SetInputs(newIndex).SetOutputs(constant.index);
-                        model.layers.Insert(i, dequantizeLayer);
-                        i++;
                     }
+
+                    var quantizedConstantTensor = new ConstantTensor(constantTensor.shape, DataType.Byte, data);
+                    var quantizedConstantNode = GraphPassUtil.AddConstant(gm, constantNode, quantizedConstantTensor);
+                    GraphPassUtil.ReplaceNode(constantNode, "DequantizeUint8", new Argument[] { quantizedConstantNode, scale, zeroPoint });
                 }
             }
+
+            var newModel = GraphConverter.GraphToModel(gm);
+            newModel.ProducerName = model.ProducerName;
+            newModel.symbolicDimNames = model.symbolicDimNames;
+            model = newModel;
         }
     }
 }

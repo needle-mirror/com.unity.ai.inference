@@ -27,8 +27,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
             var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
             var model = state.Model;
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
-            var partialTensor = ctx.GetPartialTensor(tensorData.sentisIndex);
+            var partialTensor = state.PartialInferenceContext.GetPartialTensor(tensorData.sentisIndex);
 
             var text = string.Empty;
 

@@ -1,7 +1,8 @@
 using System.Runtime.CompilerServices;
 using Unity.InferenceEngine.Compiler.Passes;
 using Unity.InferenceEngine.Compiler.Passes.Cleanup;
-using Unity.InferenceEngine.Compiler.Passes.Optimization; // ToArray(), ToDictionary()
+using Unity.InferenceEngine.Compiler.Passes.Optimization;
+using Unity.InferenceEngine.Graph;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.ONNX.Editor")]
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.RuntimeTests")]
@@ -11,27 +12,28 @@ namespace Unity.InferenceEngine
 {
     static class ModelOptimizer
     {
-        static void RunPasses(ref Model model, IModelPass[] passes)
+        static void RunPasses(GraphModule gm, GraphPass[] passes)
         {
             foreach (var pass in passes)
             {
-                pass.Run(ref model);
+                pass.Run(gm);
             }
         }
 
-        internal static void OptimizeModel(ref Model model)
+        internal static void OptimizeGraph(GraphModule gm)
         {
-            var optimizationPasses = new IModelPass[]
+            var optimizationPasses = new GraphPass[]
             {
+                new ContractSubExpressionPass(),
                 new EinsumToMatMulPass(),
                 new FuseConstantsPass(),
+                new PreComputeWindowedDFTMatrixPass(), // this needs to run after the FuseConstantPass
                 new RemoveNoOpsPass(),
                 new RemoveUnusedPass(),
                 new ConcatenateTransposesPass(),
                 new ContractToSimplerLayerPass(),
                 new RemoveNoOpsPass(),
                 new SimplifyReshapeInputPass(),
-                new ContractSubExpressionPass(),
                 new FuseDensePass(),
                 new FuseLinearLayersPass(),
                 new FuseActivationPass(),
@@ -42,7 +44,7 @@ namespace Unity.InferenceEngine
                 new RoundDenormalWeightsPass(),
             };
 
-            RunPasses(ref model, optimizationPasses);
+            RunPasses(gm, optimizationPasses);
         }
     }
 }

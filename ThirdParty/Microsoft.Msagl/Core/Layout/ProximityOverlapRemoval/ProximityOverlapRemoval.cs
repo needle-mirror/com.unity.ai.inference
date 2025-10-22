@@ -10,8 +10,6 @@ using Microsoft.Msagl.DebugHelpers;
 
 using Microsoft.Msagl.Routing;
 using Microsoft.Msagl.Routing.ConstrainedDelaunayTriangulation;
-using Point = Microsoft.Msagl.Core.Geometry.Point;
-using Rectangle = Microsoft.Msagl.Core.Geometry.Rectangle;
 
 namespace Microsoft.Msagl.Core.Layout.ProximityOverlapRemoval {
     /// <summary>

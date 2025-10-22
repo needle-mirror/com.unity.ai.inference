@@ -95,13 +95,33 @@ namespace Unity.InferenceEngine
         /// <param name="disposePrevious">Whether to dispose the previous tensor data.</param>
         public void AdoptTensorData(ITensorData tensorData, bool disposePrevious = true)
         {
+            AdoptTensorData(tensorData, disposePrevious, disposeIsDelayed: true);
+        }
+
+        /// <summary>
+        /// Associates a new tensor data to the tensor.
+        /// </summary>
+        /// <param name="tensorData">The new tensor data to associate to the tensor.</param>
+        /// <param name="disposePrevious">Whether to dispose the previous tensor data.</param>
+        /// <param name="disposeIsDelayed">If tensor data is on GPU compute backend, ensures the disposition happens only after a later dispatch call that uses the underlying buffer.</param>
+        internal void AdoptTensorData(ITensorData tensorData, bool disposePrevious = true, bool disposeIsDelayed = true)
+        {
             if (m_DataOnBackend == tensorData)
                 return;
 
             Logger.AssertIsTrue(tensorData?.maxCapacity >= count || tensorData == null, "Tensor.AdoptTensorData: not enough capacity on device to pin tensor or device null");
 
             if (disposePrevious)
-                m_DataOnBackend?.Dispose();
+            {
+                if (disposeIsDelayed && m_DataOnBackend is ComputeTensorData computeDataB)
+                {
+                    computeDataB?.DelayedDispose();
+                }
+                else
+                {
+                    m_DataOnBackend?.Dispose();
+                }
+            }
 
             m_DataOnBackend = tensorData;
         }

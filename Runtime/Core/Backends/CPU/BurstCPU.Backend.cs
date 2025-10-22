@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using Unity.Collections;
+using Unity.InferenceEngine.Layers;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -19,6 +20,20 @@ namespace Unity.InferenceEngine
         TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
         TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
         TensorDataPool<CPUTensorData> m_MemoryPool = new TensorDataPool<CPUTensorData>();
+
+        /// <summary>
+        /// Initializes and returns an instance of `CPUBackend`.
+        /// </summary>
+        public CPUBackend() { }
+
+        /// <summary>
+        /// Disposes of the ops and any associated memory.
+        /// </summary>
+        public void Dispose()
+        {
+            m_MemoryPool?.Dispose();
+            m_MemoryPool = null;
+        }
 
         Tensor<float> AllocTensorFloat(TensorShape shape)
         {
@@ -66,6 +81,14 @@ namespace Unity.InferenceEngine
             m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as CPUTensorData);
             tensor.dataOnBackend = null;
             m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
+        }
+
+        void ReleaseTensor(Tensor tensor)
+        {
+            if (tensor is Tensor<int> intTensor)
+                ReleaseTensorInt(intTensor);
+            else
+                ReleaseTensorFloat(tensor as Tensor<float>);
         }
 
         unsafe void ScheduleSGEMM(
@@ -322,7 +345,7 @@ namespace Unity.InferenceEngine
                         unsafe
                         {
                             job.X = new ReadOnlyMemResource { ptr = pinCBorX.rawPtr };
-                            job.S = new ReadOnlyMemResource { ptr = (pinW != null) ? pinW.rawPtr : null}; // note: .? doesn't work when RHS is void*
+                            job.S = new ReadOnlyMemResource { ptr = (pinW != null) ? pinW.rawPtr : null }; // note: .? doesn't work when RHS is void*
                             job.O = new ReadWriteMemResource { ptr = pinO.rawPtr };
                         }
                         // TODO innerloop adapted to number of threads and/or handle manually a workItemNum size
@@ -1049,7 +1072,6 @@ namespace Unity.InferenceEngine
         {
             var job = new SliceJob();
             job.sliceParams.Prepare(X.shape, O.shape, starts, axes, steps);
-
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
@@ -1060,6 +1082,14 @@ namespace Unity.InferenceEngine
             var job = new SliceSetJob();
             job.sliceParams.Prepare(O.shape, values.shape, starts, axes, steps);
             job.ScheduleBatchXO(Pin(values), Pin(O), values.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void AsStrided(Tensor X, Tensor O, ReadOnlySpan<int> strides, int offset)
+        {
+            var job = new SliceJob();
+            job.sliceParams.PrepareAsStrided(O.shape, strides, offset);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1355,6 +1385,7 @@ namespace Unity.InferenceEngine
                 for (int j = (indexRemapDim - 1); j >= 0; j--)
                 {
                     job.trailing[j] = trailing;
+                    job.shapeX[j] = X.shape[j];
                     trailing *= X.shape[j];
                 }
             }
@@ -1380,6 +1411,7 @@ namespace Unity.InferenceEngine
                 for (int j = (indexRemapDim - 1); j >= 0; j--)
                 {
                     job.trailing[j] = trailing;
+                    job.shape[j] = X.shape[j];
                     trailing *= X.shape[j];
                 }
             }
@@ -1822,5 +1854,434 @@ namespace Unity.InferenceEngine
 
             job.ScheduleO(Pin(O));
         }
+
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength,
+            Tensor<float> windowedDFTMatrix, Tensor<float> windowedDFTMatrixCosPart, Tensor<float> windowedDFTMatrixSinPart,
+            bool inverse, bool onesided, float scale)
+        {
+            bool haveDFTMatrix = windowedDFTMatrix != null;
+            bool haveCosSinMatrix = windowedDFTMatrixCosPart != null && windowedDFTMatrixSinPart != null;
+
+            bool signalIsReal = signal.shape[-1] == 1;
+            var twiddleMatrixSplitShape = new TensorShape(O.shape[-2], frameLength);
+            int numDFTFreq = O.shape[-2];
+            int numFrames = O.shape[-3];
+
+            bool freeWindowedCosSinTwiddle = false;
+
+            // CPU prefers cos/sin split matrix but our compiler pass gives us the combined as unknown backend will be used:
+            if (!haveCosSinMatrix && haveDFTMatrix)
+            {
+                // TODO if we want to avoid this splitting job:
+                // multi-format WindowedDFTMatrix operator that is only used by the optimizer pass + STFT multi inputs (to feed all possible formats, backend picks most appropriate)
+
+                // We consider the DFT matrix won't have the normalizing scale for inverse DFT,
+                // we will apply it here although would be better in the convolution later for precision.
+                freeWindowedCosSinTwiddle = true;
+                windowedDFTMatrixCosPart = AllocTensorFloat(twiddleMatrixSplitShape);
+                windowedDFTMatrixSinPart = AllocTensorFloat(twiddleMatrixSplitShape);
+                WindowedDFTMatrixRealImaSplitFromCombined(windowedDFTMatrix, windowedDFTMatrixCosPart, windowedDFTMatrixSinPart, dftLength: frameLength, inputFrameLength: frameLength, inverse, onesided, alternateRealImaOnRows: signalIsReal, scale: 1.0f);
+            }
+            else if (!haveCosSinMatrix)
+            {
+                freeWindowedCosSinTwiddle = true;
+                windowedDFTMatrixCosPart = AllocTensorFloat(twiddleMatrixSplitShape);
+                windowedDFTMatrixSinPart = AllocTensorFloat(twiddleMatrixSplitShape);
+                WindowedDFTMatrixRealIma(window, windowedDFTMatrixCosPart, windowedDFTMatrixSinPart, dftLength: frameLength, inputFrameLength: frameLength, inverse: inverse, onesided, alternateRealImaOnRows: signalIsReal, scale: 1.0f);
+            }
+
+            // We will make sure the signal shape conforms to what is expected by conv, input channel = trivially 1:
+            var signalShapeForConv = new TensorShape(signal.shape[0], 1, signal.shape[1]);
+
+            Tensor<float> signalRealPart = null;
+            Tensor<float> signalImaPart = null;
+            if (!signalIsReal)
+            {
+                signalRealPart = AllocTensorFloat(new TensorShape(signal.shape[0], signal.shape[1], 1));
+                signalImaPart = AllocTensorFloat(signalRealPart.shape);
+
+                void SliceSetWithSrcOffset(Tensor X, Tensor O, int axis, int srcstart, int srcstep, int dststart, int dststep)
+                {
+                    var strideX = X.shape.Length(axis);
+                    var strideO = O.shape.Length(axis) * dststep;
+                    var length = strideX / srcstep;
+                    var count = X.shape.Length(0, axis);
+                    MemCopyStride(X, O, strideX, strideO, length, count, X.shape.Strides(axis) * srcstart, O.shape.Strides(axis) * dststart);
+                }
+                SliceSetWithSrcOffset(signal, signalRealPart, axis: -1, srcstart: 0, srcstep: 2, dststart: 0, dststep: 1);
+                SliceSetWithSrcOffset(signal, signalImaPart, axis: -1, srcstart: 1, srcstep: 2, dststart: 0, dststep: 1);
+
+                signalRealPart.shape = signalShapeForConv;
+                signalImaPart.shape = signalShapeForConv;
+            }
+
+            // Convolution output channel will be the N-dian frequency and "spatial" will be the frames, so we have to transpose:
+            ReadOnlySpan<int> permutations = stackalloc int[3] { 0, 2, 1 };
+
+            var realPartResult = AllocTensorFloat(new TensorShape(signal.shape[0], numDFTFreq, numFrames));
+            var imaPartResult = AllocTensorFloat(realPartResult.shape);
+
+            // For complex signal: the prefix of identifiers is matrix re/im and signal re/im in the conv order of operations:
+            Tensor<float> rereResult = null, imimResult = null, reimResult = null, imreResult = null;
+            if (!signalIsReal)
+            {
+                rereResult = AllocTensorFloat(realPartResult.shape);
+                imreResult = AllocTensorFloat(realPartResult.shape);
+                reimResult = AllocTensorFloat(realPartResult.shape);
+                imimResult = AllocTensorFloat(realPartResult.shape);
+            }
+
+            Span<int> strides = stackalloc int[4] { frameStep, 0, 0, 0 };
+            Span<int> pads = stackalloc int[4] { 0, 0, 0, 0 };
+            Span<int> dilations = stackalloc int[4] { 1, 1, 1, 1 };
+
+            var signalShapeBack = signal.shape;
+            if (signalIsReal)
+                signal.shape = signalShapeForConv;
+
+            // Transform our twiddle matrices in proper kernels: input channel = trivially 1
+            windowedDFTMatrixCosPart.shape = windowedDFTMatrixCosPart.shape.Unsqueeze(1);
+            windowedDFTMatrixSinPart.shape = windowedDFTMatrixSinPart.shape.Unsqueeze(1);
+
+            Conv(signalIsReal ? signal : signalRealPart, windowedDFTMatrixCosPart, null, signalIsReal ? realPartResult : rereResult, 1, strides, pads, dilations, Layers.FusableActivation.None);
+            Conv(signalIsReal ? signal : signalRealPart, windowedDFTMatrixSinPart, null, signalIsReal ? imaPartResult : imreResult, 1, strides, pads, dilations, Layers.FusableActivation.None);
+
+            if (!signalIsReal)
+            {
+                Conv(signalImaPart, windowedDFTMatrixCosPart, null, reimResult, 1, strides, pads, dilations, Layers.FusableActivation.None);
+                Conv(signalImaPart, windowedDFTMatrixSinPart, null, imimResult, 1, strides, pads, dilations, Layers.FusableActivation.None);
+            }
+
+            // Restore shapes
+            windowedDFTMatrixCosPart.shape = twiddleMatrixSplitShape;
+            windowedDFTMatrixSinPart.shape = twiddleMatrixSplitShape;
+            if (signalIsReal)
+                signal.shape = signalShapeBack;
+
+            if (!signalIsReal)
+            {
+                // We have, in matrix notation:
+                // signal.re = (D.re S.re - D.im S.im )
+                // signal.im = (D.re S.im + D.im S.re )
+                // realPartResult = (rereResult - imimResult )
+                // imaPartResult = (reimResult + imreResult )
+
+                Sub(rereResult, imimResult, realPartResult);
+                Add(reimResult, imreResult, imaPartResult);
+            }
+
+            var realPartResultInOrder = AllocTensorFloat(realPartResult.shape.Transpose(permutations)); // ie new TensorShape(signal.shape[0], numFrames, numDFTFreq)
+            var imagPartResultInOrder = AllocTensorFloat(realPartResultInOrder.shape);
+
+            Transpose(realPartResult, realPartResultInOrder, permutations);
+            Transpose(imaPartResult, imagPartResultInOrder, permutations);
+
+            // Stack on last axis to combine real/ima part in a new innermost dimension of size 2:
+            // We will use our unsqueeze and concat:
+            realPartResultInOrder.shape = realPartResultInOrder.shape.Unsqueeze(-1);
+            imagPartResultInOrder.shape = imagPartResultInOrder.shape.Unsqueeze(-1);
+
+            SliceSet(realPartResultInOrder, O, axis: -1, start: 0, 1);
+            SliceSet(imagPartResultInOrder, O, axis: -1, start: 1, 1);
+
+            ReleaseTensorFloat(realPartResult);
+            ReleaseTensorFloat(imaPartResult);
+            ReleaseTensorFloat(realPartResultInOrder);
+            ReleaseTensorFloat(imagPartResultInOrder);
+            if (!signalIsReal)
+            {
+                ReleaseTensorFloat(signalRealPart);
+                ReleaseTensorFloat(signalImaPart);
+                ReleaseTensorFloat(rereResult);
+                ReleaseTensorFloat(imreResult);
+                ReleaseTensorFloat(reimResult);
+                ReleaseTensorFloat(imimResult);
+            }
+            if (freeWindowedCosSinTwiddle)
+            {
+                ReleaseTensor(windowedDFTMatrixCosPart);
+                ReleaseTensor(windowedDFTMatrixSinPart);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool onesided)
+        {
+            STFT(signal, window, O, frameStep, frameLength, windowedDFTMatrix, windowedDFTMatrixCosPart: null, windowedDFTMatrixSinPart: null, inverse: false, onesided, scale: 1.0f);
+        }
+
+        /// <inheritdoc/>
+        public void DFT(Tensor<float> input, Tensor<float> O, int dftLength, int axis, Tensor<float> dftMatrix, bool inverse, bool onesided)
+        {
+            bool signalIsReal = input.shape[-1] == 1;
+            int signalFrameLengthToUse = Math.Min(dftLength, input.shape[axis]);
+            int outputXformSignalLength = O.shape[axis]; // onesided ? dftLength / 2 + 1 : dftLength;
+
+            bool haveDFTMatrix = dftMatrix != null;
+            var twiddleMatrixSplitShape = new TensorShape(outputXformSignalLength, signalFrameLengthToUse);
+
+            Tensor<float> windowedDFTMatrixCosPart = AllocTensorFloat(twiddleMatrixSplitShape);
+            Tensor<float> windowedDFTMatrixSinPart = AllocTensorFloat(twiddleMatrixSplitShape);
+            // CPU prefers cos/sin split matrix but our compiler pass gives us the combined as unknown backend will be used:
+            // TODO if we want to avoid this splitting job:
+            // multi-format WindowedDFTMatrix operator that is only used by the optimizer pass + STFT multi inputs (to feed all possible formats, backend picks most appropriate)
+            // We consider the DFT matrix won't have the normalizing scale for inverse DFT,
+            // we will apply it here although would be better in the convolution later for precision.
+            if (haveDFTMatrix)
+                WindowedDFTMatrixRealImaSplitFromCombined(dftMatrix, windowedDFTMatrixCosPart, windowedDFTMatrixSinPart, dftLength, signalFrameLengthToUse, inverse, onesided, alternateRealImaOnRows: signalIsReal, scale: 1.0f / (float)(dftLength));
+            else
+                // generate it in split parts for STFT on CPU: also note that compared to GPU compute and pixel backends, here we bake the 1.0f/dftLength scale in it
+                WindowedDFTMatrixRealIma(window: null, windowedDFTMatrixCosPart, windowedDFTMatrixSinPart, dftLength, signalFrameLengthToUse, inverse, onesided, alternateRealImaOnRows: signalIsReal, 1.0f / (float)(dftLength));
+
+            bool needSlicing = signalFrameLengthToUse != input.shape[axis];
+            Tensor<float> sliceOut = input;
+            if (needSlicing)
+            {
+                var sliceOutShape = new TensorShape(input.shape);
+                sliceOutShape[axis] = signalFrameLengthToUse;
+                sliceOut = AllocTensorFloat(sliceOutShape);
+                Span<int> starts = stackalloc int[1] { 0 };
+                Span<int> ends = stackalloc int[1] { signalFrameLengthToUse };
+                Span<int> axes = stackalloc int[1] { axis };
+                Span<int> steps = stackalloc int[1] { 1 };
+                ShapeInference.Slice(sliceOut.shape, starts, ends, axes, steps, ref starts, ref ends, ref axes, ref steps);
+                Slice(input, sliceOut, starts, axes, steps);
+            }
+
+            bool needTranspose = input.shape.Axis(axis) != (input.shape.rank - 2);
+            Tensor<float> preSTFTTransposeOut = sliceOut;
+            Tensor<float> stftOut = O;
+            Span<int> permutationsTmp = stackalloc int[TensorShape.maxRank];
+            TensorShape stftOutShape = O.shape;
+            if (needTranspose)
+            {
+                for (int i = 0; i < (input.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i + 1;
+                }
+                permutationsTmp[input.shape.rank - 1] = input.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[input.shape.rank - 2] = axis;
+
+                var permutations = permutationsTmp.Slice(0, input.shape.rank);
+
+                var transposedShape = sliceOut.shape.Transpose(permutations);
+                preSTFTTransposeOut = AllocTensorFloat(transposedShape);
+
+                Transpose(sliceOut, preSTFTTransposeOut, permutations);
+
+                stftOutShape = O.shape.Transpose(permutations);
+                stftOut = AllocTensorFloat(stftOutShape);
+            }
+
+            var preSTFTTransposeOutShapeBack = preSTFTTransposeOut.shape;
+            var stftOutShapeBack = stftOut.shape;
+
+            // flatten everything into one big signal of numFrames * frameLength
+            // numFrames = stftOut.shape.Length(0) / stftOut.shape.Length(-2))
+            // frameLength = stftOut.shape[-2]
+            preSTFTTransposeOut.shape = new TensorShape(1, preSTFTTransposeOut.shape.Length(0) / preSTFTTransposeOut.shape[-1], preSTFTTransposeOut.shape[-1]);
+            stftOut.shape = new TensorShape(1, stftOut.shape.Length(0) / stftOut.shape.Length(-2), stftOut.shape[-2], stftOut.shape[-1]);
+
+            STFT(preSTFTTransposeOut, window: null, stftOut, frameStep: signalFrameLengthToUse, frameLength: signalFrameLengthToUse,
+                windowedDFTMatrix: null, windowedDFTMatrixCosPart: windowedDFTMatrixCosPart, windowedDFTMatrixSinPart: windowedDFTMatrixSinPart,
+                inverse: inverse, onesided, scale: !inverse ? 1.0f : 1.0f / (float)(dftLength));
+            // ...note scale could be outputXformSignalLength, since onesided only valid for DFT not IDFT anyway.
+
+            stftOut.shape = stftOutShapeBack;
+            preSTFTTransposeOut.shape = preSTFTTransposeOutShapeBack;
+
+            // Reverse the transposition if needed:
+            if (needTranspose)
+            {
+                for (int i = 0; i < (O.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i - 1;
+                }
+                permutationsTmp[O.shape.rank - 1] = O.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[axis] = O.shape.rank - 2;
+
+                var permutations = permutationsTmp.Slice(0, O.shape.rank);
+
+                Transpose(stftOut, O, permutations);
+            }
+
+            // possible aliases:
+            //      preSTFTTransposeOut =(if !transpose)= sliceOut =(if !slice)= input
+            //      stftOut =(if !transpose)= O
+            if (needSlicing)
+                ReleaseTensorFloat(sliceOut);
+            if (needTranspose)
+            {
+                ReleaseTensorFloat(preSTFTTransposeOut);
+                ReleaseTensorFloat(stftOut);
+            }
+
+            // These are always allocated, we split the precomputed dftMatrix
+            // or generate directly, either way we have allocated those:
+            ReleaseTensor(windowedDFTMatrixCosPart);
+            ReleaseTensor(windowedDFTMatrixSinPart);
+        }
+
+        /// <summary>
+        /// Computes a DFT matrix with an optional window baked-in: used automatically internally by the graph optimizer to precompute it for the STFT when possible
+        /// (framelength known, signal shape partially known to be real/complex)
+        /// </summary>
+        /// <param name="window">The optional window tensor that modulates a signal frame when using the output matrix to calculate a DFT.</param>
+        /// <param name="dftLength">The size of a DFT. Can be larger than 'inputFrameLength' - in that case the DFT matrix is built as if the input signal would be zero padded.</param>
+        /// <param name="inputFrameLength">The size of the input signal that this DFT will apply to. If window is specified, has to be the same as the window length.</param>
+        /// <param name="onesided">Returns only half of the DFT frequency results (real signals have a symmetric DFT spectrum).</param>
+        /// <param name="alternateRealImaOnRows">Specify if alternate real/ima parts should be on rows, else on columns.</param>
+        /// <param name="scale">Optional scalar scale applied to all matrix elements.</param>
+        /// <returns>The output tensor.</returns>
+        public void WindowedDFTMatrix(Tensor<float> window, Tensor<float> O, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows, float scale = 1.0f)
+        {
+            Logger.AssertIsTrue(dftLength >= inputFrameLength, "WindowedDFTMatrix: dftLength should be >= inputFrameLength.");
+
+            var dftMatrixJob = new WindowedDFTMatrixJob();
+            dftMatrixJob.frameLength = inputFrameLength;
+            dftMatrixJob.fundamentalFreq = 1.0f / ((float)dftLength);
+            dftMatrixJob.inverse = inverse;
+            dftMatrixJob.scale = inverse ? scale : 1.0f;
+            dftMatrixJob.alternateRealImaOnRows = alternateRealImaOnRows;
+
+            CPUTensorData pinWindow = (window != null) ? Pin(window) : null;
+            var pinOutput = Pin(O);
+
+            unsafe
+            {
+                dftMatrixJob.Windowptr = (float*)((window != null) ? pinWindow.rawPtr : null);
+                dftMatrixJob.WindowedDFTMatrixptr = (float*)pinOutput.rawPtr;
+            }
+
+            JobHandle indep = (window != null) ? JobHandle.CombineDependencies(pinWindow.fence, pinOutput.reuse) : pinOutput.reuse;
+
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+            int dispatchSize = inputFrameLength * outputXformSignalLength;
+            Logger.AssertIsTrue(O.shape.length == dispatchSize * 2, "WindowedDFTMatrix: shape error");
+
+            var jobDependencies = dftMatrixJob.ScheduleBatch(dispatchSize, 32, indep);
+            pinOutput.fence = jobDependencies;
+
+            if (window != null)
+                pinWindow.reuse = jobDependencies;
+        }
+
+        // Generates DFT matrix as 2 separate real/ima (cos/sin) matrices:
+        // If inverse == true, applies an optional scale
+        public void WindowedDFTMatrixRealIma(Tensor<float> window, Tensor<float> Oreal, Tensor<float> Oima, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows, float scale = 1.0f)
+        {
+            var dftMatrixJob = new WindowedDFTMatrixOutRealImaJob();
+            dftMatrixJob.inverse = inverse;
+            dftMatrixJob.scale = inverse ? scale : 1.0f;
+            dftMatrixJob.frameLength = inputFrameLength;
+            dftMatrixJob.fundamentalFreq = 1.0f / ((float)dftLength);
+
+            CPUTensorData pinWindow = null;
+            if (window != null)
+                pinWindow = Pin(window);
+
+            var pinRealPart = Pin(Oreal);
+            var pinImaPart = Pin(Oima);
+
+            unsafe
+            {
+                dftMatrixJob.Windowptr = (float*)((window != null) ? pinWindow.rawPtr : null);
+                dftMatrixJob.RealPartptr = (float*)pinRealPart.rawPtr;
+                dftMatrixJob.ImaPartptr = (float*)pinImaPart.rawPtr;
+            }
+
+            JobHandle indep;
+            if (window != null)
+                indep = JobHandle.CombineDependencies(pinWindow.fence, pinRealPart.reuse, pinImaPart.reuse);
+            else
+                indep = JobHandle.CombineDependencies(pinRealPart.reuse, pinImaPart.reuse);
+
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+            int dispatchSize = inputFrameLength * outputXformSignalLength;
+
+            JobHandle jobDependencies = dftMatrixJob.ScheduleBatch(dispatchSize, 32, indep);
+            pinRealPart.fence = pinImaPart.fence = jobDependencies;
+
+            if (window != null)
+                pinWindow.reuse = jobDependencies;
+        }
+
+        // Split a single DFT matrix as 2 separate real/ima (cos/sin) DFT matrices.
+        // If inverse == true, applies an optional scale
+        public void WindowedDFTMatrixRealImaSplitFromCombined(Tensor<float> windowedDFTMatrix, Tensor<float> Oreal, Tensor<float> Oima, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows, float scale = 1.0f)
+        {
+            var dftMatrixJob = new WindowedDFTMatrixSplitMatrixToRealImaJob();
+            dftMatrixJob.frameLength = inputFrameLength;
+            dftMatrixJob.scale = inverse ? scale : 1.0f;
+            dftMatrixJob.hasAlternateRealImaOnRows = alternateRealImaOnRows;
+
+            var pinWindowedDFTMatrix = Pin(windowedDFTMatrix);
+            var pinRealPart = Pin(Oreal);
+            var pinImaPart = Pin(Oima);
+
+            unsafe
+            {
+                dftMatrixJob.WindowedDFTMatrixptr = (float*)pinWindowedDFTMatrix.rawPtr;
+                dftMatrixJob.RealPartptr = (float*)pinRealPart.rawPtr;
+                dftMatrixJob.ImaPartptr = (float*)pinImaPart.rawPtr;
+            }
+
+            JobHandle indep;
+            indep = JobHandle.CombineDependencies(pinWindowedDFTMatrix.fence, pinRealPart.reuse, pinImaPart.reuse);
+
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+            int dispatchSize = inputFrameLength * outputXformSignalLength;
+
+            JobHandle jobDependencies = dftMatrixJob.ScheduleBatch(dispatchSize, 32, indep);
+            pinRealPart.fence = pinImaPart.fence = jobDependencies;
+        }
+
+        /// <inheritdoc/>
+        public void BlackmanWindow(Tensor<float> O, bool periodic)
+        {
+            var job = new BlackmanWindowJob();
+            job.N = periodic ? O.count : O.count - 1;
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void HammingWindow(Tensor<float> O, bool periodic)
+        {
+            var job = new HammingWindowJob();
+            job.N = periodic ? O.count : O.count - 1;
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void HannWindow(Tensor<float> O, bool periodic)
+        {
+            var job = new HannWindowJob();
+            job.N = periodic ? O.count : O.count - 1;
+            job.ScheduleBatchO(Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void MelWeightMatrix(Tensor<float> O, int dftLength, int sampleRate, float lowerEdgeHertz, float upperEdgeHertz)
+        {
+            MemClear(O);
+            var numMelBins = O.shape[1];
+            var lowerEdgeMel = 2595 * math.log10(1 + lowerEdgeHertz / 700);
+            var upperEdgeMel = 2595 * math.log10(1 + upperEdgeHertz / 700);
+            var melStep = (upperEdgeMel - lowerEdgeMel) / (numMelBins + 2);
+            var job = new MelWeightMatrixJob();
+            job.dftLength = dftLength;
+            job.sampleRate = sampleRate;
+            job.lowerEdgeMel = lowerEdgeMel;
+            job.melStep = melStep;
+            job.numMelBins = numMelBins;
+            job.ScheduleBatchO(Pin(O), job.numMelBins, 32);
+        }
+
     }
 }

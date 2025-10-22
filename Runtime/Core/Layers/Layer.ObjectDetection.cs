@@ -27,10 +27,10 @@ namespace Unity.InferenceEngine.Layers
     {
         public CenterPointBox centerPointBox;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor boxes, PartialTensor scores, PartialTensor maxOutputBoxesPerClass, PartialTensor iouThreshold, PartialTensor scoreThreshold, CenterPointBox centerPointBox)
         {
             var shape = new DynamicTensorShape(DynamicTensorDim.Unknown, DynamicTensorDim.Int(3));
-            setPartialTensor(0, new PartialTensor<int>(shape));
+            return new PartialTensor<int>(shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -98,7 +98,7 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an `RoiAlign` region of interest alignment layer. This calculates an output tensor by pooling the input tensor across each region of interest given by the `rois` tensor.
     /// </summary>
     [Operator(category = "ObjectDetection")]
-    [Inputs(names = new[] { "X", "rois", "batch_indices" })]
+    [Inputs(names = new[] { "X", "rois", "batchIndices" })]
     partial class RoiAlign : Layer
     {
         public RoiPoolingMode mode;
@@ -108,25 +108,11 @@ namespace Unity.InferenceEngine.Layers
         public float spatialScale;
         public RoiCoordinateTransformationMode coordinateTransformationMode;
 
-        public RoiAlign(int output, int input, int rois, int batchIndices, RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale, RoiCoordinateTransformationMode coordinateTransformationMode)
-            : base(new[] { output }, new[] { input, rois, batchIndices })
+        internal static PartialTensor InferPartial(PartialTensor X, PartialTensor rois, PartialTensor batchIndices, RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float samplingScale, RoiCoordinateTransformationMode coordinateTransformationMode)
         {
-            this.mode = mode;
-            this.outputHeight = outputHeight;
-            this.outputWidth = outputWidth;
-            this.samplingRatio = samplingRatio;
-            this.spatialScale = spatialScale;
-            this.coordinateTransformationMode = coordinateTransformationMode;
-        }
-
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var X = getPartialTensor(0);
-            var rois = getPartialTensor(1);
-            var indices = getPartialTensor(2);
             var shapeX = X.shape;
             var shapeRois = rois.shape;
-            var shapeIndices = indices.shape;
+            var shapeIndices = batchIndices.shape;
             var shapeOut = DynamicTensorShape.DynamicOfRank(4);
 
             shapeRois.DeclareRank(2);
@@ -142,7 +128,7 @@ namespace Unity.InferenceEngine.Layers
             shapeOut[2] = DynamicTensorDim.Int(outputHeight);
             shapeOut[3] = DynamicTensorDim.Int(outputWidth);
 
-            setPartialTensor(0, new PartialTensor<float>(shapeOut));
+            return new PartialTensor<float>(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)

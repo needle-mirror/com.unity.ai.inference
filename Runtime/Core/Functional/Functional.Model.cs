@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.InferenceEngine.Graph;
 
 namespace Unity.InferenceEngine
 {
@@ -9,12 +10,30 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Creates and returns an array of `FunctionalTensor` as the output of the forward pass of an existing model.
         ///
-        /// Inference Engine will make destructive edits of the source model.
+        /// Sentis will make destructive edits of the source model.
         /// </summary>
         /// <param name="model">The model to use as the source.</param>
         /// <param name="inputs">The functional tensors to use as the inputs to the model.</param>
         /// <returns>The functional tensor array.</returns>
         public static FunctionalTensor[] Forward(Model model, params FunctionalTensor[] inputs)
+        {
+            return Forward(model, inputs, false);
+        }
+
+        /// <summary>
+        /// Creates and returns an array of `FunctionalTensor` as the output of the forward pass of an existing model.
+        ///
+        /// Sentis will copy the source model and not make edits to it.
+        /// </summary>
+        /// <param name="model">The model to use as the source.</param>
+        /// <param name="inputs">The functional tensors to use as the inputs to the model.</param>
+        /// <returns>The functional tensor array.</returns>
+        public static FunctionalTensor[] ForwardWithCopy(Model model, params FunctionalTensor[] inputs)
+        {
+            return Forward(model, inputs, true);
+        }
+
+        internal static FunctionalTensor[] Forward(Model model, FunctionalTensor[] inputs, bool withCopy)
         {
             Logger.AssertIsTrue(inputs.Length == model.inputs.Count, "ModelOutputs.ValueError: inputs length does not equal model input count {0}, {1}", inputs.Length, model.inputs.Count);
             var expressions = new Dictionary<int, FunctionalTensor>();
@@ -23,22 +42,23 @@ namespace Unity.InferenceEngine
                 expressions[model.inputs[i].index] = inputs[i];
 
             foreach (var constant in model.constants)
-                expressions[constant.index] = FunctionalTensor.FromConstant(constant);
+            {
+                var weights = constant.array;
+                if (withCopy)
+                    weights = weights.ToArray();
+                var constantTensor = new ConstantTensor(constant.shape, constant.dataType, weights);
+                var constantNode = new ConstantNode(constantTensor);
+                expressions[constant.index] = new FunctionalTensor(constantTensor.GetPartialTensor(), constantNode);
+            }
 
             foreach (var layer in model.layers)
             {
-                layer.inputs = (int[])layer.inputs.Clone();
-                layer.outputs = (int[])layer.outputs.Clone();
-                var layerInputs = new FunctionalTensor[layer.inputs.Length];
+                var layerInputs = new Node[layer.inputs.Length];
                 for (var i = 0; i < layerInputs.Length; i++)
-                {
-                    if (layer.inputs[i] == -1)
-                        continue;
-                    layerInputs[i] = expressions[layer.inputs[i]];
-                }
+                    layerInputs[i] = layer.inputs[i] == -1 ? null : new FakeNode(expressions[layer.inputs[i]]);
 
-                var node = new LayerNode(layerInputs, layer);
-                var layerOutputs = node.CreateOutputs();
+                var args = GraphConverter.LayerToArgs(layer, layerInputs);
+                var layerOutputs = FromLayer(layer.opName, args);
 
                 for (var i = 0; i < layer.outputs.Length; i++)
                 {
@@ -55,20 +75,6 @@ namespace Unity.InferenceEngine
                 outputs[i].SetName(model.outputs[i].name);
             }
             return outputs;
-        }
-
-        /// <summary>
-        /// Creates and returns an array of `FunctionalTensor` as the output of the forward pass of an existing model.
-        ///
-        /// Inference Engine will copy the source model and not make edits to it.
-        /// </summary>
-        /// <param name="model">The model to use as the source.</param>
-        /// <param name="inputs">The functional tensors to use as the inputs to the model.</param>
-        /// <returns>The functional tensor array.</returns>
-        public static FunctionalTensor[] ForwardWithCopy(Model model, params FunctionalTensor[] inputs)
-        {
-            model = model.DeepCopy();
-            return Forward(model, inputs);
         }
     }
 }

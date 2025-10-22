@@ -4,7 +4,6 @@ using Microsoft.Msagl.Core.DataStructures;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
-using Point = Microsoft.Msagl.Core.Geometry.Point;
 
 namespace Microsoft.Msagl.GraphmapsWithMesh
 {

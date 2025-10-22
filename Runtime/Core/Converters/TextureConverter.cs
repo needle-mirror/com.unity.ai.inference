@@ -15,7 +15,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Converts a texture to a `Tensor&lt;float&gt;`. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
         /// <param name="tensor">The output tensor.</param>
@@ -42,7 +42,7 @@ namespace Unity.InferenceEngine
 
             var pinO = TextureTensorData.Pin(tensor, transform.tensorLayoutAxisC, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/TextureConversion/TextureToTensor");
+            var func = new PixelFunc("Hidden/Sentis/TextureConversion/TextureToTensor");
             func.EnableKeyword(isExact ? "EXACT" : "LINEAR");
 
             var enableSrgbConversion = GraphicsFormatUtility.IsSRGBFormat(texture.graphicsFormat);
@@ -67,7 +67,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Appends the conversion of a texture to a `Tensor&lt;float&gt;`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
@@ -111,7 +111,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Appends the conversion of a RenderTargetIdentifier to a `Tensor&lt;float&gt;`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="rte">The RenderTargetIdentifier to convert.</param>
@@ -167,12 +167,12 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Write the float data in a tensor to a render texture. Inference Engine only writes batch == 0 to the render texture.
+        /// Write the float data in a tensor to a render texture. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the tensor don't match the width and height of the render texture, Inference Engine applies linear resampling.
+        /// If the width and height of the tensor don't match the width and height of the render texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="tensor">The input tensor.</param>
-        /// <param name="renderTexture">The render texture to write to. If the value is `null`, Inference Engine blits the tensor data to the screen.</param>
+        /// <param name="renderTexture">The render texture to write to. If the value is `null`, Sentis blits the tensor data to the screen.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
         public static void RenderToTexture(Tensor<float> tensor, RenderTexture renderTexture, TextureTransform transform = default)
         {
@@ -198,7 +198,7 @@ namespace Unity.InferenceEngine
             var isExact = renderWidth == tensorWidth && renderHeight == tensorHeight;
             transform.InferChannelSettings(tensorChannels);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/TextureConversion/TensorToTexture");
+            var func = new PixelFunc("Hidden/Sentis/TextureConversion/TensorToTexture");
             func.EnableKeyword(isExact ? "EXACT" : "LINEAR");
 
             var enableSrgbConversion = renderTexture != null ? renderTexture.sRGB : Display.main.requiresSrgbBlitToBackbuffer;
@@ -239,13 +239,13 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Appends the write the float data in a tensor to a render texture in a CommandBuffer. Inference Engine only writes batch == 0 to the render texture.
+        /// Appends the write the float data in a tensor to a render texture in a CommandBuffer. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the tensor don't match the width and height of the render texture, Inference Engine applies linear resampling.
+        /// If the width and height of the tensor don't match the width and height of the render texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="tensor">The input tensor.</param>
-        /// <param name="renderTexture">The render texture to write to. If the value is `null`, Inference Engine blits the tensor data to the screen.</param>
+        /// <param name="renderTexture">The render texture to write to. If the value is `null`, Sentis blits the tensor data to the screen.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
         public static void RenderToTexture(this CommandBuffer cb, Tensor<float> tensor, RenderTexture renderTexture, TextureTransform transform = default)
         {
@@ -307,7 +307,7 @@ namespace Unity.InferenceEngine
             }
             else
             {
-                var material = PixelShaderSingleton.Instance.FindMaterial("Hidden/InferenceEngine/TextureConversion/ComputeBufferToTexture");
+                var material = PixelShaderSingleton.Instance.FindMaterial("Hidden/Sentis/TextureConversion/ComputeBufferToTexture");
                 material.EnableKeyword(isExact ? "EXACT" : "LINEAR");
 
                 material.SetBuffer(k_ID_Xptr, ComputeTensorData.Pin(tensor).buffer);
@@ -337,9 +337,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Write the float data in a tensor to the frame buffer. Inference Engine only writes batch == 0 to the frame buffer.
+        /// Write the float data in a tensor to the frame buffer. Sentis only writes batch == 0 to the frame buffer.
         ///
-        /// If the width and height of the tensor don't match the width and height of the frame buffer, Inference Engine applies linear resampling.
+        /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
         /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
@@ -349,9 +349,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        ///  Appends the write the float data in a tensor to the frame buffer texture in a CommandBuffer. Inference Engine only writes batch == 0 to the frame buffer.
+        ///  Appends the write the float data in a tensor to the frame buffer texture in a CommandBuffer. Sentis only writes batch == 0 to the frame buffer.
         ///
-        /// If the width and height of the tensor don't match the width and height of the frame buffer, Inference Engine applies linear resampling.
+        /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="tensor">The input tensor.</param>
@@ -362,9 +362,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        ///  Appends the write the float data in a tensor to the render target identifier in a CommandBuffer. Inference Engine only writes batch == 0 to the frame buffer.
+        ///  Appends the write the float data in a tensor to the render target identifier in a CommandBuffer. Sentis only writes batch == 0 to the frame buffer.
         ///
-        /// If the width and height of the tensor don't match the width and height of the frame buffer, Inference Engine applies linear resampling.
+        /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="tensor">The input tensor.</param>
@@ -383,7 +383,7 @@ namespace Unity.InferenceEngine
             transform.InferChannelSettings(tensorChannels);
 
             var material =
-                PixelShaderSingleton.Instance.FindMaterial("Hidden/InferenceEngine/TextureConversion/ComputeBufferToTexture");
+                PixelShaderSingleton.Instance.FindMaterial("Hidden/Sentis/TextureConversion/ComputeBufferToTexture");
             material.EnableKeyword(isExact ? "EXACT" : "LINEAR");
 
             material.SetBuffer(k_ID_Xptr, ComputeTensorData.Pin(tensor).buffer);
@@ -416,12 +416,12 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Converts a texture to a `Tensor&lt;float&gt;`. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
-        /// <param name="width">The width of the output tensor. If the value is -1, Inference Engine uses the texture to infer the width.</param>
-        /// <param name="height">The height of the output tensor. If the value is -1, Inference Engine uses the texture to infer the height.</param>
-        /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Inference Engine uses the texture to infer the number of channels.</param>
+        /// <param name="width">The width of the output tensor. If the value is -1, Sentis uses the texture to infer the width.</param>
+        /// <param name="height">The height of the output tensor. If the value is -1, Sentis uses the texture to infer the height.</param>
+        /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Sentis uses the texture to infer the number of channels.</param>
         /// <returns>The converted tensor.</returns>
         [Obsolete("`Tensor<float> ToTensor(Texture texture, int width = -1, int height = -1, int channels = -1)` is deprecated, please use `void ToTensor(Texture texture, Tensor<float> tensor, TextureTransform transform)` instead.")]
         public static Tensor<float> ToTensor(Texture texture, int width = -1, int height = -1, int channels = -1)
@@ -432,7 +432,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Converts a texture to a `Tensor&lt;float&gt;`. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
@@ -454,13 +454,13 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Appends the conversion of a texture to a `Tensor&lt;float&gt;`to a CommandBuffer`. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
-        /// <param name="width">The width of the output tensor. If the value is -1, Inference Engine uses the texture to infer the width.</param>
-        /// <param name="height">The height of the output tensor. If the value is -1, Inference Engine uses the texture to infer the height.</param>
-        /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Inference Engine uses the texture to infer the number of channels.</param>
+        /// <param name="width">The width of the output tensor. If the value is -1, Sentis uses the texture to infer the width.</param>
+        /// <param name="height">The height of the output tensor. If the value is -1, Sentis uses the texture to infer the height.</param>
+        /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Sentis uses the texture to infer the number of channels.</param>
         /// <returns>The converted tensor.</returns>
         [Obsolete("`Tensor<float> ToTensor(this CommandBuffer cb, Texture texture, int width = -1, int height = -1, int channels = -1)` is deprecated, please use `void ToTensor(this CommandBuffer cb, Texture texture, Tensor<float> tensor, TextureTransform transform)` instead.")]
         public static Tensor<float> ToTensor(this CommandBuffer cb, Texture texture, int width = -1, int height = -1, int channels = -1)
@@ -471,7 +471,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Appends the conversion of a texture to a `Tensor&lt;float&gt;`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
@@ -494,7 +494,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Appends the conversion of a RenderTargetIdentifier to a `Tensor&lt;float&gt;`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="rte">The RenderTargetIdentifier to convert.</param>
@@ -515,15 +515,15 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Converts the data in a tensor to a render texture. Inference Engine only writes batch == 0 to the render texture.
+        /// Converts the data in a tensor to a render texture. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the render texture don't match the width and height of the tensor, Inference Engine applies linear resampling.
+        /// If the width and height of the render texture don't match the width and height of the tensor, Sentis applies linear resampling.
         /// </summary>
         /// <param name="tensor">The input tensor.</param>
-        /// <param name="width">The width of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the width.</param>
-        /// <param name="height">The height of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the height.</param>
-        /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the number of channels.</param>
-        /// <param name="broadcastChannels">When the value is `true`, Inference Engine broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Inference Engine applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
+        /// <param name="width">The width of the output render texture. If the value is -1, Sentis uses the tensor to infer the width.</param>
+        /// <param name="height">The height of the output render texture. If the value is -1, Sentis uses the tensor to infer the height.</param>
+        /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Sentis uses the tensor to infer the number of channels.</param>
+        /// <param name="broadcastChannels">When the value is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
         /// <returns>The created render texture.</returns>
         [Obsolete("`RenderTexture ToTexture(Tensor<float> tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)` is deprecated, please use `void RenderToTexture(Tensor<float> tensor, RenderTexture renderTexture, TextureTransform transform = default)` instead.")]
         public static RenderTexture ToTexture(Tensor<float> tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)
@@ -532,16 +532,16 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Appends the conversion of the data in a tensor to a render texture to a CommandBuffer. Inference Engine only writes batch == 0 to the render texture.
+        /// Appends the conversion of the data in a tensor to a render texture to a CommandBuffer. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the render texture don't match the width and height of the tensor, Inference Engine applies linear resampling.
+        /// If the width and height of the render texture don't match the width and height of the tensor, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="tensor">The input tensor.</param>
-        /// <param name="width">The width of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the width.</param>
-        /// <param name="height">The height of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the height.</param>
-        /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Inference Engine uses the tensor to infer the number of channels.</param>
-        /// <param name="broadcastChannels">When the value is `true`, Inference Engine broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Inference Engine applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
+        /// <param name="width">The width of the output render texture. If the value is -1, Sentis uses the tensor to infer the width.</param>
+        /// <param name="height">The height of the output render texture. If the value is -1, Sentis uses the tensor to infer the height.</param>
+        /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Sentis uses the tensor to infer the number of channels.</param>
+        /// <param name="broadcastChannels">When the value is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
         /// <returns>The created render texture.</returns>
         [Obsolete("`RenderTexture ToTexture(this CommandBuffer cb, Tensor<float> tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)` is deprecated, please use `RenderToTexture(this CommandBuffer cb, Tensor<float> tensor, RenderTexture renderTexture, TextureTransform transform = default)` instead.")]
         public static RenderTexture ToTexture(this CommandBuffer cb, Tensor<float> tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)
@@ -550,9 +550,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Converts the data in a tensor to a render texture. Inference Engine only writes batch == 0 to the render texture.
+        /// Converts the data in a tensor to a render texture. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
@@ -573,9 +573,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Appends the conversion of the data in a tensor to a render texture in a CommandBuffer. Inference Engine only writes batch == 0 to the render texture.
+        /// Appends the conversion of the data in a tensor to a render texture in a CommandBuffer. Sentis only writes batch == 0 to the render texture.
         ///
-        /// If the width and height of the output tensor don't match the width and height of the texture, Inference Engine applies linear resampling.
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="tensor">The input tensor.</param>

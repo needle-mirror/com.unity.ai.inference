@@ -52,7 +52,7 @@ namespace Unity.InferenceEngine
         static int AddIntListValue(FlatBufferBuilder builder, List<Offset<EValue>> valuesOffsets, int[] intArray)
         {
             var val = IntList.CreateIntList(builder, IntList.CreateItemsVector(builder, intArray));
-            valuesOffsets.Add(EValue.CreateEValue(builder, KernelTypes.Int, val.Value));
+            valuesOffsets.Add(EValue.CreateEValue(builder, KernelTypes.IntList, val.Value));
             return valuesOffsets.Count - 1;
         }
 
@@ -233,7 +233,6 @@ namespace Unity.InferenceEngine
                 segmentsOffset: programDataSegments);
             builder.FinishSizePrefixed(programOffset.Value);
 
-            ProfilerMarkers.SaveModelDesc.End();
             var modelDescription = builder.DataBuffer.ToSizedArray();
             var bb = new ByteBuffer(modelDescription, sizeof(int));
             return Program.GetRootAsProgram(bb);
@@ -397,31 +396,31 @@ namespace Unity.InferenceEngine
             switch (k)
             {
                 case "ConvTranspose": // ConvTranspose now supports dilations and group
-                    {
-                        var a = chain.InputsLength;
-                        var input = chain.Inputs(0);
-                        var weights = chain.Inputs(1);
-                        var bias = chain.Inputs(2); // bias: optional
-                        var output = chain.Outputs(0);
+                {
+                    var a = chain.InputsLength;
+                    var input = chain.Inputs(0);
+                    var weights = chain.Inputs(1);
+                    var bias = chain.Inputs(2); // bias: optional
+                    var output = chain.Outputs(0);
 
-                        var argsListOrig = kernel.GetArgsArray().ToList();
-                        var argsList = new List<int>();
-                        argsList.Add(argsListOrig[0]); // autopad
-                        argsList.Add(AddIntListValue(builder, valuesOffsets, new int[] { 1, 1, 1, 1, 1, 1, 1, 1 })); // dilations
-                        argsList.Add(AddIntValue(builder, valuesOffsets, 1)); // number of groups
-                        argsList.AddRange(argsListOrig.GetRange(1, argsListOrig.Count - 1));
-                        var args = argsList.ToArray();
+                    var argsListOrig = kernel.GetArgsArray().ToList();
+                    var argsList = new List<int>();
+                    argsList.Add(argsListOrig[0]); // autopad
+                    argsList.Add(AddIntListValue(builder, valuesOffsets, new[] { 1, 1, 1, 1, 1, 1, 1, 1 })); // dilations
+                    argsList.Add(AddIntValue(builder, valuesOffsets, 1)); // group
+                    argsList.AddRange(argsListOrig.GetRange(1, argsListOrig.Count - 1));
+                    var args = argsList.ToArray();
 
-                        var instructionOffset = Instruction.CreateInstruction(builder, instruction.InstrArgsType, KernelCall.CreateKernelCall(builder, kernel.OpIndex, ExecutionPlan.CreateInputsVector(builder, args)).Value);
+                    var instructionOffset = Instruction.CreateInstruction(builder, instruction.InstrArgsType, KernelCall.CreateKernelCall(builder, kernel.OpIndex, ExecutionPlan.CreateInputsVector(builder, args)).Value);
 
-                        chainsOffsets.Add(Chain.CreateChain(
-                            builder,
-                            Chain.CreateInputsVector(builder, new[] { input, weights, bias, }),
-                            Chain.CreateOutputsVector(builder, new[] { output }),
-                            Chain.CreateInstructionsVector(builder, new[] { instructionOffset }))
-                        );
-                        return true;
-                    }
+                    chainsOffsets.Add(Chain.CreateChain(
+                        builder,
+                        Chain.CreateInputsVector(builder, new[] { input, weights, bias, }),
+                        Chain.CreateOutputsVector(builder, new[] { output }),
+                        Chain.CreateInstructionsVector(builder, new[] { instructionOffset }))
+                    );
+                    return true;
+                }
                 default:
                     return false;
             }
@@ -439,6 +438,8 @@ namespace Unity.InferenceEngine
                 program = UpgradeFlatbuffer(program, 5, UpgradeChainV4toV5);
             if (program.Version == 5)
                 program = UpgradeFlatbuffer(program, 6, UpgradeChainV5toV6);
+            if (program.Version == 6)
+                program = UpgradeFlatbuffer(program, 7);
             return program;
         }
     }

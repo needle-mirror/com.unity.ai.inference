@@ -17,10 +17,11 @@ using Microsoft.Msagl.Core.Routing;
 using Microsoft.Msagl.Layout.Incremental;
 using Microsoft.Msagl.Layout.Layered;
 using Microsoft.Msagl.Layout.MDS;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 
 namespace Microsoft.Msagl.DebugHelpers.Persistence
 {
+
+    using SymmetricSegment = SymmetricTuple<Point>;
 
     /// <summary>
     /// reads the GeometryGraph from a file

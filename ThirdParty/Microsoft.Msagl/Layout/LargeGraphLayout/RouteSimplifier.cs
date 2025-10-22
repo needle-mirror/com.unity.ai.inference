@@ -7,8 +7,10 @@ using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.Routing.Visibility;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 namespace Microsoft.Msagl.Layout.LargeGraphLayout {
+
+    using SymmetricSegment = SymmetricTuple<Point>;
+
     internal class RouteSimplifier {
         readonly LgPathRouter _pathRouter;
         readonly RTree<LgNodeInfo, Point> _nodesTree = new RTree<LgNodeInfo, Point>();

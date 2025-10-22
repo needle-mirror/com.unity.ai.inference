@@ -62,7 +62,7 @@ public class UseTheFunctionalAPI : MonoBehaviour
 
     void OnDisable()
     {
-        // Clean up Inference Engine resources
+        // Clean up Sentis resources
         m_Worker?.Dispose();
     }
 }

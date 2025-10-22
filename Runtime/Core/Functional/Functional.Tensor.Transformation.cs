@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Concat(FunctionalTensor[] tensors, int dim = 0)
         {
-            return FromLayer(new Layers.Concat(dim), tensors);
+            return FunctionalLayer.Concat(tensors, dim);
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Gather(this FunctionalTensor input, int dim, FunctionalTensor index)
         {
             DeclareType(DataType.Int, index);
-            return FromLayer(new Layers.GatherElements(dim), new[] { input, index });
+            return FunctionalLayer.GatherElements(input, index, dim);
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor IndexSelect(this FunctionalTensor input, int dim, FunctionalTensor index)
         {
             DeclareType(DataType.Int, index);
-            return FromLayer(new Layers.Gather(dim), new[] { input, index });
+            return FunctionalLayer.Gather(input, index, dim);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor MoveDim(this FunctionalTensor input, int[] source, int[] destination)
         {
-            return FromLayer(new Layers.MoveDim(source, destination), input);
+            return FunctionalLayer.MoveDim(input, source, destination);
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Narrow(this FunctionalTensor input, int dim, int start, int length)
         {
-            return FromLayer(new Layers.Narrow(), new[] { input, Constant(dim), Constant(start), Constant(length) });
+            return FunctionalLayer.Narrow(input, Constant(dim), Constant(start), Constant(length));
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Narrow(this FunctionalTensor input, int dim, FunctionalTensor start, FunctionalTensor length)
         {
             DeclareType(DataType.Int, start, length);
-            return FromLayer(new Layers.Narrow(), new[] { input, Constant(dim), start, length });
+            return FunctionalLayer.Narrow(input, Constant(dim), start, length);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor NonZero(FunctionalTensor input)
         {
             // TODO support asTuple
-            return Transpose(FromLayer(new Layers.NonZero(), input), 0, 1);
+            return Transpose(FunctionalLayer.NonZero(input), 0, 1);
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace Unity.InferenceEngine
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FromLayer(new Layers.Pad(padMode), new[] { input, Constant(pads), null, Constant(axes) });
+            return FunctionalLayer.Pad(input, Constant(pads), null, Constant(axes), padMode);
         }
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace Unity.InferenceEngine
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FromLayer(new Layers.Pad(Layers.PadMode.Constant), new[] { input, Constant(pads), Constant(value), Constant(axes) });
+            return FunctionalLayer.Pad(input, Constant(pads), Constant(value), Constant(axes), Layers.PadMode.Constant);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Unity.InferenceEngine
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FromLayer(new Layers.Pad(Layers.PadMode.Constant), new[] { input, Constant(pads), Constant(value), Constant(axes) });
+            return FunctionalLayer.Pad(input, Constant(pads), Constant(value), Constant(axes), Layers.PadMode.Constant);
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Permute(this FunctionalTensor input, int[] dims)
         {
-            return FromLayer(new Layers.Transpose(dims), input);
+            return FunctionalLayer.Transpose(input, dims);
         }
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Reshape(this FunctionalTensor input, int[] shape)
         {
-            return FromLayer(new Layers.Reshape(false), new[] { input, Constant(shape) });
+            return FunctionalLayer.Reshape(input, Constant(shape), false);
         }
 
         /// <summary>
@@ -206,7 +206,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Select(this FunctionalTensor input, int dim, int index)
         {
-            return FromLayer(new Layers.Select(), new[] { input, Constant(dim), Constant(index) });
+            return FunctionalLayer.Select(input, Constant(dim), Constant(index));
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Select(this FunctionalTensor input, int dim, FunctionalTensor index)
         {
             DeclareType(DataType.Int, index);
-            return FromLayer(new Layers.Select(), new[] { input, Constant(dim), index });
+            return FunctionalLayer.Select(input, Constant(dim), index);;
         }
 
         /// <summary>
@@ -234,7 +234,7 @@ namespace Unity.InferenceEngine
         {
             // TODO add reduction
             DeclareType(DataType.Int, index);
-            return FromLayer(new Layers.ScatterElements(dim, Layers.ScatterReductionMode.None), new[] { input, index, src });
+            return FunctionalLayer.ScatterElements(input, index, src, dim, Layers.ScatterReductionMode.None);
         }
 
         /// <summary>
@@ -247,7 +247,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor SelectScatter(FunctionalTensor input, FunctionalTensor src, int dim, int index)
         {
-            return FromLayer(new Layers.SliceSet(), new[] { input, Unsqueeze(src, dim), Constant(new[] { index }), Constant(new[] { index + 1 }), Constant(new[] { dim }), null });
+            return FunctionalLayer.SliceSet(input, Unsqueeze(src, dim), Constant(new[] { index }), Constant(new[] { index + 1 }), Constant(new[] { dim }), null);
         }
 
         /// <summary>
@@ -262,7 +262,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor SliceScatter(FunctionalTensor input, FunctionalTensor src, int dim = 0, int start = 0, int end = int.MaxValue, int step = 1)
         {
-            return FromLayer(new Layers.SliceSet(), new[] { input, src, Constant(new[] { start }), Constant(new[] { end }), Constant(new[] { dim }), Constant(new[] { step }) });
+            return FunctionalLayer.SliceSet(input, src, Constant(new[] { start }), Constant(new[] { end }), Constant(new[] { dim }), Constant(new[] { step }));
         }
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ScatterAdd(FunctionalTensor input, int dim, FunctionalTensor index, FunctionalTensor src)
         {
-            return FromLayer(new Layers.ScatterElements(dim, Layers.ScatterReductionMode.Add), new[] { input, index, src });
+            return FunctionalLayer.ScatterElements(input, index, src, dim, Layers.ScatterReductionMode.Add);
         }
 
         /// <summary>
@@ -290,7 +290,7 @@ namespace Unity.InferenceEngine
             var dataTypes = new DataType[sections.Length];
             for (var i = 0; i < dataTypes.Length; i++)
                 dataTypes[i] = input.dataType;
-            return FromLayerMultiOutput(new Layers.Split(dim, sections.Length), new[] { input, Constant(sections) });
+            return FunctionalLayer.Split(input, Constant(sections), dim, sections.Length);
         }
 
         /// <summary>
@@ -300,7 +300,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Squeeze(this FunctionalTensor input)
         {
-            return FromLayer(new Layers.Squeeze(), new[] { input, null });
+            return FunctionalLayer.Squeeze(input, null);;
         }
 
         /// <summary>
@@ -311,7 +311,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Squeeze(this FunctionalTensor input, int[] dim)
         {
-            return FromLayer(new Layers.Squeeze(), new[] { input, Constant(dim) });
+            return FunctionalLayer.Squeeze(input, Constant(dim));;
         }
 
         /// <summary>
@@ -349,7 +349,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Tile(this FunctionalTensor input, int[] dims)
         {
             // TODO deal with cases where dims.length != input.shape.rank
-            return FromLayer(new Layers.Tile(), new[] { input, Constant(dims) });
+            return FunctionalLayer.Tile(input, Constant(dims));;
         }
 
         /// <summary>
@@ -372,7 +372,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Unsqueeze(this FunctionalTensor input, int dim)
         {
-            return FromLayer(new Layers.Unsqueeze(), new[] { input, Constant(new[] { dim }) });
+            return FunctionalLayer.Unsqueeze(input, Constant(new[] { dim }));
         }
 
         /// <summary>
@@ -385,7 +385,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Where(FunctionalTensor condition, FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, condition);
-            return FromLayer(new Layers.Where(), new[] { condition, input, other });
+            return FunctionalLayer.Where(condition, input, other);;
         }
     }
 }

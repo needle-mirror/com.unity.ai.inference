@@ -38,11 +38,20 @@ namespace Unity.InferenceEngine
         private readonly GCHandle m_GCHandle;
 
         [ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
-        public PinnedMemorySafeHandle(object managedObject) : base(IntPtr.Zero, true)
+        public PinnedMemorySafeHandle(Array managedObject)
+            : base(IntPtr.Zero, true)
         {
             m_GCHandle = GCHandle.Alloc(managedObject, GCHandleType.Pinned);
             IntPtr pinnedPtr = m_GCHandle.AddrOfPinnedObject();
             SetHandle(pinnedPtr);
+        }
+
+        public PinnedMemorySafeHandle(ArraySegment<byte> segment)
+            : base(IntPtr.Zero, true)
+        {
+            m_GCHandle = GCHandle.Alloc(segment.Array, GCHandleType.Pinned);
+            IntPtr basePtr = m_GCHandle.AddrOfPinnedObject();
+            SetHandle(basePtr + segment.Offset);
         }
 
         public override bool IsInvalid {
@@ -76,7 +85,7 @@ namespace Unity.InferenceEngine
         /// </summary>
         Short,
         /// <summary>
-        /// Use 8-bit signed integer data - padded on a int32 buffer.
+        /// Use 8-bit unsigned integer data - padded on a int32 buffer.
         /// </summary>
         Byte,
         /// <summary>
@@ -124,6 +133,12 @@ namespace Unity.InferenceEngine
             var neededSrcPaddedLengthInByte = numDestElement * k_DataItemSize;
             if (srcLengthInByte < neededSrcPaddedLengthInByte)
                 throw new InvalidOperationException($"The NativeTensorArrayFromManagedArray source ptr (including offset) is to small to account for extra padding.");
+        }
+
+        internal NativeTensorArrayFromManagedArray(ArraySegment<byte> srcData, int numDestElement)
+            : base(new PinnedMemorySafeHandle(srcData), numDestElement) // TODO check this
+        {
+            m_PinnedMemoryByteOffset = 0;
         }
 
         /// <inheritdoc/>

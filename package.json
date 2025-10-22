@@ -1,26 +1,30 @@
 {
   "name": "com.unity.ai.inference",
-  "displayName": "Inference Engine",
-  "version": "2.3.0",
+  "displayName": "Sentis",
+  "version": "2.4.0",
   "unity": "6000.0",
-  "description": "Inference Engine is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nInference Engine automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
+  "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
   "dependencies": {
     "com.unity.burst": "1.8.17",
     "com.unity.collections": "2.4.3",
     "com.unity.modules.imageconversion": "1.0.0",
-    "com.unity.dt.app-ui": "1.3.1"
+    "com.unity.dt.app-ui": "1.3.1",
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
+  "relatedPackages": {
+    "com.unity.ai.inference.tests": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- Model Visualizer for inspecting models as node-based graphs inside the Unity Editor\n- Support for `Tensor<int>` input for `GatherND` operator on `GPUPixel` backend\n- Support for `Tensor<int>` input for the base of the `Pow` operator on all backends\n- Support for the `group` and `dilations` arguments for the `ConvTranspose` operator on all backends\n- Support for `value_float`, `value_floats`, `value_int` and `value_ints` values in ONNX `Constant` operators\n\n### Changed\n- Optimized single-argument operators on `CPU` backend\n- Optimized deserialization of models to avoid reflection at runtime\n\n### Fixed\n- Einsum operator now works correctly on fallback path"
+    "changelog": "### Added\n- LiteRT model import\n- Tokenization API\n- STFT and DFT ONNX operators\n- BlackmanWindow, HammingWindow, HannWindow and MelWeightMatrix ONNX operators\n- BitwiseAnd, BitwiseOr, BitwiseXor, BitwiseNot ONNX operators and functional methods\n- AsStrided, Atan2, Expm1, Log10, Log1p, Log2, Rsqrt, Trunc, ReduceVariance, Diagonal layers, functional methods and optimizer passes\n- NotEqual, FloorDiv, TrueDiv layers and LiteRT operators\n\n### Changed\n- Renamed Inference Engine to Sentis in package name and documentation\n- Improved model import time for ONNX models\n- ONNX model import operator order now consistent with the original model\n- Improved optimization passes to reduce operator count in imported models\n- Improved visualizer loading times and consistency in displaying attributes\n- ScatterND operator can now run on much larger tensors, enabling new models\n- ScatterND operator now allows negative indices\n- ONNX model outputs that are not connected to any inputs are no longer incorrectly pruned\n- Improve model import warning and error display in the inspector\n\n### Fixed\n- Small errors in documentation\n- Faulty optimization passes that could lead to inference issues\n- Memory leaks on model constants\n- Non-matching ProfilerMarker calls\n- Issues in CPU callback which could lead to incorrect inference on some models\n- Enable missing modes for GridSample and Upsample operators"
   },
   "upmCi": {
-    "footprint": "51b7ac8fe49253e0cd6c0274b8664a824bc578f4"
+    "footprint": "066dee9e42e29cea7e5b7161cfc449ff3f7abcd1"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.3/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.4/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "1465860dffef8a5bc07551b6d40b5f53c3739e3f"
+    "revision": "f7122005bb4fd10413d56f58cbdf5e702f6afb8d"
   },
   "samples": [
     {
@@ -62,6 +66,11 @@
       "displayName": "Run a model a layer at a time",
       "description": "An example of using ScheduleIterable to run a model a layer a time.",
       "path": "Samples~/Run a model a layer at a time"
+    },
+    {
+      "displayName": "Tokenizer",
+      "description": "An example of using Unity Tokenizer with a All Mini LM tokenizer configuration from Hugging Face.",
+      "path": "Samples~/Tokenizer - All Mini LM"
     },
     {
       "displayName": "Use a compute buffer",

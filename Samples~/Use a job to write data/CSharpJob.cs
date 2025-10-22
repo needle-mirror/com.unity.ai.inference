@@ -42,12 +42,12 @@ public class CSharpJob : MonoBehaviour
         var CPUTensorDataX = CPUTensorData.Pin(m_Input);
         SimpleJob job = new SimpleJob() { data = CPUTensorDataX.array.GetNativeArrayHandle<float>() };
 
-        // Set the fence on the input so Inference Engine doesn't execute until the job is complete.
+        // Set the fence on the input so Sentis doesn't execute until the job is complete.
         CPUTensorDataX.fence = job.Schedule(m_Input.shape.length, 64);
 
         m_Worker.Schedule(m_Input);
 
-        // Peek the value from Inference Engine, without taking ownership of the Tensor (see PeekOutput docs for details).
+        // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
         var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
         outputTensor.CompleteAllPendingOperations();

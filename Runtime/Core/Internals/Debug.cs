@@ -1,4 +1,4 @@
-#define INFERENCE_ENGINE_LOG_ENABLED
+#define SENTIS_LOG_ENABLED
 
 using System;
 using UnityEngine;
@@ -7,7 +7,7 @@ using Object = UnityEngine.Object;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Inference Engine debug logging utility
+    /// Sentis debug logging utility
     /// </summary>
     class D
     {
@@ -41,7 +41,7 @@ namespace Unity.InferenceEngine
         /// </summary>
         static bool logEnabled = true;
 
-#if INFERENCE_ENGINE_LOG_ENABLED
+#if SENTIS_LOG_ENABLED
 
         /// <summary>
         /// Log warning

@@ -1,6 +1,6 @@
 # Create a new model
 
-You can create a new runtime model without an ONNX file with Inference Engine. For example, if you want to perform a series of tensor operations without weights or build your own model serialization from another model format.
+You can use the Sentis [`Functional`](xref:Unity.InferenceEngine.Functional) API to create a new runtime model without an ONNX or LiteRT file. For example, if you want to perform a series of tensor operations without weights or build your own model serialization from another model format.
 
 ## Using the functional API
 
@@ -56,7 +56,7 @@ You can then [create an engine to run a model](create-an-engine.md).
 
 When you compile a model with the [`Compile`](xref:Unity.InferenceEngine.FunctionalGraph.Compile*) method, the resulting model includes the inputs and outputs you defined with  [`AddInput`](xref:Unity.InferenceEngine.FunctionalGraph.AddInput*) and [`AddOutput`](xref:Unity.InferenceEngine.FunctionalGraph.AddOutput*).
 
-You can assign names to inputs and outputs when you add them to the graph. If you don’t specify a name, Inference Engine automatically assigns a default name in the format `input_0`, `input_1`, `output_0`, `output_1`, and so forth in numerical order.
+You can assign names to inputs and outputs when you add them to the graph. If you don’t specify a name, Sentis automatically assigns a default name in the format `input_0`, `input_1`, `output_0`, `output_1`, and so forth in numerical order.
 
 ## Additional resources
 

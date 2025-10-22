@@ -29,6 +29,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.LayerAnalysis
                 "Random" => k_CategoryActivationMath,
                 "Recurrent" => k_CategoryConvolutionPooling,
                 "Reduction" => k_CategoryConvolutionPooling,
+                "Spectral" => k_CategoryConvolutionPooling,
                 "Transformation" => k_CategoryTransformationDimension,
                 "Trigonometric" => k_CategoryActivationMath,
                 _ => k_CategoryUncategorized

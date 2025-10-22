@@ -13,10 +13,10 @@ namespace Unity.InferenceEngine.Layers
         public float scale;
         public byte zeroPoint;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, float scale, byte zeroPoint)
         {
-            var shapeX = getPartialTensor(0).shape;
-            setPartialTensor(0, new PartialTensor<float>(shapeX));
+            var shapeInput = input.shape;
+            return new PartialTensor<float>(shapeInput);
         }
 
         internal override void Execute(ExecutionContext ctx)

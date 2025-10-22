@@ -1,14 +1,14 @@
 # Read output from a model asynchronously
 
 After you schedule a model and access an output tensor from [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*), the following are true:
-- Inference Engine might not have finished calculating the final tensor data, so there's pending scheduled work.
+- Sentis might not have finished calculating the final tensor data, so there's pending scheduled work.
 - If you use a graphics processing unit (GPU) backend, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the central processing unit (CPU) in a readable format.
 
 If either of these conditions is true, [`ReadbackAndClone`](xref:Unity.InferenceEngine.Tensor.ReadbackAndClone*) or [`CompleteAllPendingOperations`](xref:Unity.InferenceEngine.TextureTensorData.CompleteAllPendingOperations*) methods block the main thread until the operations are complete.
 
 To avoid this, follow these two methods to use asynchronous readback:
 
-1. Use the awaitable [`ReadbackAndCloneAsync`](xref:Unity.InferenceEngine.Tensor.ReadbackAndCloneAsync*) method. Inference Engine returns a CPU copy of the input tensor in a non blocking way.
+1. Use the awaitable [`ReadbackAndCloneAsync`](xref:Unity.InferenceEngine.Tensor.ReadbackAndCloneAsync*) method. Sentis returns a CPU copy of the input tensor in a non blocking way.
 
 ```
 using Unity.InferenceEngine;
@@ -29,7 +29,7 @@ public class AsyncReadbackCompute : MonoBehaviour
         m_Worker = new Worker(model, BackendType.GPUCompute);
         m_Worker.Schedule(m_Input);
 
-        // Peek the value from Inference Engine, without taking ownership of the tensor
+        // Peek the value from Sentis, without taking ownership of the tensor
         var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
         var cpuCopyTensor = await outputTensor.ReadbackAndCloneAsync();
 
@@ -103,4 +103,4 @@ For an example, refer to the `Read output asynchronously` example in the [sample
 
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Use output data](use-model-output.md)
-- [Get output from any layer](profile-a-model.md#get-output-from-any-layer)
+- [Get output from a model](get-the-output.md)

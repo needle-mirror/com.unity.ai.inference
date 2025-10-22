@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using UnityEngine.Assertions;
+using Unity.InferenceEngine.Graph;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.Tests")]
 
@@ -10,22 +10,28 @@ namespace Unity.InferenceEngine
     /// </summary>
     public static partial class Functional
     {
-        internal static FunctionalTensor[] FromLayerMultiOutput(Layer layer, FunctionalTensor[] inputs)
+        /// <summary>
+        /// Returns functional tensor array for a given op target and set of arguments.
+        /// Node values in the argument array should be of type (FakeNode), i.e. functional tensor wrappers.
+        /// </summary>
+        internal static FunctionalTensor[] FromLayer(string target, Argument[] args)
         {
-            layer.inputs = new int[inputs.Length];
-            layer.outputs = new int[layer.OutputCount];
-            var node = new LayerNode(inputs, layer);
-            return node.CreateOutputs();
-        }
+            var output = FunctionalLayer.InferPartial(target, args);
+            var layerNode = new LayerNode(target, args);
 
-        internal static FunctionalTensor FromLayer(Layer layer, FunctionalTensor[] inputs)
-        {
-            return FromLayerMultiOutput(layer, inputs)[0];
-        }
+            if (output is PartialTensor partialTensor)
+                return new[] { new FunctionalTensor(partialTensor, layerNode) };
 
-        internal static FunctionalTensor FromLayer(Layer layer, FunctionalTensor input)
-        {
-            return FromLayerMultiOutput(layer, new[] { input })[0];
+            if (output is PartialTensor[] partialTensors)
+            {
+                // output is a list of tensors, insert indexer nodes equivalent to "getitem" functions in the graph
+                var outputs = new FunctionalTensor[partialTensors.Length];
+                for (var i = 0; i < partialTensors.Length; i++)
+                    outputs[i] = new FunctionalTensor(partialTensors[i], new IndexerNode(layerNode, i));
+                return outputs;
+            }
+
+            return null;
         }
     }
 }

@@ -9,7 +9,7 @@ using pb = global::Google.Protobuf;
 using pbc = global::Google.Protobuf.Collections;
 using pbr = global::Google.Protobuf.Reflection;
 using scg = global::System.Collections.Generic;
-namespace Onnx {
+namespace Unity.InferenceEngine.Editor.Onnx {
 
   /// <summary>Holder for reflection information generated from onnx.proto3</summary>
   internal static partial class OnnxReflection {
@@ -95,20 +95,20 @@ namespace Onnx {
             "MDE5XzNfMTgQBRIOCgpJUl9WRVJTSU9OEAZiBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
-          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Onnx.Version), }, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.AttributeProto), global::Onnx.AttributeProto.Parser, new[]{ "Name", "RefAttrName", "DocString", "Type", "F", "I", "S", "T", "G", "SparseTensor", "Floats", "Ints", "Strings", "Tensors", "Graphs", "SparseTensors" }, null, new[]{ typeof(global::Onnx.AttributeProto.Types.AttributeType) }, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.ValueInfoProto), global::Onnx.ValueInfoProto.Parser, new[]{ "Name", "Type", "DocString" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.NodeProto), global::Onnx.NodeProto.Parser, new[]{ "Input", "Output", "Name", "OpType", "Domain", "Attribute", "DocString" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.ModelProto), global::Onnx.ModelProto.Parser, new[]{ "IrVersion", "OpsetImport", "ProducerName", "ProducerVersion", "Domain", "ModelVersion", "DocString", "Graph", "MetadataProps" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.StringStringEntryProto), global::Onnx.StringStringEntryProto.Parser, new[]{ "Key", "Value" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TensorAnnotation), global::Onnx.TensorAnnotation.Parser, new[]{ "TensorName", "QuantParameterTensorNames" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.GraphProto), global::Onnx.GraphProto.Parser, new[]{ "Node", "Name", "Initializer", "SparseInitializer", "DocString", "Input", "Output", "ValueInfo", "QuantizationAnnotation" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TensorProto), global::Onnx.TensorProto.Parser, new[]{ "Dims", "DataType", "Segment", "FloatData", "Int32Data", "StringData", "Int64Data", "Name", "DocString", "RawData", "ExternalData", "DataLocation", "DoubleData", "Uint64Data" }, null, new[]{ typeof(global::Onnx.TensorProto.Types.DataType), typeof(global::Onnx.TensorProto.Types.DataLocation) }, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TensorProto.Types.Segment), global::Onnx.TensorProto.Types.Segment.Parser, new[]{ "Begin", "End" }, null, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.SparseTensorProto), global::Onnx.SparseTensorProto.Parser, new[]{ "Values", "Indices", "Dims" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TensorShapeProto), global::Onnx.TensorShapeProto.Parser, new[]{ "Dim" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TensorShapeProto.Types.Dimension), global::Onnx.TensorShapeProto.Types.Dimension.Parser, new[]{ "DimValue", "DimParam", "Denotation" }, new[]{ "Value" }, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TypeProto), global::Onnx.TypeProto.Parser, new[]{ "TensorType", "Denotation" }, new[]{ "Value" }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TypeProto.Types.Tensor), global::Onnx.TypeProto.Types.Tensor.Parser, new[]{ "ElemType", "Shape" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.TypeProto.Types.SparseTensor), global::Onnx.TypeProto.Types.SparseTensor.Parser, new[]{ "ElemType", "Shape" }, null, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Onnx.OperatorSetIdProto), global::Onnx.OperatorSetIdProto.Parser, new[]{ "Domain", "Version" }, null, null, null)
+          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Unity.InferenceEngine.Editor.Onnx.Version), }, new pbr::GeneratedClrTypeInfo[] {
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.AttributeProto), global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Parser, new[]{ "Name", "RefAttrName", "DocString", "Type", "F", "I", "S", "T", "G", "SparseTensor", "Floats", "Ints", "Strings", "Tensors", "Graphs", "SparseTensors" }, null, new[]{ typeof(global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Types.AttributeType) }, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto), global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto.Parser, new[]{ "Name", "Type", "DocString" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.NodeProto), global::Unity.InferenceEngine.Editor.Onnx.NodeProto.Parser, new[]{ "Input", "Output", "Name", "OpType", "Domain", "Attribute", "DocString" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.ModelProto), global::Unity.InferenceEngine.Editor.Onnx.ModelProto.Parser, new[]{ "IrVersion", "OpsetImport", "ProducerName", "ProducerVersion", "Domain", "ModelVersion", "DocString", "Graph", "MetadataProps" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto), global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto.Parser, new[]{ "Key", "Value" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation), global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation.Parser, new[]{ "TensorName", "QuantParameterTensorNames" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.GraphProto), global::Unity.InferenceEngine.Editor.Onnx.GraphProto.Parser, new[]{ "Node", "Name", "Initializer", "SparseInitializer", "DocString", "Input", "Output", "ValueInfo", "QuantizationAnnotation" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorProto), global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Parser, new[]{ "Dims", "DataType", "Segment", "FloatData", "Int32Data", "StringData", "Int64Data", "Name", "DocString", "RawData", "ExternalData", "DataLocation", "DoubleData", "Uint64Data" }, null, new[]{ typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.DataType), typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.DataLocation) }, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment), global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment.Parser, new[]{ "Begin", "End" }, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto), global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto.Parser, new[]{ "Values", "Indices", "Dims" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto), global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Parser, new[]{ "Dim" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension), global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension.Parser, new[]{ "DimValue", "DimParam", "Denotation" }, new[]{ "Value" }, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TypeProto), global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Parser, new[]{ "TensorType", "Denotation" }, new[]{ "Value" }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor), global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor.Parser, new[]{ "ElemType", "Shape" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.SparseTensor), global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.SparseTensor.Parser, new[]{ "ElemType", "Shape" }, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto), global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto.Parser, new[]{ "Domain", "Version" }, null, null, null)
           }));
     }
     #endregion
@@ -190,7 +190,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[0]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[0]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -278,7 +278,7 @@ namespace Onnx {
 
     /// <summary>Field number for the "type" field.</summary>
     public const int TypeFieldNumber = 20;
-    private global::Onnx.AttributeProto.Types.AttributeType type_ = 0;
+    private global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Types.AttributeType type_ = 0;
     /// <summary>
     /// The type field MUST be present for this version of the IR.
     /// For 0.0.1 versions of the IR, this field was not defined, and
@@ -288,7 +288,7 @@ namespace Onnx {
     /// change was made to accomodate proto3 implementations.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.AttributeProto.Types.AttributeType Type {
+    public global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Types.AttributeType Type {
       get { return type_; }
       set {
         type_ = value;
@@ -339,12 +339,12 @@ namespace Onnx {
 
     /// <summary>Field number for the "t" field.</summary>
     public const int TFieldNumber = 5;
-    private global::Onnx.TensorProto t_;
+    private global::Unity.InferenceEngine.Editor.Onnx.TensorProto t_;
     /// <summary>
     /// tensor value
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TensorProto T {
+    public global::Unity.InferenceEngine.Editor.Onnx.TensorProto T {
       get { return t_; }
       set {
         t_ = value;
@@ -353,12 +353,12 @@ namespace Onnx {
 
     /// <summary>Field number for the "g" field.</summary>
     public const int GFieldNumber = 6;
-    private global::Onnx.GraphProto g_;
+    private global::Unity.InferenceEngine.Editor.Onnx.GraphProto g_;
     /// <summary>
     /// graph
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.GraphProto G {
+    public global::Unity.InferenceEngine.Editor.Onnx.GraphProto G {
       get { return g_; }
       set {
         g_ = value;
@@ -367,12 +367,12 @@ namespace Onnx {
 
     /// <summary>Field number for the "sparse_tensor" field.</summary>
     public const int SparseTensorFieldNumber = 22;
-    private global::Onnx.SparseTensorProto sparseTensor_;
+    private global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto sparseTensor_;
     /// <summary>
     /// sparse tensor value
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.SparseTensorProto SparseTensor {
+    public global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto SparseTensor {
       get { return sparseTensor_; }
       set {
         sparseTensor_ = value;
@@ -420,40 +420,40 @@ namespace Onnx {
 
     /// <summary>Field number for the "tensors" field.</summary>
     public const int TensorsFieldNumber = 10;
-    private static readonly pb::FieldCodec<global::Onnx.TensorProto> _repeated_tensors_codec
-        = pb::FieldCodec.ForMessage(82, global::Onnx.TensorProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.TensorProto> tensors_ = new pbc::RepeatedField<global::Onnx.TensorProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> _repeated_tensors_codec
+        = pb::FieldCodec.ForMessage(82, global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> tensors_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto>();
     /// <summary>
     /// list of tensors
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.TensorProto> Tensors {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> Tensors {
       get { return tensors_; }
     }
 
     /// <summary>Field number for the "graphs" field.</summary>
     public const int GraphsFieldNumber = 11;
-    private static readonly pb::FieldCodec<global::Onnx.GraphProto> _repeated_graphs_codec
-        = pb::FieldCodec.ForMessage(90, global::Onnx.GraphProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.GraphProto> graphs_ = new pbc::RepeatedField<global::Onnx.GraphProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.GraphProto> _repeated_graphs_codec
+        = pb::FieldCodec.ForMessage(90, global::Unity.InferenceEngine.Editor.Onnx.GraphProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.GraphProto> graphs_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.GraphProto>();
     /// <summary>
     /// list of graph
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.GraphProto> Graphs {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.GraphProto> Graphs {
       get { return graphs_; }
     }
 
     /// <summary>Field number for the "sparse_tensors" field.</summary>
     public const int SparseTensorsFieldNumber = 23;
-    private static readonly pb::FieldCodec<global::Onnx.SparseTensorProto> _repeated_sparseTensors_codec
-        = pb::FieldCodec.ForMessage(186, global::Onnx.SparseTensorProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.SparseTensorProto> sparseTensors_ = new pbc::RepeatedField<global::Onnx.SparseTensorProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> _repeated_sparseTensors_codec
+        = pb::FieldCodec.ForMessage(186, global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> sparseTensors_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto>();
     /// <summary>
     /// list of sparse tensors
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.SparseTensorProto> SparseTensors {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> SparseTensors {
       get { return sparseTensors_; }
     }
 
@@ -645,19 +645,19 @@ namespace Onnx {
       }
       if (other.t_ != null) {
         if (t_ == null) {
-          t_ = new global::Onnx.TensorProto();
+          t_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
         }
         T.MergeFrom(other.T);
       }
       if (other.g_ != null) {
         if (g_ == null) {
-          g_ = new global::Onnx.GraphProto();
+          g_ = new global::Unity.InferenceEngine.Editor.Onnx.GraphProto();
         }
         G.MergeFrom(other.G);
       }
       if (other.sparseTensor_ != null) {
         if (sparseTensor_ == null) {
-          sparseTensor_ = new global::Onnx.SparseTensorProto();
+          sparseTensor_ = new global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto();
         }
         SparseTensor.MergeFrom(other.SparseTensor);
       }
@@ -696,14 +696,14 @@ namespace Onnx {
           }
           case 42: {
             if (t_ == null) {
-              t_ = new global::Onnx.TensorProto();
+              t_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
             }
             input.ReadMessage(t_);
             break;
           }
           case 50: {
             if (g_ == null) {
-              g_ = new global::Onnx.GraphProto();
+              g_ = new global::Unity.InferenceEngine.Editor.Onnx.GraphProto();
             }
             input.ReadMessage(g_);
             break;
@@ -735,7 +735,7 @@ namespace Onnx {
             break;
           }
           case 160: {
-            type_ = (global::Onnx.AttributeProto.Types.AttributeType) input.ReadEnum();
+            type_ = (global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Types.AttributeType) input.ReadEnum();
             break;
           }
           case 170: {
@@ -744,7 +744,7 @@ namespace Onnx {
           }
           case 178: {
             if (sparseTensor_ == null) {
-              sparseTensor_ = new global::Onnx.SparseTensorProto();
+              sparseTensor_ = new global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto();
             }
             input.ReadMessage(sparseTensor_);
             break;
@@ -798,7 +798,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[1]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[1]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -842,12 +842,12 @@ namespace Onnx {
 
     /// <summary>Field number for the "type" field.</summary>
     public const int TypeFieldNumber = 2;
-    private global::Onnx.TypeProto type_;
+    private global::Unity.InferenceEngine.Editor.Onnx.TypeProto type_;
     /// <summary>
     /// This field MUST be present in this version of the IR.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TypeProto Type {
+    public global::Unity.InferenceEngine.Editor.Onnx.TypeProto Type {
       get { return type_; }
       set {
         type_ = value;
@@ -951,7 +951,7 @@ namespace Onnx {
       }
       if (other.type_ != null) {
         if (type_ == null) {
-          type_ = new global::Onnx.TypeProto();
+          type_ = new global::Unity.InferenceEngine.Editor.Onnx.TypeProto();
         }
         Type.MergeFrom(other.Type);
       }
@@ -975,7 +975,7 @@ namespace Onnx {
           }
           case 18: {
             if (type_ == null) {
-              type_ = new global::Onnx.TypeProto();
+              type_ = new global::Unity.InferenceEngine.Editor.Onnx.TypeProto();
             }
             input.ReadMessage(type_);
             break;
@@ -1007,7 +1007,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[2]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[2]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1110,14 +1110,14 @@ namespace Onnx {
 
     /// <summary>Field number for the "attribute" field.</summary>
     public const int AttributeFieldNumber = 5;
-    private static readonly pb::FieldCodec<global::Onnx.AttributeProto> _repeated_attribute_codec
-        = pb::FieldCodec.ForMessage(42, global::Onnx.AttributeProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.AttributeProto> attribute_ = new pbc::RepeatedField<global::Onnx.AttributeProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.AttributeProto> _repeated_attribute_codec
+        = pb::FieldCodec.ForMessage(42, global::Unity.InferenceEngine.Editor.Onnx.AttributeProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.AttributeProto> attribute_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.AttributeProto>();
     /// <summary>
     /// Additional named attributes.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.AttributeProto> Attribute {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.AttributeProto> Attribute {
       get { return attribute_; }
     }
 
@@ -1310,7 +1310,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[3]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[3]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1361,9 +1361,9 @@ namespace Onnx {
 
     /// <summary>Field number for the "opset_import" field.</summary>
     public const int OpsetImportFieldNumber = 8;
-    private static readonly pb::FieldCodec<global::Onnx.OperatorSetIdProto> _repeated_opsetImport_codec
-        = pb::FieldCodec.ForMessage(66, global::Onnx.OperatorSetIdProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.OperatorSetIdProto> opsetImport_ = new pbc::RepeatedField<global::Onnx.OperatorSetIdProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto> _repeated_opsetImport_codec
+        = pb::FieldCodec.ForMessage(66, global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto> opsetImport_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto>();
     /// <summary>
     /// The OperatorSets this model relies on.
     /// All ModelProtos MUST have at least one entry that
@@ -1375,7 +1375,7 @@ namespace Onnx {
     /// in the referenced operator sets.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.OperatorSetIdProto> OpsetImport {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.OperatorSetIdProto> OpsetImport {
       get { return opsetImport_; }
     }
 
@@ -1460,12 +1460,12 @@ namespace Onnx {
 
     /// <summary>Field number for the "graph" field.</summary>
     public const int GraphFieldNumber = 7;
-    private global::Onnx.GraphProto graph_;
+    private global::Unity.InferenceEngine.Editor.Onnx.GraphProto graph_;
     /// <summary>
     /// The parameterized graph that is evaluated to execute the model.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.GraphProto Graph {
+    public global::Unity.InferenceEngine.Editor.Onnx.GraphProto Graph {
       get { return graph_; }
       set {
         graph_ = value;
@@ -1474,14 +1474,14 @@ namespace Onnx {
 
     /// <summary>Field number for the "metadata_props" field.</summary>
     public const int MetadataPropsFieldNumber = 14;
-    private static readonly pb::FieldCodec<global::Onnx.StringStringEntryProto> _repeated_metadataProps_codec
-        = pb::FieldCodec.ForMessage(114, global::Onnx.StringStringEntryProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.StringStringEntryProto> metadataProps_ = new pbc::RepeatedField<global::Onnx.StringStringEntryProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> _repeated_metadataProps_codec
+        = pb::FieldCodec.ForMessage(114, global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> metadataProps_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto>();
     /// <summary>
     /// Named metadata values; keys should be distinct.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.StringStringEntryProto> MetadataProps {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> MetadataProps {
       get { return metadataProps_; }
     }
 
@@ -1628,7 +1628,7 @@ namespace Onnx {
       }
       if (other.graph_ != null) {
         if (graph_ == null) {
-          graph_ = new global::Onnx.GraphProto();
+          graph_ = new global::Unity.InferenceEngine.Editor.Onnx.GraphProto();
         }
         Graph.MergeFrom(other.Graph);
       }
@@ -1670,7 +1670,7 @@ namespace Onnx {
           }
           case 58: {
             if (graph_ == null) {
-              graph_ = new global::Onnx.GraphProto();
+              graph_ = new global::Unity.InferenceEngine.Editor.Onnx.GraphProto();
             }
             input.ReadMessage(graph_);
             break;
@@ -1701,7 +1701,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[4]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[4]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1858,7 +1858,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[5]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[5]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1898,9 +1898,9 @@ namespace Onnx {
 
     /// <summary>Field number for the "quant_parameter_tensor_names" field.</summary>
     public const int QuantParameterTensorNamesFieldNumber = 2;
-    private static readonly pb::FieldCodec<global::Onnx.StringStringEntryProto> _repeated_quantParameterTensorNames_codec
-        = pb::FieldCodec.ForMessage(18, global::Onnx.StringStringEntryProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.StringStringEntryProto> quantParameterTensorNames_ = new pbc::RepeatedField<global::Onnx.StringStringEntryProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> _repeated_quantParameterTensorNames_codec
+        = pb::FieldCodec.ForMessage(18, global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> quantParameterTensorNames_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto>();
     /// <summary>
     /// &lt;key, value> pairs to annotate tensor specified by &lt;tensor_name> above.
     /// The keys used in the mapping below must be pre-defined in ONNX spec.
@@ -1908,7 +1908,7 @@ namespace Onnx {
     /// quantization parameter keys.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.StringStringEntryProto> QuantParameterTensorNames {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> QuantParameterTensorNames {
       get { return quantParameterTensorNames_; }
     }
 
@@ -2021,7 +2021,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[6]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[6]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2057,14 +2057,14 @@ namespace Onnx {
 
     /// <summary>Field number for the "node" field.</summary>
     public const int NodeFieldNumber = 1;
-    private static readonly pb::FieldCodec<global::Onnx.NodeProto> _repeated_node_codec
-        = pb::FieldCodec.ForMessage(10, global::Onnx.NodeProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.NodeProto> node_ = new pbc::RepeatedField<global::Onnx.NodeProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.NodeProto> _repeated_node_codec
+        = pb::FieldCodec.ForMessage(10, global::Unity.InferenceEngine.Editor.Onnx.NodeProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.NodeProto> node_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.NodeProto>();
     /// <summary>
     /// The nodes in the graph, sorted topologically.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.NodeProto> Node {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.NodeProto> Node {
       get { return node_; }
     }
 
@@ -2084,29 +2084,29 @@ namespace Onnx {
 
     /// <summary>Field number for the "initializer" field.</summary>
     public const int InitializerFieldNumber = 5;
-    private static readonly pb::FieldCodec<global::Onnx.TensorProto> _repeated_initializer_codec
-        = pb::FieldCodec.ForMessage(42, global::Onnx.TensorProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.TensorProto> initializer_ = new pbc::RepeatedField<global::Onnx.TensorProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> _repeated_initializer_codec
+        = pb::FieldCodec.ForMessage(42, global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> initializer_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto>();
     /// <summary>
     /// A list of named tensor values, used to specify constant inputs of the graph.
     /// Each TensorProto entry must have a distinct name (within the list) that
     /// MAY also appear in the input list.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.TensorProto> Initializer {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorProto> Initializer {
       get { return initializer_; }
     }
 
     /// <summary>Field number for the "sparse_initializer" field.</summary>
     public const int SparseInitializerFieldNumber = 15;
-    private static readonly pb::FieldCodec<global::Onnx.SparseTensorProto> _repeated_sparseInitializer_codec
-        = pb::FieldCodec.ForMessage(122, global::Onnx.SparseTensorProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.SparseTensorProto> sparseInitializer_ = new pbc::RepeatedField<global::Onnx.SparseTensorProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> _repeated_sparseInitializer_codec
+        = pb::FieldCodec.ForMessage(122, global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> sparseInitializer_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto>();
     /// <summary>
     /// Initializers (see above) stored in sparse format.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.SparseTensorProto> SparseInitializer {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.SparseTensorProto> SparseInitializer {
       get { return sparseInitializer_; }
     }
 
@@ -2126,46 +2126,46 @@ namespace Onnx {
 
     /// <summary>Field number for the "input" field.</summary>
     public const int InputFieldNumber = 11;
-    private static readonly pb::FieldCodec<global::Onnx.ValueInfoProto> _repeated_input_codec
-        = pb::FieldCodec.ForMessage(90, global::Onnx.ValueInfoProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.ValueInfoProto> input_ = new pbc::RepeatedField<global::Onnx.ValueInfoProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> _repeated_input_codec
+        = pb::FieldCodec.ForMessage(90, global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> input_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto>();
     /// <summary>
     /// The inputs and outputs of the graph.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.ValueInfoProto> Input {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> Input {
       get { return input_; }
     }
 
     /// <summary>Field number for the "output" field.</summary>
     public const int OutputFieldNumber = 12;
-    private static readonly pb::FieldCodec<global::Onnx.ValueInfoProto> _repeated_output_codec
-        = pb::FieldCodec.ForMessage(98, global::Onnx.ValueInfoProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.ValueInfoProto> output_ = new pbc::RepeatedField<global::Onnx.ValueInfoProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> _repeated_output_codec
+        = pb::FieldCodec.ForMessage(98, global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> output_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.ValueInfoProto> Output {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> Output {
       get { return output_; }
     }
 
     /// <summary>Field number for the "value_info" field.</summary>
     public const int ValueInfoFieldNumber = 13;
-    private static readonly pb::FieldCodec<global::Onnx.ValueInfoProto> _repeated_valueInfo_codec
-        = pb::FieldCodec.ForMessage(106, global::Onnx.ValueInfoProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.ValueInfoProto> valueInfo_ = new pbc::RepeatedField<global::Onnx.ValueInfoProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> _repeated_valueInfo_codec
+        = pb::FieldCodec.ForMessage(106, global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> valueInfo_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto>();
     /// <summary>
     /// Information for the values in the graph. The ValueInfoProto.name's
     /// must be distinct. It is optional for a value to appear in value_info list.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.ValueInfoProto> ValueInfo {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.ValueInfoProto> ValueInfo {
       get { return valueInfo_; }
     }
 
     /// <summary>Field number for the "quantization_annotation" field.</summary>
     public const int QuantizationAnnotationFieldNumber = 14;
-    private static readonly pb::FieldCodec<global::Onnx.TensorAnnotation> _repeated_quantizationAnnotation_codec
-        = pb::FieldCodec.ForMessage(114, global::Onnx.TensorAnnotation.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.TensorAnnotation> quantizationAnnotation_ = new pbc::RepeatedField<global::Onnx.TensorAnnotation>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation> _repeated_quantizationAnnotation_codec
+        = pb::FieldCodec.ForMessage(114, global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation> quantizationAnnotation_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation>();
     /// <summary>
     /// This field carries information to indicate the mapping among a tensor and its
     /// quantization parameter tensors. For example:
@@ -2173,7 +2173,7 @@ namespace Onnx {
     /// which means, tensor 'a_scale' and tensor 'a_zero_point' are scale and zero point of tensor 'a' in the model.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.TensorAnnotation> QuantizationAnnotation {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorAnnotation> QuantizationAnnotation {
       get { return quantizationAnnotation_; }
     }
 
@@ -2353,7 +2353,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[7]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[7]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2422,9 +2422,9 @@ namespace Onnx {
 
     /// <summary>Field number for the "segment" field.</summary>
     public const int SegmentFieldNumber = 3;
-    private global::Onnx.TensorProto.Types.Segment segment_;
+    private global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment segment_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TensorProto.Types.Segment Segment {
+    public global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment Segment {
       get { return segment_; }
       set {
         segment_ = value;
@@ -2556,9 +2556,9 @@ namespace Onnx {
 
     /// <summary>Field number for the "external_data" field.</summary>
     public const int ExternalDataFieldNumber = 13;
-    private static readonly pb::FieldCodec<global::Onnx.StringStringEntryProto> _repeated_externalData_codec
-        = pb::FieldCodec.ForMessage(106, global::Onnx.StringStringEntryProto.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.StringStringEntryProto> externalData_ = new pbc::RepeatedField<global::Onnx.StringStringEntryProto>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> _repeated_externalData_codec
+        = pb::FieldCodec.ForMessage(106, global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> externalData_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto>();
     /// <summary>
     /// Data can be stored inside the protobuf file using type-specific fields or raw_data.
     /// Alternatively, raw bytes data can be stored in an external file, using the external_data field.
@@ -2571,18 +2571,18 @@ namespace Onnx {
     /// - "checksum" (optional) - SHA1 digest of file specified in under 'location' key.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.StringStringEntryProto> ExternalData {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.StringStringEntryProto> ExternalData {
       get { return externalData_; }
     }
 
     /// <summary>Field number for the "data_location" field.</summary>
     public const int DataLocationFieldNumber = 14;
-    private global::Onnx.TensorProto.Types.DataLocation dataLocation_ = 0;
+    private global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.DataLocation dataLocation_ = 0;
     /// <summary>
     /// If value not set, data is stored in raw_data (if set) otherwise in type-specified field.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TensorProto.Types.DataLocation DataLocation {
+    public global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.DataLocation DataLocation {
       get { return dataLocation_; }
       set {
         dataLocation_ = value;
@@ -2766,7 +2766,7 @@ namespace Onnx {
       }
       if (other.segment_ != null) {
         if (segment_ == null) {
-          segment_ = new global::Onnx.TensorProto.Types.Segment();
+          segment_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment();
         }
         Segment.MergeFrom(other.Segment);
       }
@@ -2811,7 +2811,7 @@ namespace Onnx {
           }
           case 26: {
             if (segment_ == null) {
-              segment_ = new global::Onnx.TensorProto.Types.Segment();
+              segment_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.Segment();
             }
             input.ReadMessage(segment_);
             break;
@@ -2862,7 +2862,7 @@ namespace Onnx {
             break;
           }
           case 112: {
-            dataLocation_ = (global::Onnx.TensorProto.Types.DataLocation) input.ReadEnum();
+            dataLocation_ = (global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Types.DataLocation) input.ReadEnum();
             break;
           }
         }
@@ -2958,7 +2958,7 @@ namespace Onnx {
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Onnx.TensorProto.Descriptor.NestedTypes[0]; }
+          get { return global::Unity.InferenceEngine.Editor.Onnx.TensorProto.Descriptor.NestedTypes[0]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3123,7 +3123,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[8]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[8]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3153,13 +3153,13 @@ namespace Onnx {
 
     /// <summary>Field number for the "values" field.</summary>
     public const int ValuesFieldNumber = 1;
-    private global::Onnx.TensorProto values_;
+    private global::Unity.InferenceEngine.Editor.Onnx.TensorProto values_;
     /// <summary>
     /// The sequence of non-default values are encoded as a tensor of shape [NNZ].
     /// The default-value is zero for numeric tensors, and empty-string for string tensors.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TensorProto Values {
+    public global::Unity.InferenceEngine.Editor.Onnx.TensorProto Values {
       get { return values_; }
       set {
         values_ = value;
@@ -3168,7 +3168,7 @@ namespace Onnx {
 
     /// <summary>Field number for the "indices" field.</summary>
     public const int IndicesFieldNumber = 2;
-    private global::Onnx.TensorProto indices_;
+    private global::Unity.InferenceEngine.Editor.Onnx.TensorProto indices_;
     /// <summary>
     /// The indices of the non-default values, which may be stored in one of two formats.
     /// (a) Indices can be a tensor of shape [NNZ, rank] with the [i,j]-th value
@@ -3182,7 +3182,7 @@ namespace Onnx {
     /// e.g., index-value [1,4] must appear before [2,1]
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TensorProto Indices {
+    public global::Unity.InferenceEngine.Editor.Onnx.TensorProto Indices {
       get { return indices_; }
       set {
         indices_ = value;
@@ -3277,13 +3277,13 @@ namespace Onnx {
       }
       if (other.values_ != null) {
         if (values_ == null) {
-          values_ = new global::Onnx.TensorProto();
+          values_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
         }
         Values.MergeFrom(other.Values);
       }
       if (other.indices_ != null) {
         if (indices_ == null) {
-          indices_ = new global::Onnx.TensorProto();
+          indices_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
         }
         Indices.MergeFrom(other.Indices);
       }
@@ -3301,14 +3301,14 @@ namespace Onnx {
             break;
           case 10: {
             if (values_ == null) {
-              values_ = new global::Onnx.TensorProto();
+              values_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
             }
             input.ReadMessage(values_);
             break;
           }
           case 18: {
             if (indices_ == null) {
-              indices_ = new global::Onnx.TensorProto();
+              indices_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorProto();
             }
             input.ReadMessage(indices_);
             break;
@@ -3337,7 +3337,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[9]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[9]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3365,11 +3365,11 @@ namespace Onnx {
 
     /// <summary>Field number for the "dim" field.</summary>
     public const int DimFieldNumber = 1;
-    private static readonly pb::FieldCodec<global::Onnx.TensorShapeProto.Types.Dimension> _repeated_dim_codec
-        = pb::FieldCodec.ForMessage(10, global::Onnx.TensorShapeProto.Types.Dimension.Parser);
-    private readonly pbc::RepeatedField<global::Onnx.TensorShapeProto.Types.Dimension> dim_ = new pbc::RepeatedField<global::Onnx.TensorShapeProto.Types.Dimension>();
+    private static readonly pb::FieldCodec<global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension> _repeated_dim_codec
+        = pb::FieldCodec.ForMessage(10, global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension.Parser);
+    private readonly pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension> dim_ = new pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public pbc::RepeatedField<global::Onnx.TensorShapeProto.Types.Dimension> Dim {
+    public pbc::RepeatedField<global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Types.Dimension> Dim {
       get { return dim_; }
     }
 
@@ -3460,7 +3460,7 @@ namespace Onnx {
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Onnx.TensorShapeProto.Descriptor.NestedTypes[0]; }
+          get { return global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto.Descriptor.NestedTypes[0]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3696,7 +3696,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[10]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[10]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3734,8 +3734,8 @@ namespace Onnx {
     /// The type of a tensor.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public global::Onnx.TypeProto.Types.Tensor TensorType {
-      get { return valueCase_ == ValueOneofCase.TensorType ? (global::Onnx.TypeProto.Types.Tensor) value_ : null; }
+    public global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor TensorType {
+      get { return valueCase_ == ValueOneofCase.TensorType ? (global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor) value_ : null; }
       set {
         value_ = value;
         valueCase_ = value == null ? ValueOneofCase.None : ValueOneofCase.TensorType;
@@ -3854,7 +3854,7 @@ namespace Onnx {
       switch (other.ValueCase) {
         case ValueOneofCase.TensorType:
           if (TensorType == null) {
-            TensorType = new global::Onnx.TypeProto.Types.Tensor();
+            TensorType = new global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor();
           }
           TensorType.MergeFrom(other.TensorType);
           break;
@@ -3872,7 +3872,7 @@ namespace Onnx {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 10: {
-            global::Onnx.TypeProto.Types.Tensor subBuilder = new global::Onnx.TypeProto.Types.Tensor();
+            global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor subBuilder = new global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Types.Tensor();
             if (valueCase_ == ValueOneofCase.TensorType) {
               subBuilder.MergeFrom(TensorType);
             }
@@ -3900,7 +3900,7 @@ namespace Onnx {
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Onnx.TypeProto.Descriptor.NestedTypes[0]; }
+          get { return global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Descriptor.NestedTypes[0]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3945,9 +3945,9 @@ namespace Onnx {
 
         /// <summary>Field number for the "shape" field.</summary>
         public const int ShapeFieldNumber = 2;
-        private global::Onnx.TensorShapeProto shape_;
+        private global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto shape_;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        public global::Onnx.TensorShapeProto Shape {
+        public global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto Shape {
           get { return shape_; }
           set {
             shape_ = value;
@@ -4028,7 +4028,7 @@ namespace Onnx {
           }
           if (other.shape_ != null) {
             if (shape_ == null) {
-              shape_ = new global::Onnx.TensorShapeProto();
+              shape_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto();
             }
             Shape.MergeFrom(other.Shape);
           }
@@ -4049,7 +4049,7 @@ namespace Onnx {
               }
               case 18: {
                 if (shape_ == null) {
-                  shape_ = new global::Onnx.TensorShapeProto();
+                  shape_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto();
                 }
                 input.ReadMessage(shape_);
                 break;
@@ -4068,7 +4068,7 @@ namespace Onnx {
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Onnx.TypeProto.Descriptor.NestedTypes[1]; }
+          get { return global::Unity.InferenceEngine.Editor.Onnx.TypeProto.Descriptor.NestedTypes[1]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4113,9 +4113,9 @@ namespace Onnx {
 
         /// <summary>Field number for the "shape" field.</summary>
         public const int ShapeFieldNumber = 2;
-        private global::Onnx.TensorShapeProto shape_;
+        private global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto shape_;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        public global::Onnx.TensorShapeProto Shape {
+        public global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto Shape {
           get { return shape_; }
           set {
             shape_ = value;
@@ -4196,7 +4196,7 @@ namespace Onnx {
           }
           if (other.shape_ != null) {
             if (shape_ == null) {
-              shape_ = new global::Onnx.TensorShapeProto();
+              shape_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto();
             }
             Shape.MergeFrom(other.Shape);
           }
@@ -4217,7 +4217,7 @@ namespace Onnx {
               }
               case 18: {
                 if (shape_ == null) {
-                  shape_ = new global::Onnx.TensorShapeProto();
+                  shape_ = new global::Unity.InferenceEngine.Editor.Onnx.TensorShapeProto();
                 }
                 input.ReadMessage(shape_);
                 break;
@@ -4246,7 +4246,7 @@ namespace Onnx {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Onnx.OnnxReflection.Descriptor.MessageTypes[11]; }
+      get { return global::Unity.InferenceEngine.Editor.Onnx.OnnxReflection.Descriptor.MessageTypes[11]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]

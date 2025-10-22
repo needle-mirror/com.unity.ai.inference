@@ -10,9 +10,11 @@ using Microsoft.Msagl.Core;
 using Microsoft.Msagl.Core.DataStructures;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 
 namespace Microsoft.Msagl.Routing.ConstrainedDelaunayTriangulation {
+
+    using SymmetricSegment = SymmetricTuple<Point>;
+
     ///<summary>
     ///triangulates the space between point, line segment and polygons in the Delaunay fashion
     ///</summary>

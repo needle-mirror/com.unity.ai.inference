@@ -23,6 +23,11 @@ namespace Unity.InferenceEngine
         protected CommandBuffer cb;
         bool m_InternalCommandBuffer;
 
+        // Do we need this class or operate on ComputeTensorData instead?
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
+        TensorDataPool<ComputeTensorData> m_MemoryPool = new TensorDataPool<ComputeTensorData>();
+
         /// <summary>
         /// Initializes and returns an instance of `GPUComputeOps`.
         /// </summary>
@@ -31,6 +36,8 @@ namespace Unity.InferenceEngine
             cb = new CommandBuffer();
             m_InternalCommandBuffer = true;
         }
+
+        internal CommandBuffer GetCommandBuffer() => cb;
 
         public void SetCommandBuffer(CommandBuffer commandBuffer)
         {
@@ -45,11 +52,6 @@ namespace Unity.InferenceEngine
             Graphics.ExecuteCommandBuffer(cb);
             cb.Clear();
         }
-
-        // Do we need this class or operate on ComputeTensorData instead?
-        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
-        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
-        TensorDataPool<ComputeTensorData> m_MemoryPool = new TensorDataPool<ComputeTensorData>();
 
         Tensor<float> AllocTensorFloat(TensorShape shape)
         {
@@ -97,6 +99,14 @@ namespace Unity.InferenceEngine
             m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as ComputeTensorData);
             tensor.dataOnBackend = null;
             m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
+        }
+
+        void ReleaseTensor(Tensor tensor)
+        {
+            if (tensor is Tensor<int> intTensor)
+                ReleaseTensorInt(intTensor);
+            else
+                ReleaseTensorFloat(tensor as Tensor<float>);
         }
 
         /// <summary>
@@ -1682,6 +1692,15 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Trunc(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Trunc;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
         public void Round(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Round;
@@ -1727,9 +1746,54 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Expm1(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Expm1;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
         public void Log(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Log;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void Log10(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Log10;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void Log1p(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Log1p;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void Log2(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Log2;
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void Rsqrt(Tensor<float> X, Tensor<float> O)
+        {
+            var fn = ComputeFunctions.k_Rsqrt;
             cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
             cb.UnrolledDispatchFast(fn, O.shape.length);
@@ -2212,21 +2276,55 @@ namespace Unity.InferenceEngine
             var fn = ComputeFunctions.k_Slice;
             unsafe
             {
-                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
-                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
-                var pStarts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
-                var pSteps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
+                var startsLocal = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stepsLocal = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
 
                 for (int i = 0; i < starts.Length; i++)
                 {
                     int axis = axes[i];
-                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = starts[i];
-                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = steps[i];
+                    startsLocal[axis] = starts[i];
+                    stepsLocal[axis] = steps[i];
                 }
-                cb.SetInt8(fn, k_ID_starts, pStarts);
-                cb.SetInt8(fn, k_ID_steps, pSteps);
+
+                var offset = 0;
+                var rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+                int totalStride = 1;
+
+                var size = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stride = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+                for (int i = O.shape.rank - 1; i >= 0; --i)
+                {
+                    int currShape = O.shape[i];
+                    int currStride = totalStride * stepsLocal[i];
+                    offset += totalStride * startsLocal[i];
+                    totalStride *= X.shape[i];
+
+                    if (currStride == accShape * accStride)
+                    {
+                        accShape = currShape * accShape;
+                        continue;
+                    }
+
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+
+                cb.SetInt8(fn, k_ID_stride, stride);
+                cb.SetInt8(fn, k_ID_size, size);
+                cb.SetComputeIntParam(fn.shader, k_ID_offset, offset);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, rank);
             }
-            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
@@ -2240,25 +2338,106 @@ namespace Unity.InferenceEngine
             var fn = ComputeFunctions.k_SliceSet;
             unsafe
             {
-                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
-                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, values.shape);
-                var pStarts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
-                var pSteps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
+                var startsLocal = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stepsLocal = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
 
                 for (int i = 0; i < starts.Length; i++)
                 {
                     int axis = axes[i];
-                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = starts[i];
-                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = steps[i];
+                    startsLocal[axis] = starts[i];
+                    stepsLocal[axis] = steps[i];
                 }
-                cb.SetInt8(fn, k_ID_starts, pStarts);
-                cb.SetInt8(fn, k_ID_steps, pSteps);
+
+                var offset = 0;
+                var rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+                int totalStride = 1;
+
+                var size = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stride = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+                for (int i = values.shape.rank - 1; i >= 0; --i)
+                {
+                    int currShape = values.shape[i];
+                    int currStride = totalStride * stepsLocal[i];
+                    offset += totalStride * startsLocal[i];
+                    totalStride *= O.shape[i];
+
+                    if (currStride == accShape * accStride)
+                    {
+                        accShape = currShape * accShape;
+                        continue;
+                    }
+
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+
+                cb.SetInt8(fn, k_ID_stride, stride);
+                cb.SetInt8(fn, k_ID_size, size);
+                cb.SetComputeIntParam(fn.shader, k_ID_offset, offset);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, rank);
             }
-            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(values));
             cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
             cb.UnrolledDispatch(fn, values.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void AsStrided(Tensor X, Tensor O, ReadOnlySpan<int> strides, int offset)
+        {
+            var fn = ComputeFunctions.k_Slice;
+            unsafe
+            {
+                var size = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stride = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+                int rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+
+                for (int i = O.shape.rank - 1; i >= 0; --i)
+                {
+                    int currShape = O.shape[i];
+                    int currStride = strides[i];
+
+                    if (currStride == accShape * accStride)
+                    {
+                        accShape = currShape * accShape;
+                        continue;
+                    }
+
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+
+                cb.SetInt8(fn, k_ID_stride, stride);
+                cb.SetInt8(fn, k_ID_size, size);
+                cb.SetComputeIntParam(fn.shader, k_ID_offset, offset);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, rank);
+            }
+
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2537,6 +2716,15 @@ namespace Unity.InferenceEngine
         public void Not(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_Not;
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseNot(Tensor<int> X, Tensor<int> O)
+        {
+            var fn = ComputeFunctions.k_BitwiseNot;
             cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
             cb.UnrolledDispatchFast(fn, O.shape.length);
@@ -2840,12 +3028,15 @@ namespace Unity.InferenceEngine
             unsafe
             {
                 var trailing = stackalloc int[8];
+                var shapeX = stackalloc int[8];
                 int trailingDim = 1;
                 for (int j = (indexRemapDim - 1); j >= 0; j--)
                 {
                     trailing[j] = trailingDim;
+                    shapeX[j] = X.shape[j];
                     trailingDim *= X.shape[j];
                 }
+                cb.SetInt8(fn, k_ID_shapeX, shapeX);
                 cb.SetInt8(fn, k_ID_trailing, trailing);
             }
             cb.SetTensorAsBuffer(fn, k_ID_Iptr, Pin(indices));
@@ -3361,6 +3552,295 @@ namespace Unity.InferenceEngine
         public void Reshape(Tensor X, Tensor O)
         {
             MemCopy(X, O);
+        }
+
+        //
+        // Note we allow independent specification of the dftLength as dftLength can be >= inputFrameLength: this generates a matrix that does the equivalent of zero-padding the input signal
+        // If dftLength != inputFrameLength ie dftLength > inputFrameLength, then alternateRealImaOnRows = true is only a valid configuration when expected input signal is real
+        public void WindowedDFTMatrix(Tensor<float> window, Tensor<float> windowedDFTMatrix, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows)
+        {
+            Logger.AssertIsTrue(dftLength >= inputFrameLength, "WindowedDFTMatrix: dftLength should be >= inputFrameLength.");
+
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+
+            // Sanity check
+            int numRows = outputXformSignalLength;
+            if (alternateRealImaOnRows)
+                numRows *= 2;
+            int numCols = alternateRealImaOnRows ? inputFrameLength : inputFrameLength * 2;
+
+            var twiddleMatrixShape = new TensorShape(numRows, numCols);
+            Logger.AssertIsTrue(windowedDFTMatrix.shape == twiddleMatrixShape, "windowedDFTMatrix has unexpected shape vs given parameters to generate it.");
+
+            ComputeFunction genfn = null;
+            if (inverse)
+                genfn = alternateRealImaOnRows ? ComputeFunctions.k_IDFTMatrixSplitReImTo2Rows_Half_32x32Data_256T : ComputeFunctions.k_IDFTMatrixPackedComplex_Half_32x32Data_256T;
+            else
+                genfn = alternateRealImaOnRows ? ComputeFunctions.k_WindowedDFTMatrixSplitReImTo2Rows_Half_32x32Data_256T : ComputeFunctions.k_WindowedDFTMatrixPackedComplex_Half_32x32Data_256T;
+
+
+            // k_ID_IDFTNormalizer: prefer to do the *(1/outputXformSignalLength) normalizing after the DFT matmul, better precision
+
+            cb.SetComputeIntParam(genfn.shader, k_ID_O_width, inputFrameLength);
+            cb.SetComputeIntParam(genfn.shader, k_ID_O_height, outputXformSignalLength * (alternateRealImaOnRows ? 2 : 1)); // if signal is real, we double the number of rows as we split the real and imaginary parts on separate rows
+            cb.SetComputeFloatParam(genfn.shader, k_ID_DFTFundamentalFreq, 1.0f / ((float)dftLength));
+
+            bool noWindowGiven = window == null;
+            if (!noWindowGiven)
+                cb.SetTensorAsBuffer(genfn, k_ID_Wptr, Pin(window));
+            cb.SetKeyword(genfn.shader, new LocalKeyword(genfn.shader, "NO_WINDOW"), noWindowGiven);
+
+            cb.SetTensorAsBuffer(genfn, k_ID_Optr, Pin(windowedDFTMatrix));
+
+            // To streamline the shader code whether onesided or if zero-padding, we still
+            // use the same symmetric tile generator, tiles are cached in LDS and needed data is used on output.
+            // The required data needs in the worst case are a triangular dispatch out of dftLength^2 still:
+            //
+            int numTiles = (dftLength + 32 - 1) / 32; // TILE_SIZE = 32 for k_WindowedDFTMatrix_Half_32x32Data_256T
+            int numTGRequired = (numTiles + 1) * numTiles / 2;
+
+            cb.DispatchCompute(genfn.shader, genfn.kernelIndex, numTGRequired, 1, 1);
+        }
+
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool inverse, bool onesided, float scale)
+        {
+            const bool cfgUseDoubleOuputForTwoSidedOfRealSignal = false;
+
+            bool signalIsReal = signal.shape[-1] == 1;
+
+            bool haveDFTMatrix = windowedDFTMatrix != null;
+            var twiddleMatrixShape = signalIsReal ? new TensorShape(O.shape[-2] * 2, frameLength) : new TensorShape(O.shape[-2], frameLength * 2);
+            // ...ie  (onesided ? frameLength / 2 + 1 : frameLength, frameLength),
+            // and * 2 for the real and imaginary parts on alternating separate rows.
+
+            if (!haveDFTMatrix)
+            {
+                windowedDFTMatrix = AllocTensorFloat(twiddleMatrixShape);
+                WindowedDFTMatrix(window, windowedDFTMatrix, dftLength: frameLength, inputFrameLength: frameLength, inverse: false, onesided, alternateRealImaOnRows: signalIsReal);
+            }
+
+            // Now setup the convolution
+            bool doubleSideBandOutput = false;
+            ComputeFunction fn = !inverse ? ComputeFunctions.k_Conv1DComplex_OutTransposed_4eoc_4esp : ComputeFunctions.k_Conv1D_Scaled_Complex_OutTransposed_4eoc_4esp;
+            if (signalIsReal)
+            {
+
+                if (!inverse && !onesided && cfgUseDoubleOuputForTwoSidedOfRealSignal)
+                {
+                    // TODO if used, also only if more than 2-3 freq
+                    //D.LogWarning($"twosided using double output, framelength is even ? {frameLength % 2 == 0}");
+                    fn = ComputeFunctions.k_Conv1D_OutTransposedDouble_4eoc_4esp;
+                    cb.SetComputeIntParam(fn.shader, k_ID_NbUniqueDFTFreqTimes2, ((frameLength / 2 + 1) * 2));
+                    doubleSideBandOutput = true;
+                }
+                else
+                    fn = !inverse ? ComputeFunctions.k_Conv1D_OutTransposed_4eoc_4esp : ComputeFunctions.k_Conv1D_Scaled_OutTransposed_4eoc_4esp;
+            }
+
+            int spatialIndexPerThread = 4;
+            int outputChannelIndexPerThread = 4;
+
+            // output channels are 2 * nb freq bins and are packed in the innermost output dimension,
+            // spatial outputs become each STFT frames, so stride is frameStep
+            {
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "UNIT_STRIDES"), false);
+                ComputeFunctions.GroupedConvGenericDisableGroups(cb);
+
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[1]); // nb spatial output, but here # of frames
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, signal.shape[1]);
+                //cb.SetComputeIntParam(fn.shader, k_ID_K_width, twiddleMatrixShape[1] / (signalIsReal? 1 : 2) );
+                // since this is just the frameLength, no need to reconsider the shape of the twiddle matrix nb of columns:
+                // ie if complex packed, matrix is nb_freq_bin x framelength x 2, and if for real signals,
+                // it is nb_freq_bin x framelength. In both cases we want the frameLength, as in the complex
+                // convolution, all structured buffers are float2.
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, frameLength); // this is just the frameLength
+
+                cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_channels, twiddleMatrixShape[0]); // output channels
+                cb.SetComputeIntParam(fn.shader, k_ID_X_channels, 1); // only 1 input channel
+
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(signal));
+                cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(windowedDFTMatrix));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+
+                Span<int> strides = stackalloc int[4] { frameStep, 0, 0, 0 };
+                Span<int> pads = stackalloc int[4] { 0, 0, 0, 0 };
+                Span<int> dilations = stackalloc int[4] { 1, 1, 1, 1 };
+
+                cb.SetInt4(fn, k_ID__Stride, strides);
+                cb.SetInt4(fn, k_ID__Pad, pads);
+                cb.SetInt4(fn, k_ID__Dilation, dilations);
+
+                cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, float.MinValue);
+
+                cb.SetComputeFloatParam(fn.shader, k_ID_Scale, scale); // used if inverse == true
+
+                int threadsNeededSpatialDims = ComputeHelper.IDivC(O.shape[1], spatialIndexPerThread);
+                int threadsNeededOutputChannels = ComputeHelper.IDivC(doubleSideBandOutput ? (twiddleMatrixShape[0] / 2 + 1) : twiddleMatrixShape[0], outputChannelIndexPerThread);
+                // Note: grid X dimension is now output channels because of the transposition
+                cb.Dispatch(fn, threadsNeededOutputChannels, threadsNeededSpatialDims, O.shape[0] /*batches*/);
+            }
+
+            if (!haveDFTMatrix)
+                ReleaseTensorFloat(windowedDFTMatrix);
+        }
+
+        /// <inheritdoc/>
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool onesided)
+        {
+            STFT(signal, window, O, frameStep, frameLength, windowedDFTMatrix, inverse: false, onesided, scale: 1.0f);
+        }
+
+        /// <inheritdoc/>
+        public void DFT(Tensor<float> input, Tensor<float> O, int dftLength, int axis, Tensor<float> dftMatrix, bool inverse, bool onesided)
+        {
+            bool signalIsReal = input.shape[-1] == 1;
+            int signalFrameLengthToUse = Math.Min(dftLength, input.shape[axis]);
+            int outputXformSignalLength = O.shape[axis]; // onesided ? dftLength / 2 + 1 : dftLength;
+
+            bool haveDFTMatrix = dftMatrix != null;
+            var twiddleMatrixShape = signalIsReal ? new TensorShape(outputXformSignalLength * 2, signalFrameLengthToUse) : new TensorShape(outputXformSignalLength, signalFrameLengthToUse * 2);
+            // * 2 for the real and imaginary parts on alternating separate rows.
+
+            if (!haveDFTMatrix)
+            {
+                dftMatrix = AllocTensorFloat(twiddleMatrixShape);
+                WindowedDFTMatrix(window: null, dftMatrix, dftLength, signalFrameLengthToUse, inverse, onesided, alternateRealImaOnRows: signalIsReal);
+            }
+
+            bool needSlicing = signalFrameLengthToUse != input.shape[axis];
+            Tensor<float> sliceOut = input;
+            if (needSlicing)
+            {
+                var sliceOutShape = new TensorShape(input.shape);
+                sliceOutShape[axis] = signalFrameLengthToUse;
+                sliceOut = AllocTensorFloat(sliceOutShape);
+                Span<int> starts = stackalloc int[1] { 0 };
+                Span<int> ends = stackalloc int[1] { signalFrameLengthToUse };
+                Span<int> axes = stackalloc int[1] { axis };
+                Span<int> steps = stackalloc int[1] { 1 };
+                ShapeInference.Slice(sliceOut.shape, starts, ends, axes, steps, ref starts, ref ends, ref axes, ref steps);
+                Slice(input, sliceOut, starts, axes, steps);
+            }
+
+            bool needTranspose = input.shape.Axis(axis) != (input.shape.rank - 2);
+            Tensor<float> preSTFTTransposeOut = sliceOut;
+            Tensor<float> stftOut = O;
+            Span<int> permutationsTmp = stackalloc int[TensorShape.maxRank];
+            TensorShape stftOutShape = O.shape;
+            if (needTranspose)
+            {
+                for (int i = 0; i < (input.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i + 1;
+                }
+                permutationsTmp[input.shape.rank - 1] = input.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[input.shape.rank - 2] = axis;
+
+                var permutations = permutationsTmp.Slice(0, input.shape.rank);
+
+                var transposedShape = sliceOut.shape.Transpose(permutations);
+                preSTFTTransposeOut = AllocTensorFloat(transposedShape);
+
+                Transpose(sliceOut, preSTFTTransposeOut, permutations);
+
+                stftOutShape = O.shape.Transpose(permutations);
+                stftOut = AllocTensorFloat(stftOutShape);
+            }
+
+            var preSTFTTransposeOutShapeBack = preSTFTTransposeOut.shape;
+            var stftOutShapeBack = stftOut.shape;
+
+            // flatten everything into one big signal of numFrames * frameLength
+            // numFrames = stftOut.shape.Length(0) / stftOut.shape.Length(-2))
+            // frameLength = stftOut.shape[-2]
+            preSTFTTransposeOut.shape = new TensorShape(1, preSTFTTransposeOut.shape.Length(0) / preSTFTTransposeOut.shape[-1], preSTFTTransposeOut.shape[-1]);
+            stftOut.shape = new TensorShape(1, stftOut.shape.Length(0) / stftOut.shape.Length(-2), stftOut.shape[-2], stftOut.shape[-1]);
+
+            STFT(preSTFTTransposeOut, window: null, stftOut, frameStep: signalFrameLengthToUse, frameLength: signalFrameLengthToUse, dftMatrix, inverse, onesided, scale: !inverse ? 1.0f : 1.0f/(float)(dftLength));
+            // ...note scale could be outputXformSignalLength, since onesided only valid for DFT not IDFT anyway.
+
+            stftOut.shape = stftOutShapeBack;
+            preSTFTTransposeOut.shape = preSTFTTransposeOutShapeBack;
+
+            // Reverse the transposition if needed:
+            if (needTranspose)
+            {
+                for (int i = 0; i < (O.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i - 1;
+                }
+                permutationsTmp[O.shape.rank - 1] = O.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[axis] = O.shape.rank - 2;
+
+                var permutations = permutationsTmp.Slice(0, O.shape.rank);
+
+                Transpose(stftOut, O, permutations);
+            }
+
+            // possible aliases:
+            //      preSTFTTransposeOut =(if !transpose)= sliceOut =(if !slice)= input
+            //      stftOut =(if !transpose)= O
+            if (needSlicing)
+                ReleaseTensorFloat(sliceOut);
+            if (needTranspose)
+            {
+                ReleaseTensorFloat(preSTFTTransposeOut);
+                ReleaseTensorFloat(stftOut);
+            }
+            if (!haveDFTMatrix)
+                ReleaseTensorFloat(dftMatrix);
+        }
+
+        /// <inheritdoc/>
+        public void BlackmanWindow(Tensor<float> O, bool periodic)
+        {
+            var fn = ComputeFunctions.k_BlackmanWindow;
+            cb.SetComputeFloatParam(fn.shader, k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void HammingWindow(Tensor<float> O, bool periodic)
+        {
+            var fn = ComputeFunctions.k_HammingWindow;
+            cb.SetComputeFloatParam(fn.shader, k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void HannWindow(Tensor<float> O, bool periodic)
+        {
+            var fn = ComputeFunctions.k_HannWindow;
+            cb.SetComputeFloatParam(fn.shader, k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void MelWeightMatrix(Tensor<float> O, int dftLength, int sampleRate, float lowerEdgeHertz, float upperEdgeHertz)
+        {
+            var fn = ComputeFunctions.k_MelWeightMatrix;
+            cb.SetComputeIntParam(fn.shader, k_ID_dftLength, dftLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_sampleRate, sampleRate);
+            var lowerEdgeMel = 2595 * math.log10(1 + lowerEdgeHertz / 700);
+            var upperEdgeMel = 2595 * math.log10(1 + upperEdgeHertz / 700);
+            var melStep = (upperEdgeMel - lowerEdgeMel) / (O.shape[1] + 2);
+            cb.SetComputeFloatParam(fn.shader, k_ID_lowerEdgeMel, lowerEdgeMel);
+            cb.SetComputeFloatParam(fn.shader, k_ID_melStep, melStep);
+            cb.SetComputeIntParam(fn.shader, k_ID_numSpectrogramBins, O.shape[0]);
+            cb.SetComputeIntParam(fn.shader, k_ID_numMelBins, O.shape[1]);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <summary>

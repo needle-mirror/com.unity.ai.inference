@@ -45,6 +45,6 @@ For an example, refer to the `Run a model a layer at a time` example in the [sam
 ## Additional resources
 
 - [Run a model](run-a-model.md)
-- [Understand models in Inference Engine](models-concept.md)
+- [Sentis models](models-concept.md)
 - [Create an engine to run a model](create-an-engine.md)
 - [Profile a model](profile-a-model.md)

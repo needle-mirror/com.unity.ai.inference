@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using SentisFlatBuffer;
 using Unity.InferenceEngine.Google.FlatBuffers;
-using Unity.InferenceEngine.Layers;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -49,7 +48,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Infer the output partial tensors.
         /// </summary>
-        internal abstract void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor);
+        internal abstract void InferPartial(PartialInferenceContext ctx);
 
         /// <summary>
         /// Executes the layer using the operations and variables from the `ExecutionContext`.
@@ -75,13 +74,9 @@ namespace Unity.InferenceEngine
         /// For example, this returns 'true' if only the shape or data type of the input tensor are used for calculating the output tensor.
         /// </summary>
         internal virtual bool IsInputNoDataDependency(int i) => false;
+        internal virtual bool IsOutputList => false;
         internal abstract string[] GetInputNames();
         internal abstract string[] GetOutputNames();
-
-        /// <summary>
-        /// Whether the layer is the same as another layer (excluding inputs and outputs).
-        /// </summary>
-        internal abstract bool IsEquivalent(Layer layer);
 
         /// <summary>
         /// Returns a string that represents the `Layer`.
@@ -111,52 +106,5 @@ namespace Unity.InferenceEngine.Layers
         /// Use `Relu` activation function: f(x) = max(0, x).
         /// </summary>
         Relu
-    }
-
-    /// <summary>
-    /// Represents a base class for layers with an optional fused activation at the end of the execution.
-    /// </summary>
-    abstract class FusedActivation : Layer
-    {
-        public FusableActivation fusedActivation;
-
-        public override string ToString()
-        {
-            return $"{base.ToString()}, fusedActivation: {fusedActivation}";
-        }
-    }
-
-    /// <summary>
-    /// Represents a base class for layers that apply an operation to input tensors using numpy-style broadcasting.
-    /// </summary>
-    [Inputs(names = new[] { "a", "b" })]
-    abstract class Broadcast : Layer
-    {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var a = getPartialTensor(0);
-            var b = getPartialTensor(1);
-
-            var shapeOut = a.shape.Broadcast(b.shape);
-            var tensorOut = PartialTensor.Create(a.dataType, shapeOut);
-
-            if (shapeOut.IsStatic() && shapeOut.rank <= 1 && a.isPartiallyKnown && b.isPartiallyKnown)
-            {
-                if (a is PartialTensor<int> aInt && b is PartialTensor<int> bInt && tensorOut is PartialTensor<int> oInt)
-                {
-                    for (var i = 0; i < oInt.length; i++)
-                        oInt[i] = InferPartial(aInt[aInt.length > 1 ? i : 0], bInt[bInt.length > 1 ? i : 0]);
-                }
-                else if (a is PartialTensor<float> aFloat && b is PartialTensor<float> bFloat && tensorOut is PartialTensor<float> oFloat)
-                {
-                    for (var i = 0; i < oFloat.length; i++)
-                        oFloat[i] = InferPartial(aFloat[aFloat.length > 1 ? i : 0], bFloat[bFloat.length > 1 ? i : 0]);
-                }
-            }
-
-            setPartialTensor(0, tensorOut);
-        }
-
-        internal abstract PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b) where T : unmanaged;
     }
 }

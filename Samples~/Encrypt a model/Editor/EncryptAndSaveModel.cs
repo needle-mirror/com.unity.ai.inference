@@ -5,12 +5,12 @@ using UnityEditor;
 using UnityEngine;
 using System.Security.Cryptography;
 
-// A custom editor window to demonstrate saving an onnx model as an encrypted Inference Engine model
+// A custom editor window to demonstrate saving an onnx model as an encrypted Sentis model
 public class EncryptAndSaveModel : EditorWindow
 {
     public ModelAsset modelAsset;
 
-    [MenuItem("Inference Engine/Sample/Encrypt And Save Model")]
+    [MenuItem("Sentis/Sample/Encrypt And Save Model")]
     public static void ShowExample()
     {
         EncryptAndSaveModel wnd = GetWindow<EncryptAndSaveModel>();

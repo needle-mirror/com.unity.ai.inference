@@ -4,78 +4,21 @@ using UnityEngine;
 namespace Unity.InferenceEngine.Layers
 {
     /// <summary>
-    /// Represents a local pooling layer.
+    /// Represents an `AveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
-    abstract class LocalPool : Layer
+    [Operator(category = "Pooling")]
+    partial class AveragePool : Layer
     {
         public int[] kernelShape;
         public int[] strides;
         public int[] pads;
         public AutoPad autopad;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad)
         {
-            var X = getPartialTensor(0);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
-            shapeX.DeclareRank(2 + kernelShape.Length);
-
-            Logger.AssertIsTrue(strides == null || shapeX.rank - 2 == strides.Length, "Pool.InputError: strides must have same number of values as spatial dimensions or be null");
-            Logger.AssertIsTrue(pads == null || (shapeX.rank - 2) * 2 == pads.Length, "Pool.InputError: padding must have twice the number of values as spatial dimensions or be null");
-
-            var shapeOut = new DynamicTensorShape(shapeX);
-
-            for (var i = 2; i < shapeOut.rank; i++)
-            {
-                var s = strides == null ? 1 : strides[i - 2];
-                var p = (pads == null || autopad != AutoPad.NotSet) ? 0 : (pads[i - 2] + pads[i - 2 + (shapeX.rank - 2)]);
-                shapeOut[i] = shapeX[i].Pool(kernelShape[i - 2], s, p, 1, false, autopad);
-            }
-
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
+            return PartialTensor.LocalPool(input, kernelShape, strides, pads, autopad);
         }
 
-        public override string ToString()
-        {
-            return $"{base.ToString()}, kernelShape: [{string.Join(", ", kernelShape)}], strides: [{string.Join(", ", strides)}], pads: [{string.Join(", ", pads)}], autopad: {autopad}";
-        }
-    }
-
-    /// <summary>
-    /// Represents a global pooling layer.
-    /// </summary>
-    abstract class GlobalPool : Layer
-    {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var X = getPartialTensor(0);
-            var dataType = X.dataType;
-            var shapeX = X.shape;
-            if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, PartialTensor.Create(dataType));
-                return;
-            }
-
-            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 3 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 3, shapeX.rank);
-
-            var shapeOut = new DynamicTensorShape(shapeX);
-
-            for (var i = 2; i < shapeOut.rank; i++)
-            {
-                shapeOut[i] = DynamicTensorDim.One;
-            }
-
-            setPartialTensor(0, PartialTensor.Create(dataType, shapeOut));
-        }
-    }
-
-    /// <summary>
-    /// Represents an `AveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across its spatial dimensions according to the given pool and stride values.
-    /// </summary>
-    [Operator(category = "Pooling")]
-    partial class AveragePool : LocalPool
-    {
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -91,8 +34,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `GlobalAveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
     [Operator(category = "Pooling")]
-    partial class GlobalAveragePool : GlobalPool
+    partial class GlobalAveragePool : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.GlobalPool(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -107,8 +55,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `GlobalMaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
     [Operator(category = "Pooling")]
-    partial class GlobalMaxPool : GlobalPool
+    partial class GlobalMaxPool : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.GlobalPool(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -123,8 +76,18 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `MaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
     [Operator(category = "Pooling")]
-    partial class MaxPool : LocalPool
+    partial class MaxPool : Layer
     {
+        public int[] kernelShape;
+        public int[] strides;
+        public int[] pads;
+        public AutoPad autopad;
+
+        internal static PartialTensor InferPartial(PartialTensor input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad)
+        {
+            return PartialTensor.LocalPool(input, kernelShape, strides, pads, autopad);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;

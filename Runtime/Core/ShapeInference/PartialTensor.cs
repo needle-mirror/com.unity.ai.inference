@@ -8,8 +8,8 @@ namespace Unity.InferenceEngine
     /// </summary>
     abstract class PartialTensor
     {
-        protected DataType m_DataType;
-        protected DynamicTensorShape m_Shape;
+        protected readonly DataType m_DataType;
+        protected readonly DynamicTensorShape m_Shape;
 
         /// <summary>
         /// The data type of the partial tensor as a DataType.
@@ -20,6 +20,12 @@ namespace Unity.InferenceEngine
         /// The shape of the partial tensor as a DynamicTensorShape.
         /// </summary>
         public DynamicTensorShape shape => m_Shape;
+
+        protected PartialTensor(DataType dataType, DynamicTensorShape shape)
+        {
+            m_DataType = dataType;
+            m_Shape = shape;
+        }
 
         /// <summary>
         /// Whether partial elements are stored.
@@ -59,10 +65,10 @@ namespace Unity.InferenceEngine
         {
             return t.dataType switch
             {
-                DataType.Float => PartialTensor<float>.FromTensor(t as Tensor<float>),
-                DataType.Int => PartialTensor<int>.FromTensor(t as Tensor<int>),
-                DataType.Byte => PartialTensor<byte>.FromTensor(t as Tensor<byte>),
-                DataType.Short => PartialTensor<short>.FromTensor(t as Tensor<short>),
+                DataType.Float => PartialTensor<float>.FromValues(t.shape, (t as Tensor<float>).DownloadToArray()),
+                DataType.Int => PartialTensor<int>.FromValues(t.shape, (t as Tensor<int>).DownloadToArray()),
+                DataType.Byte => PartialTensor<byte>.FromValues(t.shape, (t as Tensor<byte>).DownloadToArray()),
+                DataType.Short => PartialTensor<short>.FromValues(t.shape, (t as Tensor<short>).DownloadToArray()),
                 _ => throw new ArgumentOutOfRangeException(nameof(t.dataType), t.dataType, null)
             };
         }
@@ -112,6 +118,15 @@ namespace Unity.InferenceEngine
 
         protected abstract bool IsEquivalent(PartialTensor other);
 
+        public static bool IsEqual(PartialTensor a, PartialTensor b)
+        {
+            if (a is null)
+                return b is null;
+            return a.IsEqual(b);
+        }
+
+        protected abstract bool IsEqual(PartialTensor other);
+
         /// <summary>
         /// Whether the partial tensor is fully known, i.e. the shape is known and all the partial elements are known.
         /// If so this partial tensor can be converted to a tensor.
@@ -151,6 +166,145 @@ namespace Unity.InferenceEngine
 
         public abstract void CopyElement(int dstIndex, PartialTensor src, int srcIndex);
 
+        public static PartialTensor Activation(PartialTensor input)
+        {
+            return Create(input.dataType, input.shape);
+        }
+
+        public static PartialTensor<T3> Broadcast<T1, T2, T3>(PartialTensor<T1> a, PartialTensor<T2> b, Func<PartialTensorElement<T1>, PartialTensorElement<T2>, PartialTensorElement<T3>> inferPartial) where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
+        {
+            var shapeOut = a.shape.Broadcast(b.shape);
+            var tensorOut = new PartialTensor<T3>(shapeOut);
+
+            if (shapeOut.IsStatic() && shapeOut.rank <= 1 && a.isPartiallyKnown && b.isPartiallyKnown)
+            {
+                for (var i = 0; i < tensorOut.length; i++)
+                    tensorOut[i] = inferPartial(a[a.length > 1 ? i : 0], b[b.length > 1 ? i : 0]);
+            }
+
+            return tensorOut;
+        }
+
+        public static PartialTensor Unary<T1, T2>(PartialTensor<T1> a, Func<PartialTensorElement<T1>, PartialTensorElement<T2>> inferPartial) where T1 : unmanaged where T2 : unmanaged
+        {
+            var output = new PartialTensor<T2>(a.shape);
+            if (output.isPartiallyKnown)
+            {
+                for (var i = 0; i < output.length; i++)
+                    output[i] = inferPartial(a[i]);
+            }
+
+            return output;
+        }
+
+        public static PartialTensor Reduce(PartialTensor data, PartialTensor axes, bool keepdims, bool noopWithEmptyAxes)
+        {
+            var dataType = data.dataType;
+            var shapeData = data.shape;
+            var shapeAxes = axes?.shape ?? new DynamicTensorShape(DynamicTensorDim.Zero);
+            if (axes != null && axes.isPartiallyKnown && axes.length != 0)
+            {
+                var reducedShape = new DynamicTensorShape(shapeData);
+                if (!axes.IsStatic() && reducedShape.hasRank)
+                {
+                    // replace any non 1 dims with unknown (1 stays the same whether reduced or not)
+                    for (var i = 0; i < reducedShape.rank; i++)
+                    {
+                        if (reducedShape[i] == 1)
+                            continue;
+                        reducedShape[i] = DynamicTensorDim.Unknown;
+                    }
+                }
+
+                for (var i = 0; i < axes.length; i++)
+                {
+                    if (!axes.Get<int>(i).isValue)
+                        continue;
+                    var axis = axes.Get<int>(i).value;
+                    reducedShape[axis] = DynamicTensorDim.One;
+                }
+
+                var tensorOut = Create(dataType, reducedShape);
+                if (!keepdims)
+                {
+                    tensorOut = tensorOut.Reshape(!axes.IsStatic() ? DynamicTensorShape.DynamicOfRank(tensorOut.shape.rank - axes.length) : tensorOut.shape.Squeeze(axes as PartialTensor<int>));
+                }
+
+                return tensorOut;
+            }
+
+            if (shapeAxes.IsStatic())
+            {
+                if (shapeAxes[0].value != 0)
+                    return Create(dataType, keepdims ? DynamicTensorShape.DynamicOfRankLike(shapeData) : DynamicTensorShape.DynamicRank);
+                if (noopWithEmptyAxes)
+                    return Create(dataType, shapeData);
+                return Create(dataType, keepdims ? DynamicTensorShape.OnesLike(shapeData) : new DynamicTensorShape());
+            }
+
+            return Create(dataType, keepdims && !noopWithEmptyAxes ? DynamicTensorShape.DynamicOfRankLike(shapeData) : DynamicTensorShape.DynamicRank);
+        }
+
+        public static PartialTensor ArgReduce(PartialTensor input, int axis, bool keepdims)
+        {
+            var shapeInput = input.shape;
+            if (!shapeInput.hasRank)
+                return new PartialTensor<int>();
+
+            var reducedShape = new DynamicTensorShape(shapeInput);
+
+            // reducing on a zero axis will result in a zero rather than a one
+            if (shapeInput[axis].isValue)
+                reducedShape[axis] = shapeInput[axis].value == 0 ? DynamicTensorDim.Zero : DynamicTensorDim.One;
+            else
+                reducedShape[axis] = DynamicTensorDim.Unknown;
+
+            var shapeOut = !keepdims ? reducedShape.Squeeze(axis) : reducedShape;
+            return new PartialTensor<int>(shapeOut);
+        }
+
+        public static PartialTensor LocalPool(PartialTensor input, int[] kernelShape, int[] strides, int[] pads, Layers.AutoPad autopad)
+        {
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
+            shapeInput.DeclareRank(2 + kernelShape.Length);
+
+            Logger.AssertIsTrue(strides == null || shapeInput.rank - 2 == strides.Length, "Pool.InputError: strides must have same number of values as spatial dimensions or be null");
+            Logger.AssertIsTrue(pads == null || (shapeInput.rank - 2) * 2 == pads.Length, "Pool.InputError: padding must have twice the number of values as spatial dimensions or be null");
+
+            var shapeOut = new DynamicTensorShape(shapeInput);
+
+            for (var i = 2; i < shapeOut.rank; i++)
+            {
+                var s = strides == null ? 1 : strides[i - 2];
+                var p = (pads == null || autopad != Layers.AutoPad.NotSet) ? 0 : (pads[i - 2] + pads[i - 2 + (shapeInput.rank - 2)]);
+                shapeOut[i] = shapeInput[i].Pool(kernelShape[i - 2], s, p, 1, false, autopad);
+            }
+
+            return Create(dataType, shapeOut);
+        }
+
+        public static PartialTensor GlobalPool(PartialTensor input)
+        {
+            var dataType = input.dataType;
+            var shapeInput = input.shape;
+            if (!shapeInput.hasRank)
+                return Create(dataType);
+
+            Logger.AssertIsTrue(shapeInput.hasRank ? shapeInput.rank >= 3 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 3, shapeInput.rank);
+
+            var shapeOut = new DynamicTensorShape(shapeInput);
+
+            for (var i = 2; i < shapeOut.rank; i++)
+            {
+                shapeOut[i] = DynamicTensorDim.One;
+            }
+
+            return Create(dataType, shapeOut);
+        }
+
+        public abstract PartialTensor Cast<T1>() where T1 : unmanaged;
+
         /// <summary>
         /// Returns a string that represents the `PartialTensor`.
         /// </summary>
@@ -169,7 +323,7 @@ namespace Unity.InferenceEngine
     class PartialTensor<T> : PartialTensor where T : unmanaged
     {
         const int k_MaxLength = TensorShape.maxRank * 2;
-        PartialTensorElement<T>[] m_Elements;
+        readonly PartialTensorElement<T>[] m_Elements;
 
         public override int length => m_Elements.Length;
 
@@ -180,9 +334,8 @@ namespace Unity.InferenceEngine
         /// If the shape is small enough unknown partial tensor elements are tracked and 'isPartiallyKnown' returns 'true'.
         /// </summary>
         public PartialTensor(DynamicTensorShape shape)
+            : base(AllocatorUtils.ToDataType<T>(), shape)
         {
-            m_DataType = AllocatorUtils.ToDataType<T>();
-            m_Shape = shape;
             if (shape.IsStatic() && shape.Length() <= k_MaxLength)
                 m_Elements = new PartialTensorElement<T>[shape.Length().value];
         }
@@ -197,15 +350,14 @@ namespace Unity.InferenceEngine
         /// Initializes and returns a partial tensor from a given 'tensor'. The data type shape and potential partial
         /// tensor elements are inferred from the given 'tensor'.
         /// </summary>
-        public static PartialTensor<T> FromTensor(Tensor<T> tensor)
+        public static PartialTensor<T> FromValues(TensorShape shape, ReadOnlySpan<T> values)
         {
-            var partialTensor = new PartialTensor<T>(new DynamicTensorShape(tensor.shape));
+            var partialTensor = new PartialTensor<T>(new DynamicTensorShape(shape));
             if (!partialTensor.isPartiallyKnown)
                 return partialTensor;
 
-            var valueArray = tensor.DownloadToArray();
             for (var i = 0; i < partialTensor.length; i++)
-                partialTensor[i] = PartialTensorElement<T>.Value(valueArray[i]);
+                partialTensor[i] = PartialTensorElement<T>.Value(values[i]);
 
             return partialTensor;
         }
@@ -301,6 +453,18 @@ namespace Unity.InferenceEngine
             return reshapedPartialTensor;
         }
 
+        public override PartialTensor Cast<T1>()
+        {
+            var castPartialTensor = new PartialTensor<T1>(shape);
+            if (!isPartiallyKnown)
+                return castPartialTensor;
+
+            for (var i = 0; i < length; i++)
+                castPartialTensor.Set(i, m_Elements[i].Cast<T1>());
+
+            return castPartialTensor;
+        }
+
         /// <inheritdoc/>
         public override bool IsStatic()
         {
@@ -379,7 +543,26 @@ namespace Unity.InferenceEngine
                 return true;
             for (var i = 0; i < length; i++)
             {
-                if (this[i] != (other as PartialTensor<T>)[i])
+                if (!this[i].Equals((other as PartialTensor<T>)[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
+        protected override bool IsEqual(PartialTensor other)
+        {
+            if (other == null)
+                return false;
+            if (dataType != other.dataType)
+                return false;
+            if (!isPartiallyKnown || !other.isPartiallyKnown)
+                return false;
+            if (length != other.length)
+                return false;
+            for (var i = 0; i < length; i++)
+            {
+                if (!(this[i] == (other as PartialTensor<T>)[i]))
                     return false;
             }
 
@@ -409,6 +592,16 @@ namespace Unity.InferenceEngine
                 sb.Append(m_Shape.ToString(GetParamName));
             }
             return sb.ToString();
+        }
+
+        public override int GetHashCode()
+        {
+            var hashcode = HashCode.Combine(m_DataType, m_Shape);
+            if (m_Elements == null)
+                return hashcode;
+            for (var i = 0; i < length; i++)
+                hashcode = HashCode.Combine(hashcode, m_Elements[i].GetHashCode());
+            return hashcode;
         }
     }
 }

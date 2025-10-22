@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor PixelShuffle(FunctionalTensor input, int upscaleFactor)
         {
-            return FromLayer(new Layers.DepthToSpace(upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow), input);
+            return FunctionalLayer.DepthToSpace(input, upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow);
         }
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor PixelUnshuffle(FunctionalTensor input, int downscaleFactor)
         {
-            return FromLayer(new Layers.SpaceToDepth(downscaleFactor), input);
+            return FunctionalLayer.SpaceToDepth(input, downscaleFactor);
         }
 
         /// <summary>
@@ -52,9 +52,9 @@ namespace Unity.InferenceEngine
                 axes[i] = 2 + i;
 
             if (size != null)
-                return FromLayer(new Layers.Resize(Layers.ScaleMode.Sizes, Layers.CoordTransformMode.PytorchHalfPixel, interpolationMode, Layers.NearestMode.RoundPreferFloor, axes), new[] { input, Constant(size) });
+                return FunctionalLayer.Resize(input, Constant(size), Layers.ScaleMode.Sizes, Layers.CoordTransformMode.PytorchHalfPixel, interpolationMode, Layers.NearestMode.RoundPreferFloor, axes);
 
-            return FromLayer(new Layers.Resize(Layers.ScaleMode.Scales, Layers.CoordTransformMode.PytorchHalfPixel, interpolationMode, Layers.NearestMode.RoundPreferFloor, axes), new[] { input, Constant(scaleFactor) });
+            return FunctionalLayer.Resize(input, Constant(scaleFactor), Layers.ScaleMode.Scales, Layers.CoordTransformMode.PytorchHalfPixel, interpolationMode, Layers.NearestMode.RoundPreferFloor, axes);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Unity.InferenceEngine
                 "reflection" => Layers.PaddingMode.Reflection,
                 _ => throw new ArgumentOutOfRangeException(nameof(paddingMode), paddingMode, null)
             };
-            return FromLayer(new Layers.GridSample(interpolationMode, padMode, alignCorners), new[] { input, grid });
+            return FunctionalLayer.GridSample(input, grid, interpolationMode, padMode, alignCorners);
         }
     }
 }

@@ -4,7 +4,7 @@ For larger models, it's advisable to use a serialized asset, which typically com
 
 ## Create a serialized asset
 
-After you import your ONNX model into the Unity project, follow these steps:
+After you import your ONNX or LiteRT file into the Unity project, follow these steps:
 
 1. Select the model file in the **Project** window.
 1. In the **Inspector** window, select **Serialize to StreamingAssets**.
@@ -32,7 +32,7 @@ Some advantages of using a serialized model are as follows:
 
 ## Serialization layout
 
-Inference Engine serializes a `.sentis` file with `FlatBuffers`.
+Sentis serializes a `.sentis` file with `FlatBuffers`.
 
 ```
              ┌───────────────────────────────────┐
@@ -52,7 +52,7 @@ Weights  ─┤  ├────────────────────
           └─ └───────────────────────────────────┘
 ```
 
-For more information, refer to `Inference Engine/Runtime/Core/Serialization/program.fbs`.
+For more information, refer to `com.unity.ai.inference/Runtime/Core/Serialization/program.fbs`.
 
 ## Additional resources
 

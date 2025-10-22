@@ -66,7 +66,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor BroadcastTo(this FunctionalTensor input, int[] shape)
         {
-            return FromLayer(new Layers.Expand(), new[] { input, Constant(shape) });
+            return FunctionalLayer.Expand(input, Constant(shape));
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Clone(this FunctionalTensor input)
         {
-            return FromLayer(new Layers.Identity(), input);
+            return FunctionalLayer.Identity(input);
         }
 
         /// <summary>
@@ -87,7 +87,20 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor CumSum(FunctionalTensor input, int dim)
         {
-            return FromLayer(new Layers.CumSum(false, false), new[] { input, Constant(dim) });
+            return FunctionalLayer.CumSum(input, Constant(dim), false, false);
+        }
+
+        /// <summary>
+        /// Returns the remaining dimensions of the input with its diagonal elements with respect to dim1 and dim2 appended as the last dimension.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="offset">The diagonal to consider as an offset with respect to the main diagonal.</param>
+        /// <param name="dim1">The first dimension with respect to which to take diagonal.</param>
+        /// <param name="dim2">The second dimension with respect to which to take diagonal.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor Diagonal(FunctionalTensor input, int offset = 0, int dim1 = 0, int dim2 = 1)
+        {
+            return FunctionalLayer.Diagonal(input, offset, dim1, dim2);
         }
 
         /// <summary>
@@ -98,7 +111,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Einsum(string equation, params FunctionalTensor[] operands)
         {
-            return FromLayer(new Layers.Einsum(equation), operands);
+            return FunctionalLayer.Einsum(operands, equation);
         }
 
         /// <summary>
@@ -120,7 +133,7 @@ namespace Unity.InferenceEngine
                 steps[i] = -1;
             }
 
-            return FromLayer(new Layers.Slice(), new[] { input, Constant(starts), Constant(ends), Constant(dims), Constant(steps) });
+            return FunctionalLayer.Slice(input, Constant(starts), Constant(ends), Constant(dims), Constant(steps));
         }
 
         /// <summary>
@@ -154,25 +167,25 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Retains the lower triangular values of an input matrix (batch). THe other values are zeroed.
+        /// Retains the lower triangular values of an input matrix (batch). The other values are zeroed.
         /// </summary>
         /// <param name="input">The input tensor.</param>
         /// <param name="diagonal">The integer offset of the diagonal.</param>
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriL(FunctionalTensor input, int diagonal = 0)
         {
-            return FromLayer(new Layers.Trilu(Layers.TriluMode.Lower), new[] { input, Constant(diagonal) });
+            return FunctionalLayer.Trilu(input, Constant(diagonal), Layers.TriluMode.Lower);
         }
 
         /// <summary>
-        /// Retains the upper triangular values of an input matrix (batch). THe other values are zeroed.
+        /// Retains the upper triangular values of an input matrix (batch). The other values are zeroed.
         /// </summary>
         /// <param name="input">The input tensor.</param>
         /// <param name="diagonal">The integer offset of the diagonal.</param>
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriU(FunctionalTensor input, int diagonal = 0)
         {
-            return FromLayer(new Layers.Trilu(Layers.TriluMode.Upper), new[] { input, Constant(diagonal) });
+            return FunctionalLayer.Trilu(input, Constant(diagonal), Layers.TriluMode.Upper);
         }
     }
 }

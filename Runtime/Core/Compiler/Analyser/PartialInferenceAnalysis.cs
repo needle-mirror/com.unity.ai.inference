@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Analyser
@@ -13,7 +15,7 @@ namespace Unity.InferenceEngine.Compiler.Analyser
 
             foreach (var constant in model.constants)
             {
-                ctx.AddPartialTensor(constant.index, PartialTensor.FromTensor(constant.WeightsToTensorWithSharedTensorData()));
+                ctx.AddPartialTensor(constant.index, constant.GetPartialTensor());
             }
 
             // model inputs
@@ -24,7 +26,7 @@ namespace Unity.InferenceEngine.Compiler.Analyser
 
             // Partial tensor inference
             foreach (var layer in model.layers)
-                layer.InferPartial(i => ctx.GetPartialTensor(layer.inputs[i]), (i, partialTensor) => ctx.AddPartialTensor(layer.outputs[i], partialTensor));
+                layer.InferPartial(ctx);
 
             ProfilerMarkers.InferModelPartialTensors.End();
 

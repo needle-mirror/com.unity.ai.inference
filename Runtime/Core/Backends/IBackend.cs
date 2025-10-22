@@ -561,6 +561,13 @@ namespace Unity.InferenceEngine
         void Floor(Tensor<float> X, Tensor<float> O);
 
         /// <summary>
+        /// Computes an output tensor by applying the element-wise `Trunc` math function: f(x) = trunc(x).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Trunc(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
         /// Computes an output tensor by applying the element-wise `Round` math function: f(x) = round(x).
         ///
         /// If the fractional part is equal to 0.5, rounds to the nearest even integer.
@@ -598,11 +605,46 @@ namespace Unity.InferenceEngine
         void Exp(Tensor<float> X, Tensor<float> O);
 
         /// <summary>
+        /// Computes an output tensor by applying the element-wise `Expm1` math function: f(x) = exp(x) - 1.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Expm1(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
         /// Computes an output tensor by applying the element-wise `Log` math function: f(x) = log(x).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void Log(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Log10` math function: f(x) = log10(x).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Log10(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Log1p` math function: f(x) = log(1 + x).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Log1p(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Log2` math function: f(x) = log2(x).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Log2(Tensor<float> X, Tensor<float> O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Rsqrt` math function: f(x) = 1 / sqrt(x).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Rsqrt(Tensor<float> X, Tensor<float> O);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Sqrt` math function: f(x) = sqrt(x).
@@ -755,6 +797,16 @@ namespace Unity.InferenceEngine
         void Add(Tensor<int> A, Tensor<int> B, Tensor<int> O);
 
         /// <summary>
+        /// Performs an element-wise `Atan2` math operation.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="y">The first input tensor.</param>
+        /// <param name="x">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Atan2(Tensor<float> y, Tensor<float> x, Tensor<float> O);
+
+        /// <summary>
         /// Performs an element-wise `Sub` math operation: f(a, b) = a - b.
         ///
         /// This supports numpy-style broadcasting of input tensors.
@@ -805,14 +857,44 @@ namespace Unity.InferenceEngine
         void Div(Tensor<float> A, Tensor<float> B, Tensor<float> O);
 
         /// <summary>
-        /// Performs an element-wise `Div` math operation: f(a, b) = a / b.
+        /// Performs an element-wise `TruncDiv` math operation: f(a, b) = trunc(a / b).
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
         /// <param name="A">The first input tensor.</param>
         /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Div(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+        void TruncDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O);
+
+        /// <summary>
+        /// Performs an element-wise `FloorDiv` math operation: f(a, b) = floor(a / b).
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void FloorDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O);
+
+        /// <summary>
+        /// Performs an element-wise `TruncDiv` math operation: f(a, b) = trunc(a / b).
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void TruncDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `FloorDiv` math operation: f(a, b) = floor(a / b).
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void FloorDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O);
 
         /// <summary>
         /// Performs an element-wise `Mod` math operation: f(a, b) = a % b.
@@ -1207,6 +1289,26 @@ namespace Unity.InferenceEngine
         void Equal(Tensor<int> A, Tensor<int> B, Tensor<int> O);
 
         /// <summary>
+        /// Performs an element-wise `NotEqual` logical comparison operation: f(a, b) = 1 if a != b, otherwise f(x) = 0.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void NotEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `NotEqual` logical comparison operation: f(a, b) = 1 if a != b, otherwise f(x) = 0.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void NotEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+
+        /// <summary>
         /// Performs an element-wise `Or` logical operation: f(a, b) = a | b.
         ///
         /// This supports numpy-style broadcasting of input tensors.
@@ -1240,6 +1342,43 @@ namespace Unity.InferenceEngine
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void Not(Tensor<int> X, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `BitwiseAnd` math operation: f(a, b) = a &#38; b.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void BitwiseAnd(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `BitwiseOr` math operation: f(a, b) = a &#124; b.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void BitwiseOr(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `BitwiseXor` math operation: f(a, b) = a ^ b.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void BitwiseXor(Tensor<int> A, Tensor<int> B, Tensor<int> O);
+
+        /// <summary>
+        /// Performs an element-wise `BitwiseNot` logical operation: f(x) = ~x.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void BitwiseNot(Tensor<int> X, Tensor<int> O);
 
         /// <summary>
         /// Performs an element-wise `Sign` math operation: f(x) = 1 if x > 0. f(x) = -1 if x &lt; 0. Otherwise f(x) = 0.
@@ -1348,6 +1487,15 @@ namespace Unity.InferenceEngine
         /// <param name="start">The start index along the axis.</param>
         /// <param name="step">The step value for slicing.</param>
         void SliceSet(Tensor values, Tensor O, int axis, int start, int step);
+
+        /// <summary>
+        /// Calculates an output tensor by taking strides of an input tensor storage.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="strides">The stride (in elements) for each axis of the output.</param>
+        /// <param name="offset">The starting offset (in elements) in the input tensor storage.</param>
+        void AsStrided(Tensor X, Tensor O, ReadOnlySpan<int> strides, int offset);
 
         /// <summary>
         /// Calculates an output tensor by repeating the input layer a given number of times along each axis.
@@ -1563,6 +1711,67 @@ namespace Unity.InferenceEngine
         void DequantizeLinear(Tensor<byte> X, Tensor<float> O, float scale, byte zeroPoint);
 
         /// <summary>
+        /// Computes the STFT of the input signal.
+        /// </summary>
+        /// <param name="signal">The input signal tensor.</param>
+        /// <param name="window">The optional window tensor that modulates a signal frame.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="frameStep">The stride (in the signal) between two frames to be processed.</param>
+        /// <param name="frameLength">The size of a single frame. If window is specified, has to be the same as the window length.</param>
+        /// <param name="onesided">Returns only half of the DFT frequency results (real signals have a symmetric DFT spectrum).</param>
+        /// <param name="windowedDFTMatrix">Optional DFT matrix to calculate each DFT: for real signals, alternate real/ima parts should be on rows, else for complex signals, on columns. The window should also be baked in.</param>
+        /// <returns>The output tensor.</returns>
+        void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool onesided);
+
+        /// <summary>
+        /// Computes the DFT of the input signal.
+        /// </summary>
+        /// <param name="input">The input signal tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="dftLength">The optional size of the DFT: if less than the size of the axis on which to perform the DFT, limits the signal and if larger, the signal is padded to zero.</param>
+        /// <param name="axis">The optional axis in the input tensor on which to perform the DFT. Defaults to -2, as axis -1 is sized 1 or 2 depending on if the signal is real or complex.</param>
+        /// <param name="inverse">Whether to perform the inverse discrete Fourier Transform.</param>
+        /// <param name="onesided">Returns only half of the DFT frequency results (real signals have a symmetric DFT spectrum). Only valid on real signals.</param>
+        /// <param name="dftMatrix">Optional DFT matrix to calculate each DFT: for real signals, alternate real/ima parts should be on rows, else for complex signals, on columns.</param>
+        /// <returns>The output tensor.</returns>
+        void DFT(Tensor<float> input, Tensor<float> O, int dftLength, int axis, Tensor<float> dftMatrix, bool inverse, bool onesided);
+
+        /// <summary>
+        /// Computes a Blackman window.
+        /// </summary>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="periodic">Whether the window is periodic.</param>
+        /// <returns>The output tensor.</returns>
+        void BlackmanWindow(Tensor<float> O, bool periodic);
+
+        /// <summary>
+        /// Computes a Hamming window.
+        /// </summary>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="periodic">Whether the window is periodic.</param>
+        /// <returns>The output tensor.</returns>
+        void HammingWindow(Tensor<float> O, bool periodic);
+
+        /// <summary>
+        /// Computes a Hann window.
+        /// </summary>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="periodic">Whether the window is periodic.</param>
+        /// <returns>The output tensor.</returns>
+        void HannWindow(Tensor<float> O, bool periodic);
+
+        /// <summary>
+        /// Computes a mel weight matrix.
+        /// </summary>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="dftLength">The size of the original DFT.</param>
+        /// <param name="sampleRate">The samples per second of the input signal used to create the spectrogram.</param>
+        /// <param name="lowerEdgeHertz">The lower bound on the frequencies to be included in the mel spectrum.</param>
+        /// <param name="upperEdgeHertz">The desired top edge of the highest frequency band.</param>
+        /// <returns>The output tensor.</returns>
+        void MelWeightMatrix(Tensor<float> O, int dftLength, int sampleRate, float lowerEdgeHertz, float upperEdgeHertz);
+
+        /// <summary>
         /// Returns the `BackendType` for the ops.
         /// </summary>
         BackendType backendType { get; }
@@ -1584,8 +1793,7 @@ namespace Unity.InferenceEngine
         /// Prepares storage for a given model.
         /// </summary>
         /// <param name="model">The model to prepare the storage of.</param>
-        /// <param name="takeoverWeights">Whether the execution can take ownership of the weights of the model.</param>
-        void PrepareStorage(Model model, bool takeoverWeights = false);
+        void PrepareStorage(Model model);
 
         /// <summary>
         /// Retrieves Tensor for given index.

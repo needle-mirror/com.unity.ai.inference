@@ -1,58 +1,30 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.InferenceEngine.Graph;
+using UnityEngine;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Cleanup
 {
-    class RemoveUnusedPass : IModelPass
+    /// <summary>
+    /// Removes nodes which do not contribute to the calculation of an output.
+    /// </summary>
+    class RemoveUnusedPass : GraphPass
     {
-        bool IsOutputUsed(Layer layer, HashSet<int> outputsUsed)
+        public override void Run(GraphModule gm)
         {
-            foreach (var lo in layer.outputs)
+            gm.graph.EliminateDeadCode();
+            var usedAttributes = new HashSet<string>();
+            foreach (var node in gm.graph.Nodes())
             {
-                if (lo == -1)
-                    continue;
-                if (outputsUsed.Contains(lo))
-                    return true;
+                if (node.op == Node.kOpGetAttr)
+                    usedAttributes.Add(node.target);
             }
 
-            return false;
-        }
-
-        public void Run(ref Model model)
-        {
-            // algorithm:
-            // bottom up graph iteration
-            //  layer l
-            //  check if previous layers uses l or any of its outputs
-            //  if keep and add l.inputs as used outputs
-            //  else remove
-            var layersToRemove = new HashSet<int>();
-            var outputsUsed = new HashSet<int>();
-            foreach (var o in model.outputs)
-                outputsUsed.Add(o.index);
-            for (var i = model.layers.Count - 1; i >= 0; i--)
+            foreach (var key in gm.attributes.Keys.ToList())
             {
-                var layer = model.layers[i];
-
-                bool isOutputUsed = IsOutputUsed(layer, outputsUsed);
-
-                if (isOutputUsed)
-                {
-                    foreach (var input in layer.inputs)
-                    {
-                        if (input == -1)
-                            continue;
-                        outputsUsed.Add(input);
-                    }
-                }
-                else
-                {
-                    layersToRemove.Add(layer.outputs[0]);
-                }
+                if (!usedAttributes.Contains(key))
+                    gm.attributes.Remove(key);
             }
-
-            model.layers = model.layers.Where(l => !layersToRemove.Contains(l.outputs[0])).ToList();
-            model.constants = model.constants.Where(c => outputsUsed.Contains(c.index)).ToList();
         }
     }
 }

@@ -20,7 +20,8 @@ namespace Unity.InferenceEngine
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Constant(TensorShape shape, int[] values)
         {
-            return FunctionalTensor.FromConstant(new Constant(-1, shape, values));
+            var constantTensor = new ConstantTensor(shape, values);
+            return new FunctionalTensor(constantTensor.GetPartialTensor(), new ConstantNode(constantTensor));
         }
 
         /// <summary>
@@ -51,7 +52,8 @@ namespace Unity.InferenceEngine
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Constant(TensorShape shape, float[] values)
         {
-            return FunctionalTensor.FromConstant(new Constant(-1, shape, values));
+            var constantTensor = new ConstantTensor(shape, values);
+            return new FunctionalTensor(constantTensor.GetPartialTensor(), new ConstantNode(constantTensor));
         }
 
         /// <summary>

@@ -30,7 +30,7 @@ namespace Unity.InferenceEngine.Layers
     /// </summary>
     [Operator(category = "Convolution")]
     [Inputs(names = new[] { "X", "W", "B" })]
-    partial class Conv : FusedActivation
+    partial class Conv : Layer
     {
         public AutoPad autoPad;
         public int[] dilations;
@@ -38,11 +38,10 @@ namespace Unity.InferenceEngine.Layers
         public int[] pads;
         public int[] strides;
         public int[] kernelShape;
+        public FusableActivation fusedActivation;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor X, PartialTensor W, PartialTensor B, AutoPad autoPad, int[] dilations, int group, int[] pads, int[] strides, int[] kernelShape, FusableActivation fusedActivation)
         {
-            var X = getPartialTensor(0);
-            var W = getPartialTensor(1);
             var shapeX = X.shape;
             var shapeKernel = W.shape;
             for (var i = 0; kernelShape != null && i < kernelShape.Length; i++)
@@ -51,10 +50,7 @@ namespace Unity.InferenceEngine.Layers
             }
 
             if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, new PartialTensor<float>());
-                return;
-            }
+                return new PartialTensor<float>();
 
             Logger.AssertIsTrue(shapeX.rank - 2 <= 3, "RankError: incorrect number of spatial dimensions in Conv, expecting at most {0}, got {1}", 3, shapeX.rank - 2);
             shapeKernel.DeclareRank(shapeX.rank);
@@ -64,7 +60,7 @@ namespace Unity.InferenceEngine.Layers
             shapeOut[0] = shapeX[0];
             shapeOut[1] = shapeKernel[0];
 
-            var shapeBias = getPartialTensor(2)?.shape ?? DynamicTensorShape.DynamicRank;
+            var shapeBias = B?.shape ?? DynamicTensorShape.DynamicRank;
             shapeBias.DeclareRank(1);
             shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
 
@@ -83,7 +79,7 @@ namespace Unity.InferenceEngine.Layers
                     shapeOut[i] = DynamicTensorDim.Unknown;
             }
 
-            setPartialTensor(0, new PartialTensor<float>(shapeOut));
+            return new PartialTensor<float>(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -113,7 +109,7 @@ namespace Unity.InferenceEngine.Layers
     /// </summary>
     [Operator(category = "Convolution")]
     [Inputs(names = new[] { "input", "kernel", "bias" })]
-    partial class ConvTranspose : FusedActivation
+    partial class ConvTranspose : Layer
     {
         public AutoPad autoPad;
         public int[] dilations;
@@ -122,11 +118,10 @@ namespace Unity.InferenceEngine.Layers
         public int[] pads;
         public int[] strides;
         public int[] kernelShape;
+        public FusableActivation fusedActivation;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor X, PartialTensor W, PartialTensor B, AutoPad autoPad, int[] dilations, int group, int[] outputPadding, int[] pads, int[] strides, int[] kernelShape, FusableActivation fusedActivation)
         {
-            var X = getPartialTensor(0);
-            var W = getPartialTensor(1);
             var shapeX = X.shape;
             var shapeKernel = W.shape;
             for (var i = 0; kernelShape != null && i < kernelShape.Length; i++)
@@ -135,10 +130,7 @@ namespace Unity.InferenceEngine.Layers
             }
 
             if (!shapeX.hasRank)
-            {
-                setPartialTensor(0, new PartialTensor<float>());
-                return;
-            }
+                return new PartialTensor<float>();
 
             shapeKernel.DeclareRank(shapeX.rank);
 
@@ -147,7 +139,7 @@ namespace Unity.InferenceEngine.Layers
             shapeOut[0] = shapeX[0];
             shapeOut[1] = shapeKernel[1] * group;
 
-            var shapeBias = getPartialTensor(2)?.shape ?? DynamicTensorShape.DynamicRank;
+            var shapeBias = B?.shape ?? DynamicTensorShape.DynamicRank;
             shapeBias.DeclareRank(1);
             shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
 
@@ -167,7 +159,7 @@ namespace Unity.InferenceEngine.Layers
                 // TODO interpret ONNX output_shape and handle it with the autopad
             }
 
-            setPartialTensor(0, new PartialTensor<float>(shapeOut));
+            return new PartialTensor<float>(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)

@@ -187,7 +187,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Determines whether two 'DynamicTensorDim' objects are equal.
+        /// Determines whether two 'DynamicTensorDim' objects are definitely equal.
         /// </summary>
         /// <param name="a">The first 'DynamicTensorDim' to compare.</param>
         /// <param name="b">The second 'DynamicTensorDim' to compare.</param>
@@ -196,15 +196,15 @@ namespace Unity.InferenceEngine
         {
             if (a.m_DimType != b.m_DimType)
                 return false;
-            if (a.m_Value != b.m_Value)
-                return false;
-            if (a.m_Param != b.m_Param)
-                return false;
-            return true;
+            if (a.m_DimType == DimType.Static)
+                return a.value == b.value;
+            if (a.m_DimType == DimType.Param)
+                return a.param == b.param;
+            return false;
         }
 
         /// <summary>
-        /// Determines whether two 'DynamicTensorDim' objects are not equal.
+        /// Determines whether two 'DynamicTensorDim' objects are definitely not equal.
         /// </summary>
         /// <param name="a">The first 'DynamicTensorDim' to compare.</param>
         /// <param name="b">The second 'DynamicTensorDim' to compare.</param>
@@ -528,6 +528,18 @@ namespace Unity.InferenceEngine
             return Int(Mathf.RoundToInt(v));
         }
 
+        internal DynamicTensorDim DivideWithRounding(DynamicTensorDim b, int roundingDirection)
+        {
+            if (b == 1)
+                return this;
+            if (b == this)
+                return One;
+            if (!b.isValue)
+                return Unknown;
+
+            return DivideWithRounding(b.value, roundingDirection);
+        }
+
         /// <summary>
         /// Whether a `DynamicTensorDim` is known to be less than a given integer value.
         /// </summary>
@@ -540,7 +552,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Whether a `DynamicTensorDim` is known to be greater than than a given integer value.
+        /// Whether a `DynamicTensorDim` is known to be greater than a given integer value.
         /// </summary>
         /// <param name="d">The `DynamicTensorDim` to compare.</param>
         /// <param name="v">The integer value to compare.</param>

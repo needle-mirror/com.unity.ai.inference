@@ -11,20 +11,6 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public BackendType backendType => BackendType.CPU;
 
-        /// <summary>
-        /// Initializes and returns an instance of `CPUBackend`.
-        /// </summary>
-        public CPUBackend() { }
-
-        /// <summary>
-        /// Disposes of the ops and any associated memory.
-        /// </summary>
-        public void Dispose()
-        {
-            m_MemoryPool?.Dispose();
-            m_MemoryPool = null;
-        }
-
         void ResizeND(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
         {
             bool firstAlloc = false;

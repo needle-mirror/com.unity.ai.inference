@@ -1,7 +1,7 @@
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents extension functions for the Inference Engine functional API.
+    /// Represents extension functions for the Sentis functional API.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public static class FunctionalExtensions

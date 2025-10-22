@@ -1,66 +1,46 @@
 using System;
-using System.Collections.Generic;
+using Unity.InferenceEngine.Graph;
 using UnityEngine;
-using UnityEngine.Assertions;
 
 namespace Unity.InferenceEngine.Compiler.Passes.Cleanup
 {
-    // TODO remove useless patterns:
-    // Reduce keepdim 0 -> * -> Reshape
-    class RemoveNoOpsPass : IModelPass
+    /// <summary>
+    /// Removes unnecessary identity nodes from the graph.
+    /// </summary>
+    class RemoveNoOpsPass : GraphPass
     {
-        public void Run(ref Model model)
+        public override void Run(GraphModule gm)
         {
-            var noopLayers = new HashSet<int>();
-            var remap = new Dictionary<int, int>();
-            var preserve = new HashSet<int>();
-            foreach (var o in model.outputs)
-                preserve.Add(o.index);
+            var outputNode = gm.graph.OutputNode();
 
-            // algorithm:
-            // - if input is pointing to a noop, we need to remap it to upstream layer
-            // - if layer is a noop, store its link to upstream layer
-            // layers are in order of appearance, so if layer_N has layer_M as input, we'd have treated layer_M before
-            for (int l = 0; l < model.layers.Count; ++l)
+            var identityNodes = gm.graph.FindNodes(Node.kOpCallFunction, "Identity");
+
+            for (var i = identityNodes.Count - 1; i >= 0; i--)
             {
-                var layer = model.layers[l];
+                var node = identityNodes[i];
+                var inputNode = (Node)node.args[0];
 
-                // replace removed layers with their upstream inputs
-                for (int i = 0; i < layer.inputs.Length; ++i)
-                {
-                    var input = layer.inputs[i];
-
-                    if (remap.ContainsKey(input))
-                    {
-                        Assert.IsTrue(noopLayers.Contains(input));
-                        model.layers[l].inputs[i] = remap[input];
-                    }
-                    else
-                    {
-                        Assert.IsFalse(noopLayers.Contains(input));
-                    }
-                }
-
-                if (layer.inputs.Length == 0) // const
+                // if the op is a single operator that maps an input to the output we need to keep it as a copy op
+                if (node.users.Contains(outputNode) && inputNode.op is Node.kOpPlaceholder)
                     continue;
 
-                // if layer is noop = nop, identity or flatten
-                if (layer is Layers.Identity)
-                {
-                    remap[layer.outputs[0]] = layer.inputs[0];
-                    noopLayers.Add(layer.outputs[0]);
-                }
+                node.ReplaceAllUsesWith(inputNode);
+                gm.graph.EraseNode(node);
             }
 
-            model.layers.RemoveAll(x => noopLayers.Contains(x.outputs[0]) && !preserve.Contains(x.outputs[0]));
-        }
-
-        static bool IsLayerNoop(Model model, Layer layer)
-        {
-            if (layer is Layers.Identity)
-                return true;
-            else
-                return false;
+            // add copy ops to repeated outputs
+            var outputs = outputNode.args[0].AsNodeArray;
+            for (var i = 0; i < outputs.Length; i++)
+            {
+                var firstIndex = Array.IndexOf(outputs, outputs[i]);
+                if (firstIndex < i)
+                {
+                    gm.graph.InsertingBefore(outputNode);
+                    outputs[i] = gm.graph.CallFunction("Identity", new Argument[] { outputs[i] });
+                    outputs[i].partialTensor = outputs[i].partialTensor;
+                }
+            }
+            outputNode.UpdateArgs(new[] { new Argument(outputs) });
         }
     }
 }

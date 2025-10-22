@@ -17,7 +17,7 @@ namespace Unity.InferenceEngine
                 depthTensor = ReduceMax(tensor, 0) + 1;
             else
                 depthTensor = Constant(numClasses);
-            return FromLayer(new Layers.OneHot(-1, true), new[] { tensor, depthTensor, Constant(new[] { 0, 1 }) });
+            return FunctionalLayer.OneHot(tensor, depthTensor, Constant(new[] { 0, 1 }), -1, true);
         }
     }
 }

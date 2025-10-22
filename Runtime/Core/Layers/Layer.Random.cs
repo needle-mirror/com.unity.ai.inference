@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace Unity.InferenceEngine.Layers
 {
@@ -32,9 +31,9 @@ namespace Unity.InferenceEngine.Layers
         public float scale;
         public int[] shape;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(float mean, float scale, int[] shape, bool hasSeed, int seed)
         {
-            setPartialTensor(0, new PartialTensor<float>(new DynamicTensorShape(new TensorShape(shape))));
+            return new PartialTensor<float>(new DynamicTensorShape(new TensorShape(shape)));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -56,9 +55,9 @@ namespace Unity.InferenceEngine.Layers
         public float mean;
         public float scale;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, float mean, float scale, bool hasSeed, int seed)
         {
-            setPartialTensor(0, new PartialTensor<float>(getPartialTensor(0).shape));
+            return new PartialTensor<float>(input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -82,9 +81,9 @@ namespace Unity.InferenceEngine.Layers
         public float high;
         public int[] shape;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(float low, float high, int[] shape, bool hasSeed, int seed)
         {
-            setPartialTensor(0, new PartialTensor<float>(new DynamicTensorShape(new TensorShape(shape))));
+            return new PartialTensor<float>(new DynamicTensorShape(new TensorShape(shape)));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -106,9 +105,9 @@ namespace Unity.InferenceEngine.Layers
         public float low;
         public float high;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, float low, float high, bool hasSeed, int seed)
         {
-            setPartialTensor(0, new PartialTensor<float>(getPartialTensor(0).shape));
+            return new PartialTensor<float>(input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -125,13 +124,14 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `Bernoulli` random layer. This generates an output tensor with values 0 or 1 from a Bernoulli distribution. The input tensor contains the probabilities used for generating the output values.
     /// </summary>
     [Operator(category = "Random")]
+    [Inputs(names = new[] { "input" })]
     partial class Bernoulli : RandomLayer
     {
         public DataType dataType;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, DataType dataType, bool hasSeed, int seed)
         {
-            setPartialTensor(0, PartialTensor.Create(dataType, getPartialTensor(0).shape));
+            return PartialTensor.Create(dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -148,14 +148,15 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `Multinomial` random layer. This generates an output tensor with values from a multinomial distribution according to the probabilities given by the input tensor.
     /// </summary>
     [Operator(category = "Random")]
+    [Inputs(names = new[] { "input" })]
     partial class Multinomial : RandomLayer
     {
         public int count;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, int count, bool hasSeed, int seed)
         {
-            var shapeX = getPartialTensor(0).shape;
-            setPartialTensor(0, new PartialTensor<int>(new DynamicTensorShape(shapeX[0], DynamicTensorDim.Int(count))));
+            var shapeInput = input.shape;
+            return new PartialTensor<int>(new DynamicTensorShape(shapeInput[0], DynamicTensorDim.Int(count)));
         }
 
         internal override void Execute(ExecutionContext ctx)

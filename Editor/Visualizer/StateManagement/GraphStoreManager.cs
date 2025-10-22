@@ -1,5 +1,6 @@
 using System;
 using Unity.AppUI.Redux;
+using Unity.InferenceEngine.Compiler.Analyser;
 
 namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
@@ -12,17 +13,17 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
         public ActionCreator MoveStackIndexDown = new(GraphSlice.MoveStackIndexDown);
         public ActionCreator<object> AddHoveredObject = new(GraphSlice.AddHoveredObject);
         public ActionCreator<object> RemoveHoveredObject = new(GraphSlice.RemoveHoveredObject);
-        Model m_Model;
-        Graph m_Graph;
 
         public GraphStoreManager(ModelAsset modelAsset)
         {
-            m_Model = ModelLoader.Load(modelAsset);
+            var model = ModelLoader.Load(modelAsset);
 
-            m_Graph = new Graph(m_Model);
-            m_Graph.InitializeNodes();
+            var graph = new Graph(model);
+            graph.InitializeNodes();
 
-            var state = new GraphState { ModelAsset = modelAsset, Model = m_Model, Graph = m_Graph };
+            var partialInferenceContext = PartialInferenceAnalysis.InferModelPartialTensors(model);
+
+            var state = new GraphState { ModelAsset = modelAsset, Model = model, PartialInferenceContext = partialInferenceContext, Graph = graph};
 
             var slice = StoreFactory.CreateSlice(
                 GraphSlice.Name,
@@ -41,11 +42,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 
         public void Dispose()
         {
+            var state = Store.GetState<GraphState>(GraphSlice.Name);
+            state.Dispose();
             Store?.Dispose();
-            m_Graph?.Dispose();
-            m_Graph = null;
-            m_Model?.DisposeWeights();
-            m_Model = null;
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Relu(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Relu(), input);
+            return FunctionalLayer.Relu(input);
         }
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor HardSwish(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.HardSwish(), input);
+            return FunctionalLayer.HardSwish(input);
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Relu6(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Relu6(), input);
+            return FunctionalLayer.Relu6(input);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Mish(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Mish(), input);
+            return FunctionalLayer.Mish(input);
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Elu(FunctionalTensor input, float alpha = 1.0f)
         {
             input = input.Float();
-            return FromLayer(new Layers.Elu(alpha), input);
+            return FunctionalLayer.Elu(input, alpha);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Selu(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Selu(1.67326319217681884765625f, 1.05070102214813232421875f), input);
+            return FunctionalLayer.Selu(input, 1.67326319217681884765625f, 1.05070102214813232421875f);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Celu(FunctionalTensor input, float alpha = 1.0f)
         {
             input = input.Float();
-            return FromLayer(new Layers.Celu(alpha), input);
+            return FunctionalLayer.Celu(input, alpha);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LeakyRelu(FunctionalTensor input, float negativeSlope = 0.01f)
         {
             input = input.Float();
-            return FromLayer(new Layers.LeakyRelu(negativeSlope), input);
+            return FunctionalLayer.LeakyRelu(input, negativeSlope);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace Unity.InferenceEngine
         {
             input = input.Float();
             weight = weight.Float();
-            return FromLayer(new Layers.PRelu(), new[] { input, weight });
+            return FunctionalLayer.PRelu(input, weight);
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Gelu(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Gelu(), input);
+            return FunctionalLayer.Gelu(input);
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Softsign(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Softsign(), input);
+            return FunctionalLayer.Softsign(input);
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Softplus(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Softplus(), input);
+            return FunctionalLayer.Softplus(input);
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Softmax(FunctionalTensor input, int dim = -1)
         {
             input = input.Float();
-            return FromLayer(new Layers.Softmax(dim), input);
+            return FunctionalLayer.Softmax(input, dim);
         }
 
         /// <summary>
@@ -162,7 +162,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LogSoftmax(FunctionalTensor input, int dim = -1)
         {
             input = input.Float();
-            return FromLayer(new Layers.LogSoftmax(dim), input);
+            return FunctionalLayer.LogSoftmax(input, dim);
         }
 
         /// <summary>
@@ -173,7 +173,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Sigmoid(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.Sigmoid(), input);
+            return FunctionalLayer.Sigmoid(input);
         }
 
         /// <summary>
@@ -184,7 +184,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor HardSigmoid(FunctionalTensor input)
         {
             input = input.Float();
-            return FromLayer(new Layers.HardSigmoid(1 / 6f, 0.5f), input);
+            return FunctionalLayer.HardSigmoid(input, 1 / 6f, 0.5f);
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace Unity.InferenceEngine
             runningVar = runningVar.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FromLayer(new Layers.BatchNormalization(eps), new[] { input, weight, bias, runningMean, runningVar });
+            return FunctionalLayer.BatchNormalization(input, weight, bias, runningMean, runningVar, eps);
         }
 
         /// <summary>
@@ -220,7 +220,7 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FromLayer(new Layers.InstanceNormalization(eps), new[] { input, weight, bias });
+            return FunctionalLayer.InstanceNormalization(input, weight, bias, eps);
         }
 
         /// <summary>
@@ -237,7 +237,7 @@ namespace Unity.InferenceEngine
             input = input.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FromLayer(new Layers.LayerNormalization(eps), new[] { input, weight, bias });
+            return FunctionalLayer.LayerNormalization(input, weight, bias, eps);
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LocalResponseNorm(FunctionalTensor input, int size, float alpha = 0.0001f, float beta = 0.75f, float k = 1.0f)
         {
             input = input.Float();
-            return FromLayer(new Layers.LRN(alpha, beta, k, size), input);
+            return FunctionalLayer.LRN(input, alpha, beta, k, size);
         }
     }
 }

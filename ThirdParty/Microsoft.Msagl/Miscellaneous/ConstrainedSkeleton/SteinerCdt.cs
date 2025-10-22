@@ -10,8 +10,6 @@ using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.DebugHelpers;
 using Microsoft.Msagl.Routing.Visibility;
-using Point = Microsoft.Msagl.Core.Geometry.Point;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 //using Microsoft.Msagl.Miscellaneous.Rounded;
 
 namespace Microsoft.Msagl.Miscellaneous.ConstrainedSkeleton

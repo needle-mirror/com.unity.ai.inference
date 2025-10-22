@@ -10,9 +10,11 @@ using Microsoft.Msagl.Layout.OverlapRemovalFixedSegments;
 using Microsoft.Msagl.Miscellaneous.RegularGrid;
 using Microsoft.Msagl.DebugHelpers;
 using Microsoft.Msagl.Routing.Visibility;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 
 namespace Microsoft.Msagl.Layout.LargeGraphLayout.NodeRailLevelCalculator {
+
+    using SymmetricSegment = SymmetricTuple<Point>;
+
     internal class GreedyNodeRailLevelCalculator {
 
         public List<LgNodeInfo> SortedLgNodeInfos { get; set; }

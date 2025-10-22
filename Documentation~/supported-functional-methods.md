@@ -1,6 +1,6 @@
 # Supported functional methods
 
-Inference Engine provides a set of operators and functional methods to work with tensors. This page lists the supported operators and functional methods, and provides usage examples.
+Sentis provides a set of operators and functional methods to work with tensors. This page lists the supported operators and functional methods, and provides usage examples.
 
 ## Supported operators
 
@@ -10,7 +10,7 @@ You can directly apply the operators to the tensors.
 
 You might use binary operators between functional tensors and scalar float, integer, and Boolean values. For example, 'x + 1', 'x % 2.5f', 'False ^ x'.
 
-| Operator   | Inference Engine equivalent |
+| Operator   | Sentis equivalent |
 |------------|-------------------|
 | -x         | Neg               |
 | x + y      | Add               |
@@ -22,14 +22,14 @@ You might use binary operators between functional tensors and scalar float, inte
 | x >= y     | GreaterOrEqual    |
 | x < y      | Less              |
 | x <= y     | LessOrEqual       |
-| x & y      | And               |
-| x &#124; y | Or                |
-| x ^ y      | Xor               |
-| ~x         | Not               |
+| x &#38; y  | BitwiseAnd        |
+| x &#124; y | BitwiseOr         |
+| x ^ y      | BitwiseXor        |
+| ~x         | BitwiseNot        |
 
 ### Indexers
 
-Inference Engine lets you index functional tensors with C# square bracket indexer notation. These map to the `Slice` and `SetSlice` operators.
+Sentis lets you index functional tensors with C# square bracket indexer notation. These map to the `Slice` and `SetSlice` operators.
 
 The following table shows how you can use indexes and ranges. In these examples, x and y are functional tensors, while i and j are integers.
 
@@ -45,16 +45,17 @@ The following table shows how you can use indexes and ranges. In these examples,
 | x[i] = y          | Set slice i of x to be equal to y, the shape of y must be broadcastable to the slice shape of x. |
 | x[i..j] = y[i..j] | Set slice of x to be equal to slice of y, the slice shape of y must be broadcastable to the slice shape of x. |
 
-Inference Engine doesn't support setting a slice of a functional tensor directly as a scalar float or integer value with this method. Use the `Functional.Constant(value)` method to create a scalar functional tensor.
+Sentis doesn't support setting a slice of a functional tensor directly as a scalar float or integer value with this method. Use the `Functional.Constant(value)` method to create a scalar functional tensor.
 
 ## Functional methods
 
-Inference Engine supports many functional methods modelled after the PyTorch library. Each method maps to one or more Inference Engine layers.
+Sentis supports many functional methods modelled after the PyTorch library. Each method maps to one or more Sentis layers.
 
 The input parameters and outputs don't exactly match the PyTorch version. Check the API reference for more information.
 
-| Operator          | PyTorch equivalent  | Inference Engine equivalent          |
+| Operator          | PyTorch equivalent  | Sentis equivalent          |
 |-------------------|-----------|------------------------|
+| AsStrided         | as_strided          | AsStrided                  |
 | Zeros             | zeros               | ConstantOfShape            |
 | ZerosLike         | zeros_like          | Shape, ConstantOfShape     |
 | Ones              | ones                | ConstantOfShape            |
@@ -103,7 +104,12 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | Asin              | asin                | Asin                       |
 | Asinh             | asinh               | Asinh                      |
 | Atan              | atan                | Atan                       |
+| Atan2             | atan2               | Atan2                      |
 | Atanh             | atanh               | Atanh                      |
+| BitwiseAnd        | bitwise_and         | BitwiseAnd                 |
+| BitwiseNot        | bitwise_not         | BitwiseNot                 |
+| BitwiseOr         | bitwise_or          | BitwiseOr                  |
+| BitwiseXor        | bitwise_xor         | BitwiseXor                 |
 | Ceil              | ceil                | Ceil                       |
 | Clamp             | clamp               | Clamp                      |
 | Cos               | cos                 | Cos                        |
@@ -112,6 +118,7 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | Div               | div                 | Div                        |
 | Erf               | erf                 | Erf                        |
 | Exp               | exp                 | Exp                        |
+| Expm1             | expm1               | Expm1                      |
 | FloatPower        | float_power         | Pow                        |
 | Floor             | floor               | Floor                      |
 | FloorDivide       | floor_divide        | Floor, Div                 |
@@ -119,9 +126,9 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | Frac              | frac                | Sub, Floor, Abs, Mul, Sign |
 | Lerp              | lerp                | Add, ScalarMad, Sub        |
 | Log               | log                 | Log                        |
-| Log10             | log10               | Log, ScalarMad             |
-| Log1P             | log1p               | Log, ScalarMad             |
-| Log2              | log2                | Log, ScalarMad             |
+| Log10             | log10               | Log10                      |
+| Log1P             | log1p               | Log1p                      |
+| Log2              | log2                | Log2                       |
 | LogAddExp         | logaddexp           | Log, Add, Exp              |
 | LogicalAnd        | logical_and         | And                        |
 | LogicalNot        | logical_not         | Not                        |
@@ -135,16 +142,15 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | Reciprocal        | reciprocal          | Reciprocal                 |
 | Remainder         | remainder           | Mod                        |
 | Round             | round               | Round                      |
-| RSqrt             | rsqrt               | Reciprocal, Sqrt           |
+| RSqrt             | rsqrt               | Rsqrt                      |
 | Sign              | sign                | Sign                       |
 | Sin               | sin                 | Sin                        |
 | Sinh              | sinh                | Sinh                       |
 | Sqrt              | sqrt                | Sqrt                       |
 | Square            | square              | Square                     |
-| Sub               | sub                 | Sub                        |
 | Tan               | tan                 | Tan                        |
 | Tanh              | tanh                | Tanh                       |
-| Trunc             | trunc               | Floor, Abs, Mul, Sign      |
+| Trunc             | trunc               | Trunc                      |
 | ArgMax            | argmax              | ArgMax                     |
 | ArgMin            | argmin              | ArgMin                     |
 | ReduceMax         | amax                | ReduceMax                  |
@@ -156,6 +162,11 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | ReduceProd        | prod                | ReduceProd                 |
 | ReduceSum         | sum                 | ReduceSum                  |
 | ReduceSumSquare   |                     | ReduceSumSquare            |
+| ReduceVariance    | var                 | ReduceVariance             |
+| STFT              | stft                | STFT                       |
+| BlackmanWindow    | blackman_window     | BlackmanWindow             |
+| HammingWindow     | hamming_window      | HammingWindow              |
+| HannWindow        | hann_window         | HannWindow                 |
 | Equal             | eq                  | Equal                      |
 | GreaterEqual      | greater_equal       | GreaterOrEqual             |
 | Greater           | greater             | Greater                    |
@@ -174,6 +185,7 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 | BroadcastTo       | broadcast_to        | Expand                     |
 | Clone             | clone               | Identity                   |
 | CumSum            | cumsum              | CumSum                     |
+| Diagonal          | diagonal            | Diagonal                   |
 | Einsum            | einsum              | Einsum                     |
 | Flip              | flip                | Slice                      |
 | FlipLR            | fliplr              | Slice                      |

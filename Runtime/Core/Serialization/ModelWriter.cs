@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using Unity.InferenceEngine.Google.FlatBuffers;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.Editor")]
+[assembly: InternalsVisibleTo("Unity.InferenceEngine.ONNX")]
+[assembly: InternalsVisibleTo("Unity.InferenceEngine.LiteRT")]
 
 namespace Unity.InferenceEngine
 {
@@ -19,7 +21,7 @@ namespace Unity.InferenceEngine
         const int k_WeightsFlatBufferOverhead = 32;
         // The maximum size of a FlatBuffer is int.MaxValue bytes, subtract the overhead to get the maximum size for a single constant
         const long k_MaxConstantSize = int.MaxValue - k_WeightsFlatBufferOverhead;
-        internal const int version = 6;
+        internal const int version = 7;
 
         /// <summary>
         /// Serializes and saves the model description and weights to a file.
@@ -357,10 +359,7 @@ namespace Unity.InferenceEngine
                 foreach (var constantIndex in weightsBufferConstantIndices[i])
                 {
                     var constant = model.constants[constantIndex];
-                    if (constant.weights == null)
-                        continue;
-
-                    NativeTensorArray.BlockCopy(constant.weights, 0, constantBufferData, constantBufferOffsets[constantIndex], constant.lengthBytes);
+                    System.Buffer.BlockCopy(constant.array.Array, constant.array.Offset, constantBufferData, constantBufferOffsets[constantIndex], constant.array.Count);
                 }
 
                 // Preallocate exact size for FlatBuffer otherwise allocator can overshoot max FlatBuffer size for large byte arrays

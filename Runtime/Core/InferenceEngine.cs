@@ -4,10 +4,10 @@ using UnityEngine;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Types of devices that Inference Engine uses to run inference on a neural network.
+    /// Types of devices that Sentis uses to run inference on a neural network.
     /// </summary>
     /// <remarks>
-    /// Inference Engine can run inference on GPU or on CPU. The performance depends on the size of the model and on the type of problem to solve. Smaller models may run faster on CPU.
+    /// Sentis can run inference on GPU or on CPU. The performance depends on the size of the model and on the type of problem to solve. Smaller models may run faster on CPU.
     /// </remarks>
     /// <example>
     /// <para>When creating a <see cref="Worker"/>, specify which device to use for model inference.</para>
@@ -31,7 +31,7 @@ namespace Unity.InferenceEngine
     }
 
     /// <summary>
-    /// Types of backends that Inference Engine uses to run inference on a neural network.
+    /// Types of backends that Sentis uses to run inference on a neural network.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public enum BackendType

@@ -1,21 +1,20 @@
 using System;
 using UnityEngine;
 using UnityEditor.AssetImporters;
-using System.Runtime.CompilerServices;
 using System.Collections.Generic;
-using Unity.InferenceEngine.ONNX.Editor;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.EditorTests")]
 
-namespace Unity.InferenceEngine
+namespace Unity.InferenceEngine.Editor.Onnx
 {
     /// <summary>
     /// Represents an importer for Open Neural Network Exchange (ONNX) files.
     /// </summary>
-    [ScriptedImporter(69, new[] { "onnx" })]
+    [ScriptedImporter(71, new[] { "onnx" })]
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.ai.inference@latest/index.html")]
-    class ONNXModelImporter : ScriptedImporter
+    class ONNXModelImporter : ModelImporterBase
     {
         [Serializable]
         internal struct DynamicDimConfig
@@ -57,7 +56,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Callback that Inference Engine calls when the ONNX model has finished importing.
+        /// Callback that Sentis calls when the ONNX model has finished importing.
         /// </summary>
         /// <param name="ctx">Asset import context</param>
         public override void OnImportAsset(AssetImportContext ctx)
@@ -74,6 +73,22 @@ namespace Unity.InferenceEngine
 
             converter.MetadataLoaded += metadata => InvokeMetadataHandlers(ctx, metadata);
             var model = converter.Convert();
+            foreach (var warning in converter.Warnings)
+            {
+                switch (warning.MessageSeverity)
+                {
+                    case ModelConverterBase.WarningType.Warning:
+                        ctx.LogImportWarning(warning.Message);
+                        break;
+                    case ModelConverterBase.WarningType.Error:
+                        ctx.LogImportError(warning.Message);
+                        break;
+                    default:
+                    case ModelConverterBase.WarningType.None:
+                    case ModelConverterBase.WarningType.Info:
+                        break;
+                }
+            }
 
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
             ModelWriter.SaveModel(model, out var modelDescriptionBytes, out var modelWeightsBytes);
@@ -99,7 +114,6 @@ namespace Unity.InferenceEngine
             ctx.AddObjectToAsset("model data", modelAssetData);
 
             ctx.SetMainObject(asset);
-            model.DisposeWeights();
 
             if (dynamicDimConfigs.Length != model.symbolicDimNames.Length)
             {
@@ -108,7 +122,7 @@ namespace Unity.InferenceEngine
                 for (var i = 0; i < model.symbolicDimNames.Length; i++)
                 {
                     var dim = model.symbolicDimNames[i];
-                    dynamicDimConfigs[i] = new DynamicDimConfig { name = dim, size =  -1 };
+                    dynamicDimConfigs[i] = new DynamicDimConfig { name = dim, size = -1 };
                 }
             }
 
@@ -130,8 +144,6 @@ namespace Unity.InferenceEngine
         /// Attribute to disable automatic registration of <see cref="IONNXMetadataImportCallbackReceiver"/>
         /// implementations. Recommended for testing purposes.
         /// </summary>
-        internal class DisableAutoRegisterAttribute : Attribute
-        {
-        }
+        internal class DisableAutoRegisterAttribute : Attribute { }
     }
 }

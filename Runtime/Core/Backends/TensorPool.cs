@@ -34,7 +34,7 @@ namespace Unity.InferenceEngine
             tensor.shape = shape;
             tensor.count = shape.length;
 
-            ITensorData data; // alloc here or in ops?
+            ITensorData data;
             switch (backendType)
             {
                 case BackendType.GPUCompute:

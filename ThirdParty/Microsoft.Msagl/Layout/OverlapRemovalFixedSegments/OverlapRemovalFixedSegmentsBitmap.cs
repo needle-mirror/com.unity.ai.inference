@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Msagl.Core.Geometry;
-using Point = Microsoft.Msagl.Core.Geometry.Point;
-
-using Rectangle = Microsoft.Msagl.Core.Geometry.Rectangle;
 using Microsoft.Msagl.Core.Geometry.Curves;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 
 
 namespace Microsoft.Msagl.Layout.OverlapRemovalFixedSegments {
+
+    using SymmetricSegment = Core.DataStructures.SymmetricTuple<Point>;
+
     internal class OverlapRemovalFixedSegmentsBitmap {
         Rectangle[] _moveableRectangles;
         Rectangle[] _fixedRectangles;

@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Msagl.Core.DataStructures;
 using Microsoft.Msagl.Routing.Spline.ConeSpanner;
-using RectRout = Microsoft.Msagl.Routing.Rectilinear;
 
 namespace Microsoft.Msagl.Routing.Rectilinear {
     using DebugHelpers;

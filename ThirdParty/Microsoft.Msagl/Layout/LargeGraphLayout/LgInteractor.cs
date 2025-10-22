@@ -23,15 +23,12 @@ using Microsoft.Msagl.Miscellaneous;
 using Microsoft.Msagl.Miscellaneous.ConstrainedSkeleton;
 using Microsoft.Msagl.Miscellaneous.RegularGrid;
 using Microsoft.Msagl.Routing.Visibility;
-using Edge = Microsoft.Msagl.Core.Layout.Edge;
-using LineSegment = Microsoft.Msagl.Core.Geometry.Curves.LineSegment;
-using Point = Microsoft.Msagl.Core.Geometry.Point;
-using Rectangle = Microsoft.Msagl.Core.Geometry.Rectangle;
-using Size = Microsoft.Msagl.Core.DataStructures.Size;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
-
 
 namespace Microsoft.Msagl.Layout.LargeGraphLayout {
+
+    using Edge = Microsoft.Msagl.Core.Layout.Edge;
+    using SymmetricSegment = SymmetricTuple<Point>;
+
     /// <summary>
     ///     enables to interactively explore a large graph
     /// </summary>

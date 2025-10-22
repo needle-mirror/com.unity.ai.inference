@@ -1,21 +1,21 @@
 # Samples
 
-The Inference Engine package includes samples to help you learn and use the API.
+The Sentis package includes samples to help you learn and use the API.
 
 The following samples are available:
 
-- [Sample projects](#sample-projects) from the Inference Engine GitHub
+- [Sample projects](#sample-projects) from the Sentis GitHub
 - [Sample scripts](#sample-scripts) from the Package Manager
 
 Validated models are also available to use in your project. To understand and download available models, refer to [Supported models](supported-models.md).
 
 ## Sample projects
 
-Full sample projects are available on GitHub to demonstrate various Inference Engine use cases.
+Full sample projects are available on GitHub to demonstrate various Sentis use cases.
 
 To explore these projects:
 
-* Visit the [Inference Engine samples](https://github.com/Unity-Technologies/sentis-samples) GitHub repository.
+* Visit the [Sentis samples](https://github.com/Unity-Technologies/sentis-samples) GitHub repository.
 * Each project includes setup instructions, and some feature a video walkthrough in the `README` file.
 
 ## Sample scripts
@@ -24,7 +24,7 @@ Use the sample scripts to implement specific features in your own project.
 
 To find the sample scripts, follow these steps:
 
-1. Go to **Window** > **Package Manager**, and select **Inference Engine** from the package list.
+1. Go to **Window** > **Package Manager**, and select **Sentis** from the package list.
 2. Select **Samples**.
 3. To import a sample folder into your project, select **Import**.
 
@@ -49,8 +49,8 @@ The following table describes the available samples:
 
 ## Additional resources
 
-- [Unity Discussions group for Inference Engine](https://discussions.unity.com/c/10)
-- [Understand the Inference Engine workflow](understand-inference-engine-workflow.md)
-- [Understand models in Inference Engine](models-concept.md)
-- [Tensor fundamentals in Inference Engine](tensor-fundamentals.md)
+- [Unity Discussions group for Sentis](https://discussions.unity.com/tag/sentis)
+- [Understand the Sentis workflow](understand-sentis-workflow.md)
+- [Sentis models](models-concept.md)
+- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
 - [Supported models](supported-models.md)

@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Runtime.CompilerServices;
 using UnityEngine.Assertions;
 using System;
+using Unity.Mathematics;
 using static Unity.InferenceEngine.ShaderPropertyID;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.RuntimeTests")]
@@ -17,6 +18,8 @@ namespace Unity.InferenceEngine
         {
             m_Material = PixelShaderSingleton.Instance.FindMaterial(name);
         }
+
+        public Material material { get => m_Material; }
 
         public void SetBool(int nameID, bool value)
         {
@@ -85,6 +88,13 @@ namespace Unity.InferenceEngine
             m_Material.SetInteger(k_TensorPropertiesO.k_ID_WidthShift, pinO.widthShift);
             m_Material.SetInteger(k_ID_LengthO, pinO.shape.length);
             Graphics.Blit(null, pinO.bufferAsTexture, m_Material);
+        }
+
+        public void Dispatch(TextureTensorData pinO, int passNum)
+        {
+            m_Material.SetInteger(k_TensorPropertiesO.k_ID_WidthShift, pinO.widthShift);
+            m_Material.SetInteger(k_ID_LengthO, pinO.shape.length);
+            Graphics.Blit(null, pinO.bufferAsTexture, m_Material, pass: passNum);
         }
 
         public void Dispatch(RenderTexture renderTexture)
@@ -192,6 +202,8 @@ namespace Unity.InferenceEngine
         /// Initializes and returns an instance of `GPUPixelBackend`.
         /// </summary>
         public GPUPixelBackend() { }
+        /// <inheritdoc/>
+        public void Dispose() { }
 
         /// <inheritdoc/>
         public BackendType backendType => BackendType.GPUPixel;
@@ -240,6 +252,9 @@ namespace Unity.InferenceEngine
                     throw new NotImplementedException();
             }
         }
+
+        internal Tensor<float> AllocTensorFloat(TensorShape shape) => (Tensor<float>)AllocTensor(shape, DataType.Float);
+        internal void ReleaseTensorFloat(Tensor tensor) => ReleaseTensor(tensor);
 
         /// <summary>
         /// Pins the tensor as `TextureTensorData` on any axis (choose last).
@@ -293,7 +308,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Cast");
+            var func = new PixelFunc("Hidden/Sentis/Cast");
             func.EnableKeyword("IntToFloat");
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.Dispatch(pinO);
@@ -305,7 +320,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Cast");
+            var func = new PixelFunc("Hidden/Sentis/Cast");
             func.EnableKeyword("FloatToInt");
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.Dispatch(pinO);
@@ -335,7 +350,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void MemSet(Tensor<float> O, float value)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/ConstantOfShape");
+            var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
             func.EnableKeyword("TensorFloat");
             func.SetFloat(k_ID_memValueFloat, value);
@@ -345,7 +360,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void MemSet(Tensor<int> O, int value)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/ConstantOfShape");
+            var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
             func.EnableKeyword("TensorInt");
             func.SetInt(k_ID_memValueInt, value);
@@ -359,7 +374,7 @@ namespace Unity.InferenceEngine
             var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
             var oShape = X.shape.rank > 1 && Y.shape.rank > 1 ? O.shape : xShape.MatMul(yShape);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/MatMul");
+            var func = new PixelFunc("Hidden/Sentis/MatMul");
 
             var pinO = TextureTensorData.Pin(O, Y.shape.rank == 1 ? -1 : O.shape.rank - 1);
             var pinA = TextureTensorData.Pin(X, X.shape.rank - 1);
@@ -393,7 +408,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/Gemm");
+            var func = new PixelFunc("Hidden/Sentis/Gemm");
 
             var pinX = TextureTensorData.Pin(X, xTranspose ? 0 : 1);
             var pinW = TextureTensorData.Pin(Y, yTranspose ? 0 : 1);
@@ -416,7 +431,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/Dense");
+            var func = new PixelFunc("Hidden/Sentis/Dense");
 
             var pinO = TextureTensorData.Pin(O, O.shape.rank - 1);
             var pinX = TextureTensorData.Pin(X, X.shape.rank - 1);
@@ -475,18 +490,18 @@ namespace Unity.InferenceEngine
 
             if (isDepthwise)
             {
-                func = new PixelFunc("Hidden/InferenceEngine/DepthwiseConv");
+                func = new PixelFunc("Hidden/Sentis/DepthwiseConv");
             }
             else if (groups > 1)
             {
-                func = new PixelFunc("Hidden/InferenceEngine/GroupedConv");
+                func = new PixelFunc("Hidden/Sentis/GroupedConv");
                 func.SetInt(k_ID_X_channels, pinX.shape[1]);
                 func.SetInt(k_ID_O_channels, pinO.shape[1]);
                 func.SetInt(k_ID_K_channelsDivGroupDiv4, pinK.dimAxisDiv4);
             }
             else
             {
-                func = new PixelFunc("Hidden/InferenceEngine/Conv");
+                func = new PixelFunc("Hidden/Sentis/Conv");
                 func.SetInt(k_ID_X_channels, pinX.shape[1]);
             }
 
@@ -550,7 +565,7 @@ namespace Unity.InferenceEngine
             }
             var numSpatialDims = X.shape.rank - 2;
 
-            var func = new PixelFunc("Hidden/InferenceEngine/ConvTranspose");
+            var func = new PixelFunc("Hidden/Sentis/ConvTranspose");
 
             var pinX = TextureTensorData.Pin(X, 1);
             var pinK = TextureTensorData.Pin(W, 0);
@@ -598,7 +613,7 @@ namespace Unity.InferenceEngine
             if (dilations[numSpatialDims - 1] > 1)
             {
                 var gcdTmp = ComputeHelper.GCD(dilations[numSpatialDims - 1], strides[numSpatialDims - 1]);
-                lcmOfDilationStride[numSpatialDims - 1] = Math.Abs(dilations[numSpatialDims - 1] * strides[numSpatialDims - 1]) /gcdTmp;
+                lcmOfDilationStride[numSpatialDims - 1] = Math.Abs(dilations[numSpatialDims - 1] * strides[numSpatialDims - 1]) / gcdTmp;
 
                 if (dilations[numSpatialDims - 1] > strides[numSpatialDims - 1])
                     func.EnableKeyword("DILATIONX_GT_STRIDE");
@@ -677,7 +692,7 @@ namespace Unity.InferenceEngine
 
         void Activation(Tensor<float> X, Tensor<float> O, string kernelName, float alpha = 0f, float beta = 0f)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/Activation");
+            var func = new PixelFunc("Hidden/Sentis/Activation");
 
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX);
@@ -695,7 +710,7 @@ namespace Unity.InferenceEngine
 
         void Activation(Tensor<int> X, Tensor<int> O, string kernelName, int alpha = 0, int beta = 0)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/ActivationInt");
+            var func = new PixelFunc("Hidden/Sentis/ActivationInt");
 
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX);
@@ -850,6 +865,12 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Trunc(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Trunc");
+        }
+
+        /// <inheritdoc/>
         public void Round(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Round");
@@ -880,9 +901,39 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Expm1(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Expm1");
+        }
+
+        /// <inheritdoc/>
         public void Log(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Log");
+        }
+
+        /// <inheritdoc/>
+        public void Log10(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Log10");
+        }
+
+        /// <inheritdoc/>
+        public void Log1p(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Log1p");
+        }
+
+        /// <inheritdoc/>
+        public void Log2(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Log2");
+        }
+
+        /// <inheritdoc/>
+        public void Rsqrt(Tensor<float> X, Tensor<float> O)
+        {
+            Activation(X, O, "Rsqrt");
         }
 
         /// <inheritdoc/>
@@ -915,7 +966,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/ScalarMad");
+            var func = new PixelFunc("Hidden/Sentis/ScalarMad");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
 
@@ -931,7 +982,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/ScalarMad");
+            var func = new PixelFunc("Hidden/Sentis/ScalarMad");
             func.EnableKeyword("INT");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -982,6 +1033,18 @@ namespace Unity.InferenceEngine
         public void Equal(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "EqualInt");
+        }
+
+        /// <inheritdoc/>
+        public void NotEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "NotEqual");
+        }
+
+        /// <inheritdoc/>
+        public void NotEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "NotEqualInt");
         }
 
         /// <inheritdoc/>
@@ -1045,6 +1108,30 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void BitwiseAnd(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "BitwiseAnd");
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseOr(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "BitwiseOr");
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseXor(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "BitwiseXor");
+        }
+
+        /// <inheritdoc/>
+        public void BitwiseNot(Tensor<int> X, Tensor<int> O)
+        {
+            Activation(X, O, "BitwiseNot");
+        }
+
+        /// <inheritdoc/>
         public void Where(Tensor<int> C, Tensor A, Tensor B, Tensor O)
         {
             PinBothSame(A, B);
@@ -1054,7 +1141,7 @@ namespace Unity.InferenceEngine
             var pinB = B.dataOnBackend as TextureTensorData;
             var pinO = PinAsSame(O, pinA, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Where");
+            var func = new PixelFunc("Hidden/Sentis/Where");
             func.EnableKeyword(A.dataType == DataType.Int ? "WhereInt" : "WhereFloat");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -1076,7 +1163,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void IsInf(Tensor<float> X, Tensor<int> O, bool detectNegative, bool detectPositive)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/IsInfNaN");
+            var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsInf");
 
             var pinX = PinBlockAny(X);
@@ -1092,7 +1179,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void IsNaN(Tensor<float> X, Tensor<int> O)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/IsInfNaN");
+            var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsNaN");
 
             var pinX = PinBlockAny(X);
@@ -1187,6 +1274,12 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Atan2(Tensor<float> y, Tensor<float> x, Tensor<float> O)
+        {
+            Broadcast(y, x, O, "Atan2");
+        }
+
+        /// <inheritdoc/>
         public void Sub(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Sub");
@@ -1205,9 +1298,27 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Div(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        public void FloorDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
-            Broadcast(A, B, O, "DivInt");
+            Broadcast(A, B, O, "FloorDiv");
+        }
+
+        /// <inheritdoc/>
+        public void TruncDiv(Tensor<float> A, Tensor<float> B, Tensor<float> O)
+        {
+            Broadcast(A, B, O, "TruncDiv");
+        }
+
+        /// <inheritdoc/>
+        public void FloorDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "FloorDivInt");
+        }
+
+        /// <inheritdoc/>
+        public void TruncDiv(Tensor<int> A, Tensor<int> B, Tensor<int> O)
+        {
+            Broadcast(A, B, O, "TruncDivInt");
         }
 
         /// <inheritdoc/>
@@ -1297,7 +1408,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Expand(Tensor X, Tensor O)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/Expand");
+            var func = new PixelFunc("Hidden/Sentis/Expand");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
@@ -1344,7 +1455,7 @@ namespace Unity.InferenceEngine
             var pinB = B.dataOnBackend as TextureTensorData;
             var pinO = PinAsSame(O, pinA, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Broadcast");
+            var func = new PixelFunc("Hidden/Sentis/Broadcast");
             func.EnableKeyword(kernelName);
 
             func.SetTensor(k_TensorPropertiesA, pinA);
@@ -1387,7 +1498,7 @@ namespace Unity.InferenceEngine
                 // find axis that isn't sliced along
                 for (var axis = X.shape.rank - 1; axis >= 0; axis--)
                 {
-                    if (X.shape[axis] == O.shape[axis] && startsLocal[axis] == 1 && stepsLocal[axis] == 1)
+                    if (X.shape[axis] == O.shape[axis] && startsLocal[axis] == 0 && stepsLocal[axis] == 1)
                     {
                         TextureTensorData.Pin(X, axis);
                         break;
@@ -1398,47 +1509,78 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Slice");
+            var func = new PixelFunc("Hidden/Sentis/Slice");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
 
-            TensorShape xShape;
+            var isBlockwise = pinX.dimAxis == pinO.dimAxis && startsLocal[pinX.blockAxis] == 0 && stepsLocal[pinX.blockAxis] == 1;
 
-            if (pinX.dimAxis == pinO.dimAxis && startsLocal[pinX.blockAxis] == 1 && stepsLocal[pinX.blockAxis] == 1)
+            if (isBlockwise)
             {
                 func.EnableKeyword("BLOCKWISE");
-                func.SetShape(k_ID_DimO, pinO.blockedShape);
-                xShape = pinX.blockedShape;
             }
             else
             {
                 func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
                 func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
-                func.SetShape(k_ID_DimO, pinO.shape);
-                xShape = pinX.shape;
             }
 
-            var offsetX = 0;
-            var strideX = 1;
-            var stridesX = stackalloc int[8];
-            for (var i = 0; i < pinX.shape.rank; i++)
+            var offset = 0;
+            var rank = 0;
+            int accShape = 1;
+            int accStride = 1;
+            int totalStride = 1;
+
+            var size = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+            var stride = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+            var isPrevBlockedAxis = false;
+
+            for (int i = O.shape.rank - 1; i >= 0; --i)
             {
-                var axis = pinO.shape.rank - 1 - i;
-                offsetX += startsLocal[axis] * strideX;
-                stridesX[i] = strideX * stepsLocal[axis];
-                strideX *= xShape[axis];
+                var isBlockedAxis = isBlockwise && i == pinO.blockAxis;
+
+                int currShape = isBlockedAxis ? pinO.dimAxisDiv4 : O.shape[i];
+                int currStride = totalStride * stepsLocal[i];
+                offset += totalStride * startsLocal[i];
+                totalStride *= isBlockedAxis ? pinX.dimAxisDiv4 : X.shape[i];
+
+                if (!isPrevBlockedAxis && !isBlockedAxis && currStride == accShape * accStride)
+                {
+                    accShape = currShape * accShape;
+                    continue;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+
+                accShape = currShape;
+                accStride = currStride;
+
+                isPrevBlockedAxis = isBlockedAxis;
             }
 
-            func.SetInt8(k_TensorPropertiesX.k_ID_Strides, stridesX);
-            func.SetInt(k_ID_OffsetX, offsetX);
+            size[rank] = accShape;
+            stride[rank] = accStride;
+            rank++;
+
+            func.SetInt8(k_ID_stride, stride);
+            func.SetInt8(k_ID_size, size);
+            func.SetInt(k_ID_offset, offset);
+            func.SetInt(k_ID_rank, rank);
 
             func.Dispatch(pinO);
         }
 
         unsafe void SliceSet(Tensor X, Tensor values, Tensor O, int* startsLocal, int* stepsLocal)
         {
+            // note we can't simplify this like on CPU and GPUCompute since the indexing has to be done on the output tensor
+            // we can't just iterate through the indices in values, we have to iterate in O, then work out if the corresponding
+            // indices in V are in our slice
+
             if (!(X.dataOnBackend is TextureTensorData))
             {
                 // find axis that isn't sliced along
@@ -1456,7 +1598,7 @@ namespace Unity.InferenceEngine
             var pinV = PinAsSame(values, pinX);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/SliceSet");
+            var func = new PixelFunc("Hidden/Sentis/SliceSet");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
@@ -1541,6 +1683,119 @@ namespace Unity.InferenceEngine
             }
         }
 
+        /// <inheritdoc/>
+        public void AsStrided(Tensor X, Tensor O, ReadOnlySpan<int> strides, int offset)
+        {
+            var pinX = PinBlockAny(X);
+
+            unsafe
+            {
+                var blockAxis = 0;
+                var hasFoundBlockAxis = false;
+
+                for (var axis = O.shape.rank - 1; axis >= 0; axis--)
+                {
+                    if (pinX.dimAxis == O.shape[axis] && strides[axis] == pinX.strideAxis && offset == 0)
+                    {
+                        blockAxis = axis;
+                        hasFoundBlockAxis = true;
+                        break;
+                    }
+                }
+
+                var isBlockwise = hasFoundBlockAxis;
+                var strideOuter = pinX.strideAxis * pinX.dimAxis;
+                var strideInner = pinX.strideAxis;
+
+                var blockedStrides = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+                // check all axes are compatible with blocking on that axis
+                for (var axis = 0; axis < O.shape.rank && isBlockwise; axis++)
+                {
+                    if (strides[axis] > strideInner)
+                    {
+                        // blocking still only works if the stride on this axis is a multiple of the outer stride
+                        isBlockwise &= strides[axis] % strideOuter == 0;
+                        // reduce the strides by the correct factor
+                        blockedStrides[axis] = strides[axis] / pinX.dimAxis * pinX.dimAxisDiv4;
+                    }
+                    else if (strides[axis] < strideInner)
+                    {
+                        // blocking still only works if the inner stride is a multiple of the stride on this axis or the stride is 0
+                        isBlockwise &= strides[axis] == 0 || strideInner % strides[axis] == 0;
+                        blockedStrides[axis] = strides[axis];
+                    }
+                    else if (axis != blockAxis)
+                    {
+                        // blocking still only works if this is a degenerate axis
+                        isBlockwise &= (O.shape[axis] == 1);
+                        blockedStrides[axis] = strides[axis];
+                    }
+                }
+
+                var pinO = isBlockwise ? TextureTensorData.Pin(O, blockAxis, false) : PinBlockAny(O, false);
+
+                var func = new PixelFunc("Hidden/Sentis/Slice");
+                if (X.dataType == DataType.Int)
+                    func.EnableKeyword("INT");
+
+                func.SetTensor(k_TensorPropertiesX, pinX);
+
+                if (isBlockwise)
+                {
+                    func.EnableKeyword("BLOCKWISE");
+                }
+                else
+                {
+                    func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+                    func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
+                }
+
+                var rank = 0;
+                int accShape = 1;
+                int accStride = 1;
+
+                var size = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+                var stride = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+                var isPrevBlockedAxis = false;
+
+                for (int i = O.shape.rank - 1; i >= 0; --i)
+                {
+                    var isBlockedAxis = isBlockwise && i == pinO.blockAxis;
+
+                    int currShape = isBlockedAxis ? pinO.dimAxisDiv4 : O.shape[i];
+                    int currStride = isBlockwise ? blockedStrides[i] : strides[i];
+
+                    if (!isPrevBlockedAxis && !isBlockedAxis && currStride == accShape * accStride)
+                    {
+                        accShape = currShape * accShape;
+                        continue;
+                    }
+
+                    size[rank] = accShape;
+                    stride[rank] = accStride;
+                    rank++;
+
+                    accShape = currShape;
+                    accStride = currStride;
+
+                    isPrevBlockedAxis = isBlockedAxis;
+                }
+
+                size[rank] = accShape;
+                stride[rank] = accStride;
+                rank++;
+
+                func.SetInt8(k_ID_stride, stride);
+                func.SetInt8(k_ID_size, size);
+                func.SetInt(k_ID_offset, offset);
+                func.SetInt(k_ID_rank, rank);
+
+                func.Dispatch(pinO);
+            }
+        }
+
         void SoftmaxActivation(Tensor X, Tensor<float> O, int reduceAxis, string endKernelName)
         {
             var reduceOpShape = X.shape.Reduce(reduceAxis);
@@ -1559,7 +1814,7 @@ namespace Unity.InferenceEngine
 
             // x_max = X.max(axis=1)
             {
-                var func = new PixelFunc("Hidden/InferenceEngine/Reduce");
+                var func = new PixelFunc("Hidden/Sentis/Reduce");
                 func.EnableKeyword("ReduceMax");
                 func.SetTensor(k_TensorPropertiesX, pinX);
                 func.SetInt(k_TensorPropertiesX.k_ID_StrideAxis, strideAxis);
@@ -1568,7 +1823,7 @@ namespace Unity.InferenceEngine
             }
             // e_x_sum = Sum[exp(x[:,c] - x_max[:]), c]
             {
-                var func = new PixelFunc("Hidden/InferenceEngine/ReduceExpBias");
+                var func = new PixelFunc("Hidden/Sentis/ReduceExpBias");
                 func.SetTensor(k_TensorPropertiesX, pinX);
                 func.SetTensor(k_TensorPropertiesB, pinB);
                 func.SetInt(k_TensorPropertiesX.k_ID_StrideAxis, strideAxis);
@@ -1576,7 +1831,7 @@ namespace Unity.InferenceEngine
                 func.Dispatch(pinS);
             }
             {
-                var func = new PixelFunc("Hidden/InferenceEngine/Softmax");
+                var func = new PixelFunc("Hidden/Sentis/Softmax");
                 func.EnableKeyword(endKernelName);
                 func.SetTensor(k_TensorPropertiesX, pinX);
                 func.SetTensor(k_TensorPropertiesB, pinB);
@@ -1618,7 +1873,7 @@ namespace Unity.InferenceEngine
             var pinArgMax = PinBlockAny(argMax);
             var pinO = PinAsSame(O, pinArgMax);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/HardmaxEnd");
+            var func = new PixelFunc("Hidden/Sentis/HardmaxEnd");
 
             func.SetTensor(k_TensorPropertiesX, pinArgMax);
             func.SetInt(k_ID_StrideAxis, pinO.blockedShape.Strides(axis));
@@ -1637,7 +1892,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = TextureTensorData.Pin(O, axis > pinX.blockAxis ? pinX.blockAxis : pinX.blockAxis + 1, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/OneHot");
+            var func = new PixelFunc("Hidden/Sentis/OneHot");
             func.EnableKeyword("OneHotInt");
 
             func.SetInt(k_ID_negativeIndexOffset, allowNegativeIndexes ? depth : 0);
@@ -1659,7 +1914,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = TextureTensorData.Pin(O, axis > pinX.blockAxis ? pinX.blockAxis : pinX.blockAxis + 1, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/OneHot");
+            var func = new PixelFunc("Hidden/Sentis/OneHot");
 
             func.SetInt(k_ID_negativeIndexOffset, allowNegativeIndexes ? depth : 0);
             func.SetFloat(k_ID_offValue, offValue);
@@ -1679,7 +1934,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockOther(X, nonBlockAxis: reduceAxis);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Reduce");
+            var func = new PixelFunc("Hidden/Sentis/Reduce");
             func.EnableKeyword(kernelName);
 
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -1772,7 +2027,7 @@ namespace Unity.InferenceEngine
             var pinK = PinAsSame(K, pinX);
             var pinS = TextureTensorData.Pin(S, -1);
             var pinO = PinAsSame(O, pinX);
-            var func = new PixelFunc("Hidden/InferenceEngine/RMSNormalizationTail");
+            var func = new PixelFunc("Hidden/Sentis/RMSNormalizationTail");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesS, pinS);
@@ -1869,7 +2124,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockOther(X, nonBlockAxis: axis);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/ReduceIndices");
+            var func = new PixelFunc("Hidden/Sentis/ReduceIndices");
             func.EnableKeyword(kernelName);
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("X_INT");
@@ -1931,7 +2186,7 @@ namespace Unity.InferenceEngine
             var pinB = PinBlockAny(indices);
             var pinO = PinBlockAny(O, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Gather");
+            var func = new PixelFunc("Hidden/Sentis/Gather");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("GatherInt");
             func.SetInt(k_ID_endLength, X.shape.Strides(axis));
@@ -1956,7 +2211,7 @@ namespace Unity.InferenceEngine
 
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(pinB.shape, pinX.shape, axis);
             // We handle both the generic and fast path in the same shader file, see NoFastPath keyword below
-            var func = new PixelFunc("Hidden/InferenceEngine/GatherElements");
+            var func = new PixelFunc("Hidden/Sentis/GatherElements");
 
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("GatherInt");
@@ -1991,7 +2246,7 @@ namespace Unity.InferenceEngine
             var pinB = PinBlockAny(indices);
             var pinO = PinBlockAny(O, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/GatherND");
+            var func = new PixelFunc("Hidden/Sentis/GatherND");
             func.SetKeyword("GatherInt", X.dataType == DataType.Int);
 
             func.SetInt(k_ID_iStart, TensorShape.maxRank - pinO.shape.rank);
@@ -2022,7 +2277,7 @@ namespace Unity.InferenceEngine
 
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(pinB.blockedShape, pinX.blockedShape, axis);
             // We handle both the generic and fast path in the same shader file, see NoFastPath keyword below
-            var func = new PixelFunc("Hidden/InferenceEngine/ScatterElements");
+            var func = new PixelFunc("Hidden/Sentis/ScatterElements");
 
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("ScatterInt");
@@ -2086,7 +2341,7 @@ namespace Unity.InferenceEngine
 
         void ScatterND(Tensor X, Tensor<int> indices, Tensor updates, Tensor O, DataType dataType, Layers.ScatterReductionMode reduction)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/ScatterND");
+            var func = new PixelFunc("Hidden/Sentis/ScatterND");
             if (dataType == DataType.Int)
                 func.EnableKeyword("ScatterInt");
 
@@ -2158,7 +2413,7 @@ namespace Unity.InferenceEngine
             var oAxis = pinX.blockAxis < 0 ? -1 : X.shape.rank - 1 - pinX.blockAxis;
             var pinO = TextureTensorData.Pin(O, oAxis);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Transpose");
+            var func = new PixelFunc("Hidden/Sentis/Transpose");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
@@ -2201,7 +2456,7 @@ namespace Unity.InferenceEngine
             // pin O so that the transposed blocked axis matches
             var pinO = TextureTensorData.Pin(O, oAxis);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Transpose");
+            var func = new PixelFunc("Hidden/Sentis/Transpose");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
@@ -2238,7 +2493,7 @@ namespace Unity.InferenceEngine
             var pinX = TextureTensorData.Pin(X, 1);
             var pinO = TextureTensorData.Pin(O, 1);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/GlobalPool");
+            var func = new PixelFunc("Hidden/Sentis/GlobalPool");
             func.EnableKeyword(kernelName);
 
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2269,7 +2524,7 @@ namespace Unity.InferenceEngine
 
             var numSpatialDims = X.shape.rank - 2;
 
-            var func = new PixelFunc("Hidden/InferenceEngine/LocalPool");
+            var func = new PixelFunc("Hidden/Sentis/LocalPool");
             func.EnableKeyword(numSpatialDims == 2 ? "POOL2D" : "POOL1D");
             func.EnableKeyword(kernelName);
 
@@ -2316,7 +2571,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void DepthToSpace(Tensor X, Tensor O, int blocksize, Layers.DepthToSpaceMode mode)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/DepthToSpace");
+            var func = new PixelFunc("Hidden/Sentis/DepthToSpace");
             func.SetKeyword("INT", X.dataType == DataType.Int);
 
             var pinX = PinBlockAny(X);
@@ -2348,7 +2603,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void SpaceToDepth(Tensor X, Tensor O, int blocksize)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/SpaceToDepth");
+            var func = new PixelFunc("Hidden/Sentis/SpaceToDepth");
             func.SetKeyword("INT", X.dataType == DataType.Int);
 
             var pinX = PinBlockAny(X);
@@ -2378,7 +2633,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Split");
+            var func = new PixelFunc("Hidden/Sentis/Split");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
 
@@ -2415,7 +2670,7 @@ namespace Unity.InferenceEngine
 
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Tile");
+            var func = new PixelFunc("Hidden/Sentis/Tile");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2466,7 +2721,7 @@ namespace Unity.InferenceEngine
             var pinX = TextureTensorData.Pin(X, blockAxis);
             var pinO = TextureTensorData.Pin(O, blockAxis);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Resize1D");
+            var func = new PixelFunc("Hidden/Sentis/Resize1D");
 
             OpsUtils.GetScaleAndBias(X.shape[axis], O.shape[axis], scale, coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
             func.SetFloat(k_ID_Scale, outputScale);
@@ -2523,7 +2778,7 @@ namespace Unity.InferenceEngine
 
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Pad");
+            var func = new PixelFunc("Hidden/Sentis/Pad");
 
             switch (padMode)
             {
@@ -2590,7 +2845,7 @@ namespace Unity.InferenceEngine
 
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Pad");
+            var func = new PixelFunc("Hidden/Sentis/Pad");
             func.EnableKeyword("INT");
 
             switch (padMode)
@@ -2650,7 +2905,7 @@ namespace Unity.InferenceEngine
             var pinX = TextureTensorData.Pin(X, 1);
             var pinO = TextureTensorData.Pin(O, 1);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Upsample");
+            var func = new PixelFunc("Hidden/Sentis/Upsample");
             switch (numSpatialDims)
             {
                 case 1:
@@ -2725,7 +2980,7 @@ namespace Unity.InferenceEngine
             var pinGrid = TextureTensorData.Pin(grid, grid.shape.rank - 1);
             var pinO = TextureTensorData.Pin(O, 1);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/GridSample");
+            var func = new PixelFunc("Hidden/Sentis/GridSample");
             switch (numSpatialDims)
             {
                 case 1:
@@ -2795,7 +3050,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void ScaleBias(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/ScaleBias");
+            var func = new PixelFunc("Hidden/Sentis/ScaleBias");
 
             var pinX = X.dataOnBackend as TextureTensorData;
             pinX ??= TextureTensorData.Pin(X, X.shape.rank - 2);
@@ -2824,7 +3079,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void BatchNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> mean, Tensor<float> variance, Tensor<float> O, float epsilon)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/BatchNormalization");
+            var func = new PixelFunc("Hidden/Sentis/BatchNormalization");
 
             var pinX = TextureTensorData.Pin(X, X.shape.rank == 1 ? -1 : 1);
             var pinS = TextureTensorData.Pin(S, 0);
@@ -2860,7 +3115,7 @@ namespace Unity.InferenceEngine
             var pinK = PinAsSame(K, pinX, false);
 
             {
-                var func = new PixelFunc("Hidden/InferenceEngine/GlobalPool");
+                var func = new PixelFunc("Hidden/Sentis/GlobalPool");
                 func.EnableKeyword("AVGPOOL");
 
                 func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2872,7 +3127,7 @@ namespace Unity.InferenceEngine
             }
 
             {
-                var func = new PixelFunc("Hidden/InferenceEngine/GlobalPool");
+                var func = new PixelFunc("Hidden/Sentis/GlobalPool");
                 func.EnableKeyword("AVGSQUAREPOOL");
 
                 func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2887,7 +3142,7 @@ namespace Unity.InferenceEngine
                 var pinO = TextureTensorData.Pin(O, 1);
                 var pinS = TextureTensorData.Pin(S, 0);
                 var pinB = TextureTensorData.Pin(B, 0);
-                var func = new PixelFunc("Hidden/InferenceEngine/InstanceNormalizationTail");
+                var func = new PixelFunc("Hidden/Sentis/InstanceNormalizationTail");
 
                 func.SetTensor(k_TensorPropertiesX, pinX);
                 func.SetTensor(k_TensorPropertiesS, pinS);
@@ -2922,7 +3177,7 @@ namespace Unity.InferenceEngine
             var pinS = TextureTensorData.Pin(S, -1);
             var pinB = TextureTensorData.Pin(B, -1);
             var pinO = PinAsSame(O, pinX);
-            var func = new PixelFunc("Hidden/InferenceEngine/LayerNormalizationTail");
+            var func = new PixelFunc("Hidden/Sentis/LayerNormalizationTail");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesS, pinS);
@@ -2946,7 +3201,7 @@ namespace Unity.InferenceEngine
             var pinS = TextureTensorData.Pin(rois, 1);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/RoiAlign");
+            var func = new PixelFunc("Hidden/Sentis/RoiAlign");
             func.EnableKeyword(mode == Layers.RoiPoolingMode.Avg ? "RoiAlignAvg" : "RoiAlignMax");
             func.SetKeyword("HALFPIXEL", coordinateTransformationMode == Layers.RoiCoordinateTransformationMode.HalfPixel);
 
@@ -2976,7 +3231,7 @@ namespace Unity.InferenceEngine
         {
             var pinO = PinBlockAny(O, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Random");
+            var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword("RandomUniform");
             func.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             func.SetFloat(k_ID_low, low);
@@ -2991,7 +3246,7 @@ namespace Unity.InferenceEngine
         {
             var pinO = PinBlockAny(O, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Random");
+            var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword("RandomNormal");
             func.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             func.SetFloat(k_ID_mean, mean);
@@ -3004,7 +3259,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Bernoulli(Tensor<float> X, Tensor O, int? seed)
         {
-            var func = new PixelFunc("Hidden/InferenceEngine/Random");
+            var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword(O.dataType == DataType.Int ? "BernoulliInt" : "Bernoulli");
 
             var pinX = PinBlockAny(X);
@@ -3022,7 +3277,7 @@ namespace Unity.InferenceEngine
         {
             var pinO = PinBlockAny(O);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Range");
+            var func = new PixelFunc("Hidden/Sentis/Range");
             func.SetFloat(k_ID_rangeStartFloat, start);
             func.SetFloat(k_ID_rangeDeltaFloat, delta);
             func.Dispatch(pinO);
@@ -3033,7 +3288,7 @@ namespace Unity.InferenceEngine
         {
             var pinO = PinBlockAny(O);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Range");
+            var func = new PixelFunc("Hidden/Sentis/Range");
             func.EnableKeyword("INT");
             func.SetInt(k_ID_rangeStartInt, start);
             func.SetInt(k_ID_rangeDeltaInt, delta);
@@ -3045,7 +3300,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Trilu");
+            var func = new PixelFunc("Hidden/Sentis/Trilu");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -3076,7 +3331,7 @@ namespace Unity.InferenceEngine
             var pinX = PinBlockOther(X, nonBlockAxis: axis);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/CumSum");
+            var func = new PixelFunc("Hidden/Sentis/CumSum");
             if (dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.EnableKeyword(reverse ? "REVERSE" : "FORWARD");
@@ -3105,7 +3360,7 @@ namespace Unity.InferenceEngine
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX);
-            var func = new PixelFunc("Hidden/InferenceEngine/Copy");
+            var func = new PixelFunc("Hidden/Sentis/Copy");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -3137,7 +3392,7 @@ namespace Unity.InferenceEngine
                 pinO = PinAsSame(O, pinX, false);
             }
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Reshape");
+            var func = new PixelFunc("Hidden/Sentis/Reshape");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -3162,7 +3417,7 @@ namespace Unity.InferenceEngine
             var pinB = PinAsSame(random, pinX, false);
             var pinO = PinAsSame(O, pinX, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/TopP");
+            var func = new PixelFunc("Hidden/Sentis/TopP");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesB, pinB);
@@ -3208,7 +3463,7 @@ namespace Unity.InferenceEngine
             var pinB = PinBlockAny(indices);
             var pinO = PinBlockAny(O, false);
 
-            var func = new PixelFunc("Hidden/InferenceEngine/Gather");
+            var func = new PixelFunc("Hidden/Sentis/Gather");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("GatherInt");
             func.SetInt(k_ID_endLength, X.shape.Strides(axis));
@@ -3222,7 +3477,439 @@ namespace Unity.InferenceEngine
             func.Dispatch(pinO);
         }
 
+        enum STFTPixelConfigs
+        {
+            ComplexSignal_4cOnRealIma,
+            ComplexSignal_4cOnTime, // For complex, output real/ima axis on 4c fragment and no split row matrix here
+            RealSignal_Out4cOnRealIma_NoSplitRowMatrix,
+            RealSignal_Out4cOnFreq_SplitRowMatrix,
+            RealSignal_Out4cOnFreq_NoSplitRowMatrix,
+        }
+
+        //
+        // Note we allow independent specification of the dftLength as dftLength can be >= inputFrameLength: this generates a matrix that does the equivalent of zero-padding the input signal
+        // If dftLength != inputFrameLength ie dftLength > inputFrameLength, then alternateRealImaOnRows = true is only a valid configuration when expected input signal is real
+        // The matrix is expected to be tightly packed 4 values per texel regardless of shape as only used in STFT which expects it that way, so shape stays 1D
+        void WindowedDFTMatrix(Tensor<float> window, Tensor<float> windowedDFTMatrix, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows)
+        {
+            Logger.AssertIsTrue(dftLength >= inputFrameLength, "WindowedDFTMatrix: dftLength should be >= inputFrameLength.");
+
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+
+            // Sanity check
+            int numRows = outputXformSignalLength;
+            if (alternateRealImaOnRows)
+                numRows *= 2;
+            int numCols = alternateRealImaOnRows ? inputFrameLength : inputFrameLength * 2;
+
+            var twiddleMatrixShape = new TensorShape(numRows, numCols);
+            Logger.AssertIsTrue(windowedDFTMatrix.shape.length == twiddleMatrixShape.length, "windowedDFTMatrix has unexpected shape vs given parameters to generate it.");
+
+            var genfn = new PixelFunc("Hidden/Sentis/WindowedDFTMatrix");
+
+            bool noWindowGiven = window == null;
+            if (!noWindowGiven)
+            {
+                var pinW = TextureTensorData.Pin(window, 0);
+                genfn.SetTensor(k_TensorPropertiesW, pinW);
+                genfn.SetTensorBlockStride(k_TensorPropertiesW, pinW);
+            }
+
+            genfn.SetKeyword("NO_WINDOW", noWindowGiven);
+            genfn.SetKeyword("INVERSE_DFT", inverse);
+            genfn.SetKeyword("SPLIT_REAL_IMA_ON_ALTERNATE_ROWS", alternateRealImaOnRows);
+
+            // We want the dft matrix packed as 4-chunked TextureTensorData, packing
+            // 4 values per texel in the generation shader and extracting packed-values also in the STFT shader.
+            // Otherwise, with a rank > 1, the automatic 4-channel chunking ("blocked axis") system we currently have,
+            // any axis used will create unecessary waste.
+            var twiddleMatrixFlatShape = new TensorShape(twiddleMatrixShape.length);
+            windowedDFTMatrix.shape = twiddleMatrixFlatShape;
+            var pinTwiddleOut = TextureTensorData.Pin(windowedDFTMatrix, 0);
+            genfn.SetTensor(k_TensorPropertiesO, pinTwiddleOut);
+
+            // k_ID_IDFTNormalizer: prefer to do the *(1/outputXformSignalLength) normalizing after the DFT matmul, better precision
+
+            genfn.SetInt(k_ID_O_width, inputFrameLength);
+            // cb.SetComputeIntParam(genfn.shader, k_ID_O_height, outputXformSignalLength * (alternateRealImaOnRows ? 2 : 1)); // if signal is real, we double the number of rows as we split the real and imaginary parts on separate rows
+            genfn.SetFloat(k_ID_DFTFundamentalFreq, 1.0f / ((float)dftLength));
+
+            genfn.Dispatch(pinTwiddleOut);
+        }
+
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool inverse, bool onesided, float scale)
+        {
+            // Available paths:
+            // X complex, X blocked on last(real / ima, axis = -1)
+            // X complex, X blocked on time(axis = -2)
+            //     (here out blocked on last axis, matrix NO SPLIT_REAL_IMA_ON_ALTERNATE_ROWS)
+            // X real, out blocked on last axis, matrix NO SPLIT_REAL_IMA_ON_ALTERNATE_ROWS
+            // X real, out blocked on dft freq, matrix SPLIT_REAL_IMA_ON_ALTERNATE_ROWS
+            // X real, out blocked on dft freq, matrix NO SPLIT_REAL_IMA_ON_ALTERNATE_ROWS
+
+            //const STFTPixelConfigs cfgComplexSignal = STFTPixelConfigs.ComplexSignal_4cOnRealIma;
+            const STFTPixelConfigs cfgComplexSignal = STFTPixelConfigs.ComplexSignal_4cOnTime;
+
+            //const STFTPixelConfigs cfgRealSignal = STFTPixelConfigs.RealSignal_Out4cOnRealIma_NoSplitRowMatrix;
+            const STFTPixelConfigs cfgRealSignal = STFTPixelConfigs.RealSignal_Out4cOnFreq_SplitRowMatrix;
+            //const STFTPixelConfigs cfgRealSignal = STFTPixelConfigs.RealSignal_Out4cOnFreq_NoSplitRowMatrix;
+
+            bool signalIsReal = signal.shape[-1] == 1;
+
+            bool haveDFTMatrix = windowedDFTMatrix != null;
+
+            bool splitRowMatrix;
+            bool signalTexelChansOnTime; // else on real/ima
+            bool outputTexelChansOnFreq; // else on real/ima
+
+            if (signalIsReal)
+            {
+                signalTexelChansOnTime = true; // real signals are always packed with texel channel # == time
+                splitRowMatrix = haveDFTMatrix || cfgRealSignal == STFTPixelConfigs.RealSignal_Out4cOnFreq_SplitRowMatrix;
+                // the given windowedDFTMatrix is assumed to have real/ima split on rows when made for a real signal,
+                // so the static config is overridden.
+                outputTexelChansOnFreq = cfgRealSignal != STFTPixelConfigs.RealSignal_Out4cOnRealIma_NoSplitRowMatrix;
+            }
+            else
+            {
+                signalTexelChansOnTime = cfgComplexSignal == STFTPixelConfigs.ComplexSignal_4cOnTime;
+
+                // Filter config above based on how textureTensorData is already organized on the signal side:
+                var sigTextureData = signal.dataOnBackend as TextureTensorData;
+                if (sigTextureData != null)
+                {
+                    if (sigTextureData.blockAxis == (signal.shape.rank - 2))
+                        signalTexelChansOnTime = true;
+                    else if (sigTextureData.blockAxis == (signal.shape.rank - 1))
+                        signalTexelChansOnTime = false;
+                }
+                splitRowMatrix = false;
+                outputTexelChansOnFreq = false; // for complex signal, output is always packed with texel channel # == real/imaginary pair (2 channels unused)
+            }
+
+            var twiddleMatrixShape = splitRowMatrix ? new TensorShape(O.shape[-2] * 2, frameLength) : new TensorShape(O.shape[-2], frameLength * 2);
+            // ...ie  (onesided ? frameLength / 2 + 1 : frameLength, frameLength),
+            // and * 2 for the real and imaginary parts on alternating separate rows.
+            var twiddleMatrixFlatShape = new TensorShape(twiddleMatrixShape.length);
+
+            if (haveDFTMatrix)
+            {
+                var dftMatrixTextureData = windowedDFTMatrix.dataOnBackend as TextureTensorData;
+                bool reformatDFTMatrix = dftMatrixTextureData != null && windowedDFTMatrix.shape.rank > 1;
+
+                Logger.AssertIsTrue(windowedDFTMatrix.shape.length == twiddleMatrixShape.length, "windowedDFTMatrix has unexpected shape vs given parameters to generate it.");
+                if (reformatDFTMatrix)
+                {
+                    haveDFTMatrix = false;
+                    var windowedDFTMatrixOrig = windowedDFTMatrix;
+                    windowedDFTMatrix = AllocTensor(twiddleMatrixFlatShape, DataType.Float) as Tensor<float>;
+                    Reshape(windowedDFTMatrixOrig, windowedDFTMatrix);
+                }
+                else
+                {
+                    // either texturedata is null or rank is already 1, either way just set the flatshape
+                    windowedDFTMatrix.shape = twiddleMatrixFlatShape;
+                }
+            }
+            else
+            {
+                windowedDFTMatrix = AllocTensor(twiddleMatrixFlatShape, DataType.Float) as Tensor<float>;
+                WindowedDFTMatrix(window, windowedDFTMatrix, dftLength: frameLength, inputFrameLength: frameLength, inverse, onesided, alternateRealImaOnRows: splitRowMatrix);
+            }
+
+            var func = new PixelFunc("Hidden/Sentis/STFT");
+
+            //int pass = outputTexelChansOnFreq ? 0 : 1; // pass 1 has ROP configured with only channels RG enabled
+            // RG pass doesn't work sometimes, todo, investigate why
+
+            ComputeFunctions.STFTPixelSetVariantOnMaterial(func.material, signalIsReal, splitRowMatrix, signalTexelChansOnTime, outputTexelChansOnFreq);
+
+            var pinO = TextureTensorData.Pin(O, outputTexelChansOnFreq ? O.shape.rank - 2 : O.shape.rank - 1); // 4-chunk on DFT N-dian freq bin or real/ima part
+            var pinX = TextureTensorData.Pin(signal, signalTexelChansOnTime ? signal.shape.rank - 2 : signal.shape.rank - 1); // 4-chunk on time or real/ima part
+
+            // At this point windowedDFTMatrix should be 1D
+            var pinK = TextureTensorData.Pin(windowedDFTMatrix, 0);
+
+            func.SetKeyword("FINAL_SCALAR_MUL", inverse);
+
+            func.SetTensor(k_TensorPropertiesO, pinO);
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensor(k_TensorPropertiesK, pinK);
+
+            func.SetInt(k_ID_O_width, O.shape[1]); // number of frames
+            func.SetInt(k_ID_X_width, signal.shape[1]);
+            func.SetInt(k_ID_X_widthDiv4, (signal.shape[1] + 3) / 4);
+            func.SetInt(k_ID_K_width, frameLength);
+            func.SetInt(k_ID_maxK, pinK.blockedShape.length);
+            func.SetInt(k_ID_maxX, pinX.blockedShape.length);
+            func.SetInt(k_ID_O_channels, O.shape[-2]);
+            func.SetInt(k_ID_O_channelsDiv4, (O.shape[-2] + 3) / 4);
+
+            func.SetInt(k_ID_StrideX, frameStep);
+            func.SetFloat(k_ID_Scale, scale); // used if inverse == true
+
+            // func.Dispatch(pinO, pass);
+            // RG pass doesn't work sometimes, todo, investigate why
+            func.Dispatch(pinO, 0);
+
+            if (!haveDFTMatrix)
+                ReleaseTensor(windowedDFTMatrix);
+        }
+
         /// <inheritdoc/>
-        public void Dispose() { }
+        public void STFT(Tensor<float> signal, Tensor<float> window, Tensor<float> O, int frameStep, int frameLength, Tensor<float> windowedDFTMatrix, bool onesided)
+        {
+            STFT(signal, window, O, frameStep, frameLength, windowedDFTMatrix, inverse: false, onesided, scale: 1.0f);
+        }
+
+        /// <inheritdoc/>
+        public void DFT(Tensor<float> input, Tensor<float> O, int dftLength, int axis, Tensor<float> dftMatrix, bool inverse, bool onesided)
+        {
+            bool SetShapeRetTrueIfNoDataElseSetShapeIfIsLayoutIdentical(Tensor X, TensorShape newShape, bool forceRelayout, int? newBlockedAxis = null)
+            {
+                var textureTensorData = X.dataOnBackend as TextureTensorData;
+                if (textureTensorData == null)
+                {
+                    X.shape = newShape;
+                    return true;
+                }
+                int blockedAxis = newBlockedAxis ?? textureTensorData.blockAxis;
+                if (!forceRelayout)
+                {
+                    if (textureTensorData.IsLayoutIdentical(newShape, blockedAxis))
+                    {
+                        textureTensorData.SetShape(newShape, blockedAxis);
+                        X.shape = newShape;
+                        return true;
+                    }
+                }
+                else
+                {
+                    textureTensorData.SwitchBlockedLayout(newShape, blockedAxis);
+                    X.shape = newShape;
+                }
+
+                return false;
+            }
+
+            bool signalIsReal = input.shape[-1] == 1;
+            int signalFrameLengthToUse = Math.Min(dftLength, input.shape[axis]);
+            int outputXformSignalLength = O.shape[axis]; // onesided ? dftLength / 2 + 1 : dftLength;
+
+            bool haveDFTMatrix = dftMatrix != null;
+            var twiddleMatrixShape = signalIsReal ? new TensorShape(outputXformSignalLength * 2, signalFrameLengthToUse) : new TensorShape(outputXformSignalLength, signalFrameLengthToUse * 2);
+            // * 2 for the real and imaginary parts on alternating separate rows.
+            var twiddleMatrixFlatShape = new TensorShape(twiddleMatrixShape.length);
+
+            if (!haveDFTMatrix)
+            {
+                dftMatrix = AllocTensorFloat(twiddleMatrixFlatShape);
+                WindowedDFTMatrix(window: null, dftMatrix, dftLength, signalFrameLengthToUse, inverse, onesided, alternateRealImaOnRows: signalIsReal);
+            }
+            // if we already have the dftMatrix from a pre-calculated constant,
+            // we will let STFT handle any reformating if necessary.
+
+            bool needSlicing = signalFrameLengthToUse != input.shape[axis];
+            Tensor<float> sliceOut = input;
+            if (needSlicing)
+            {
+                var sliceOutShape = new TensorShape(input.shape);
+                sliceOutShape[axis] = signalFrameLengthToUse;
+                sliceOut = AllocTensorFloat(sliceOutShape);
+                Span<int> starts = stackalloc int[1] { 0 };
+                Span<int> ends = stackalloc int[1] { signalFrameLengthToUse };
+                Span<int> axes = stackalloc int[1] { axis };
+                Span<int> steps = stackalloc int[1] { 1 };
+                ShapeInference.Slice(sliceOut.shape, starts, ends, axes, steps, ref starts, ref ends, ref axes, ref steps);
+                Slice(input, sliceOut, starts, axes, steps);
+            }
+
+            int opNumPreSTFT = 0;
+
+            bool needTranspose = input.shape.Axis(axis) != (input.shape.rank - 2);
+            Tensor<float> transposeOut = sliceOut;
+            Span<int> permutationsTmp = stackalloc int[TensorShape.maxRank];
+            TensorShape stftOutShape = O.shape;
+            if (needTranspose)
+            {
+                opNumPreSTFT++;
+
+                for (int i = 0; i < (input.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i + 1;
+                }
+                permutationsTmp[input.shape.rank - 1] = input.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[input.shape.rank - 2] = axis;
+
+                var permutations = permutationsTmp.Slice(0, input.shape.rank);
+
+                var transposedShape = sliceOut.shape.Transpose(permutations);
+                transposeOut = AllocTensorFloat(transposedShape);
+
+                Transpose(sliceOut, transposeOut, permutations);
+
+                stftOutShape = O.shape.Transpose(permutations);
+            }
+
+            var transposeOutShapeBack = transposeOut.shape;
+            var stftOutShapePostReshape = stftOutShape;
+
+            var inputPreSTFTFlatShape = new TensorShape(1, transposeOut.shape.Length(0) / transposeOut.shape[-1], transposeOut.shape[-1]);
+            var stftOutFlatShape = new TensorShape(1, stftOutShape.Length(0) / stftOutShape.Length(-2), stftOutShape[-2], stftOutShape[-1]);
+
+            Tensor<float> reshapeOut = transposeOut;
+            Tensor<float> stftOut = null;
+
+            bool needTrueReshape = false == SetShapeRetTrueIfNoDataElseSetShapeIfIsLayoutIdentical(reshapeOut, inputPreSTFTFlatShape, forceRelayout: false, inputPreSTFTFlatShape.rank - 2);
+            if (needTrueReshape)
+            {
+                opNumPreSTFT++;
+                // Need true reshape
+                reshapeOut = AllocTensorFloat(inputPreSTFTFlatShape);
+                Reshape(transposeOut, reshapeOut);
+                stftOut = AllocTensorFloat(stftOutFlatShape);
+            }
+            else
+            {
+                // flatten everything into one big signal of numFrames * frameLength
+                // numFrames = stftOut.shape.Length(0) / stftOut.shape.Length(-2))
+                // frameLength = stftOut.shape[-2]
+
+                // reshapeOut.shape = inputPreSTFTFlatShape;
+                // effect on underlying textureTensorData already handled by SetShapeRetTrueIfNoDataElseSetShapeIfIsLayoutIdentical()
+                // note: here we might have reshapeOut = transposeOut = sliceOut = input
+
+                // even without reshape, if need transpose after STFT, stftOut can't be directly O
+                if (opNumPreSTFT > 0)
+                {
+                    stftOut = AllocTensorFloat(stftOutFlatShape);
+                }
+                else
+                {
+                    // opNumPreSTFT == 0, so no transpose, no true reshape, at this point O shouldn't have any data in it,
+                    // switch its layout by only switching its shape:
+                    stftOut = O;
+                    if (stftOut.dataOnBackend != null)
+                        stftOut.dataOnBackend.Dispose();
+                    stftOut.shape = stftOutFlatShape;
+                }
+            }
+
+            STFT(reshapeOut, window: null, stftOut, frameStep: signalFrameLengthToUse, frameLength: signalFrameLengthToUse, dftMatrix, inverse, onesided, scale: !inverse ? 1.0f : 1.0f / (float)(dftLength));
+            // ...note scale could be outputXformSignalLength, since onesided only valid for DFT not IDFT anyway.
+
+            int opNumLeftPostSTFT = opNumPreSTFT;
+
+            Tensor<float> reshapeOutPost = stftOut;
+            int opNumLeftPostSTFT_atNeedReshape = opNumLeftPostSTFT;
+            if (needTrueReshape)
+            {
+                opNumLeftPostSTFT--;
+                opNumLeftPostSTFT_atNeedReshape = opNumLeftPostSTFT;
+                // Need true reshape: but if no need transpose after, give directly O
+                reshapeOutPost = (opNumLeftPostSTFT <= 0) ? O : AllocTensorFloat(stftOutShapePostReshape);
+                Reshape(stftOut, reshapeOutPost);
+            }
+            else
+            {
+                // important: restore shape of input to STFT, reshapeOut,
+                // as could have been reshapeOut = transposeOut = sliceOut = input
+                //reshapeOut.shape = transposeOutShapeBack;
+                if (reshapeOut == input)
+                    SetShapeRetTrueIfNoDataElseSetShapeIfIsLayoutIdentical(reshapeOut, transposeOutShapeBack, forceRelayout: true);
+
+                // restore shape of reshapeOutPost = stftOut
+                // (could be = O, but even if not, our shape-only reshape is needed unless stftOutFlatShape == stftOutShapePostReshape already)
+                //reshapeOutPost.shape = stftOutShapePostReshape;
+                SetShapeRetTrueIfNoDataElseSetShapeIfIsLayoutIdentical(reshapeOutPost, stftOutShapePostReshape, forceRelayout: true, stftOutShapePostReshape.rank - 1);
+            }
+
+            // Reverse the transposition if needed:
+            if (needTranspose)
+            {
+                opNumLeftPostSTFT--;
+                Logger.AssertIsTrue(opNumLeftPostSTFT == 0, "GPUPixel DFT - transpose should be last op in chain");
+
+                for (int i = 0; i < (O.shape.rank - 2); i++)
+                {
+                    if (i < axis)
+                        permutationsTmp[i] = i;
+                    else
+                        permutationsTmp[i] = i - 1;
+                }
+                permutationsTmp[O.shape.rank - 1] = O.shape.rank - 1; // this is the complex tuple innermost axis, doesn't change
+                permutationsTmp[axis] = O.shape.rank - 2;
+
+                var permutations = permutationsTmp.Slice(0, O.shape.rank);
+
+                Transpose(reshapeOutPost, O, permutations);
+            }
+
+            // possible aliases:
+            //      reshapeOut =(if !reshape)= transposeOut =(if !transpose)= sliceOut =(if !slice)= input
+            //      reshapeOutPost =(if !reshape)= stftOut =(if !reshape !transpose)= O
+            if (needSlicing)
+                ReleaseTensorFloat(sliceOut);
+            if (opNumPreSTFT > 0)
+                ReleaseTensorFloat(stftOut);
+            if (needTranspose)
+                ReleaseTensorFloat(transposeOut);
+            if (needTrueReshape && opNumLeftPostSTFT_atNeedReshape > 0)
+                ReleaseTensorFloat(reshapeOutPost);
+            if (needTrueReshape)
+                ReleaseTensorFloat(reshapeOut);
+            if (!haveDFTMatrix)
+                ReleaseTensorFloat(dftMatrix);
+        }
+
+        /// <inheritdoc/>
+        public void BlackmanWindow(Tensor<float> O, bool periodic)
+        {
+            var pinO = PinBlockAny(O);
+            var func = new PixelFunc("Hidden/Sentis/Window");
+            func.EnableKeyword("BLACKMAN");
+            func.SetFloat(k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void HammingWindow(Tensor<float> O, bool periodic)
+        {
+            var pinO = PinBlockAny(O);
+            var func = new PixelFunc("Hidden/Sentis/Window");
+            func.EnableKeyword("HAMMING");
+            func.SetFloat(k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void HannWindow(Tensor<float> O, bool periodic)
+        {
+            var pinO = PinBlockAny(O);
+            var func = new PixelFunc("Hidden/Sentis/Window");
+            func.EnableKeyword("HANN");
+            func.SetFloat(k_ID_N, periodic ? O.shape[0] : O.shape[0] - 1);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void MelWeightMatrix(Tensor<float> O, int dftLength, int sampleRate, float lowerEdgeHertz, float upperEdgeHertz)
+        {
+            var pinO = TextureTensorData.Pin(O, -1);
+            var func = new PixelFunc("Hidden/Sentis/MelWeightMatrix");
+            func.SetInt(k_ID_dftLength, dftLength);
+            func.SetInt(k_ID_sampleRate, sampleRate);
+            var lowerEdgeMel = 2595 * math.log10(1 + lowerEdgeHertz / 700);
+            var upperEdgeMel = 2595 * math.log10(1 + upperEdgeHertz / 700);
+            var melStep = (upperEdgeMel - lowerEdgeMel) / (O.shape[1] + 2);
+            func.SetFloat(k_ID_lowerEdgeMel, lowerEdgeMel);
+            func.SetFloat(k_ID_melStep, melStep);
+            func.SetInt(k_ID_numSpectrogramBins, O.shape[0]);
+            func.SetInt(k_ID_numMelBins, O.shape[1]);
+            func.Dispatch(pinO);
+        }
     }
 }

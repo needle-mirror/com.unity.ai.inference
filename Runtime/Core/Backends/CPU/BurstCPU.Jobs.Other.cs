@@ -311,31 +311,31 @@ namespace Unity.InferenceEngine
                 while (count > 0)
                 {
                     // Compute the innermost offset and count of elements that can be handled sequentially.
-                    int innerOffsetO = i % sliceParams.shapeO[0];
-                    int remaining = i / sliceParams.shapeO[0];
-                    int spanCount = math.min(count, sliceParams.shapeO[0] - innerOffsetO);
+                    int innerOffsetO = i % sliceParams.size[0];
+                    int remaining = i / sliceParams.size[0];
+                    int spanCount = math.min(count, sliceParams.size[0] - innerOffsetO);
 
                     Unity.Burst.CompilerServices.Hint.Assume(spanCount > 0);
 
-                    int innerOffsetX = sliceParams.stridedStarts[0] + innerOffsetO * sliceParams.stridedSteps[0];
+                    int innerOffsetX = sliceParams.offset + innerOffsetO * sliceParams.stride[0];
                     float* Xp = Xptr + innerOffsetX;
 
                     // Compute the pointer to the innermost dimension by unraveling the remaining output index.
-                    for (int j = 1; j < sliceParams.lastIndex; j++)
+                    for (int j = 1; j < sliceParams.rank; j++)
                     {
-                        int offsetO = remaining % sliceParams.shapeO[j];
-                        remaining = remaining / sliceParams.shapeO[j];
-                        Xp += sliceParams.stridedStarts[j] + offsetO * sliceParams.stridedSteps[j];
+                        int offsetO = remaining % sliceParams.size[j];
+                        remaining = remaining / sliceParams.size[j];
+                        Xp += offsetO * sliceParams.stride[j];
                     }
 
-                    if (sliceParams.stridedSteps[0] == 1)
+                    if (sliceParams.stride[0] == 1)
                         UnsafeUtility.MemCpy(Op, &Xp[0], spanCount * sizeof(float));
                     else
                     {
                         for (int j = 0; j < spanCount; j++)
                         {
                             Op[j] = Xp[0];
-                            Xp += sliceParams.stridedSteps[0];
+                            Xp += sliceParams.stride[0];
                         }
                     }
 
@@ -360,31 +360,31 @@ namespace Unity.InferenceEngine
                 while (count > 0)
                 {
                     // Compute the innermost offset and count of elements that can be handled sequentially.
-                    int innerOffsetO = i % sliceParams.shapeO[0];
-                    int remaining = i / sliceParams.shapeO[0];
-                    int spanCount = math.min(count, sliceParams.shapeO[0] - innerOffsetO);
+                    int innerOffsetO = i % sliceParams.size[0];
+                    int remaining = i / sliceParams.size[0];
+                    int spanCount = math.min(count, sliceParams.size[0] - innerOffsetO);
 
                     Unity.Burst.CompilerServices.Hint.Assume(spanCount > 0);
 
-                    int innerOffsetX = sliceParams.stridedStarts[0] + innerOffsetO * sliceParams.stridedSteps[0];
+                    int innerOffsetX = sliceParams.offset + innerOffsetO * sliceParams.stride[0];
                     float* Op = Optr + innerOffsetX;
 
                     // Compute the pointer to the innermost dimension by unraveling the remaining output index.
-                    for (int j = 1; j < sliceParams.lastIndex; j++)
+                    for (int j = 1; j < sliceParams.rank; j++)
                     {
-                        int offsetO = remaining % sliceParams.shapeO[j];
-                        remaining = remaining / sliceParams.shapeO[j];
-                        Op += sliceParams.stridedStarts[j] + offsetO * sliceParams.stridedSteps[j];
+                        int offsetO = remaining % sliceParams.size[j];
+                        remaining = remaining / sliceParams.size[j];
+                        Op += offsetO * sliceParams.stride[j];
                     }
 
-                    if (sliceParams.stridedSteps[0] == 1)
+                    if (sliceParams.stride[0] == 1)
                         UnsafeUtility.MemCpy(Op, &Xp[0], spanCount * sizeof(float));
                     else
                     {
                         for (int j = 0; j < spanCount; j++)
                         {
                             Op[0] = Xp[j];
-                            Op += sliceParams.stridedSteps[0];
+                            Op += sliceParams.stride[0];
                         }
                     }
 
@@ -1985,6 +1985,7 @@ namespace Unity.InferenceEngine
             public int updatesLength;
             public int indexRemapDim;
             public fixed int trailing[8];
+            public fixed int shapeX[8];
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
             public ReadOnlyMemResource S { get; set; } int* Sptr => (int*)S.ptr;
             public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
@@ -1998,7 +1999,9 @@ namespace Unity.InferenceEngine
                 int indexO = 0;
                 for (int j = 0; j < indexRemapDim; j++)
                 {
-                    indexO += trailing[j] * (int)Sptr[i * indexRemapDim + j];
+                    int index = Sptr[i * indexRemapDim + j];
+                    index = index < 0 ? index + shapeX[j] : index;
+                    indexO += trailing[j] * index;
                 }
                 float vw = Bptr[i * updatesLength + k];
 
@@ -2022,6 +2025,7 @@ namespace Unity.InferenceEngine
             public int updatesLength;
             public int indexRemapDim;
             public fixed int trailing[8];
+            public fixed int shape[8];
             public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
             public ReadOnlyMemResource S { get; set; } int* Sptr => (int*)S.ptr;
             public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
@@ -2035,7 +2039,9 @@ namespace Unity.InferenceEngine
                 int indexO = 0;
                 for (int j = 0; j < indexRemapDim; j++)
                 {
-                    indexO += trailing[j] * (int)Sptr[i * indexRemapDim + j];
+                    int index = Sptr[i * indexRemapDim + j];
+                    index = index < 0 ? index + shape[j] : index;
+                    indexO += trailing[j] * index;
                 }
                 int vw = Bptr[i * updatesLength + k];
 
@@ -2453,6 +2459,243 @@ namespace Unity.InferenceEngine
                             numOutput++;
                             numOutputPtr[0] = numOutput;
                         }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct WindowedDFTMatrixOutRealImaJob : IParallelForBatch
+        {
+            [NoAlias] [NativeDisableUnsafePtrRestriction] [Collections.ReadOnly] public float* Windowptr;
+            [NoAlias] [NativeDisableUnsafePtrRestriction] public float* RealPartptr;
+            [NoAlias] [NativeDisableUnsafePtrRestriction] public float* ImaPartptr;
+
+            public int frameLength;
+            public float fundamentalFreq;
+            public float scale;
+            public bool inverse;
+
+            public void Execute(int startIndex, int count)
+            {
+                int freq = Math.DivRem(startIndex, frameLength, out int timeIdx);
+                int remainingTimeAtFreq = Math.Max(frameLength - timeIdx, 0);
+                int timeSegmentSize = Math.Min(count, remainingTimeAtFreq);
+                int timeSegmentLimit = timeIdx + timeSegmentSize;
+
+                int i = startIndex;
+
+                // We dispatch for frameLength^2 or frameLength * (frameLength / 2 + 1)
+                // in batches of whatever, so note we can straddle one or many matrix rows:
+                while (count > 0)
+                {
+                    for (; timeIdx < timeSegmentLimit; i++, timeIdx++)
+                    {
+                        float windowTerm = Windowptr != null ? Windowptr[timeIdx] : 1.0f;
+                        float signfactor = inverse ? 1.0f : -1.0f;
+                        float arg = signfactor * 2.0f * Mathf.PI * freq * timeIdx * fundamentalFreq;
+                        RealPartptr[i] = windowTerm * Mathf.Cos(arg) * scale;
+                        ImaPartptr[i] = windowTerm * Mathf.Sin(arg) * scale;
+                    }
+                    count -= timeSegmentSize;
+                    timeSegmentSize = Math.Min(count, frameLength);
+                    // At each step we switch rows since if frameLength >= count,
+                    // then we're done with our batch anyway and will exit the while,
+                    // otherwise we've done one row:
+                    freq++;
+                    timeIdx = 0;
+                    timeSegmentLimit = timeSegmentSize;
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct WindowedDFTMatrixSplitMatrixToRealImaJob : IParallelForBatch
+        {
+            [NoAlias] [NativeDisableUnsafePtrRestriction] [Collections.ReadOnly] public float* WindowedDFTMatrixptr;
+            [NoAlias] [NativeDisableUnsafePtrRestriction] public float* RealPartptr;
+            [NoAlias] [NativeDisableUnsafePtrRestriction] public float* ImaPartptr;
+
+            public bool hasAlternateRealImaOnRows;
+
+            public int frameLength;
+            public float scale;
+
+            public void Execute(int startIndex, int count)
+            {
+                int freq = Math.DivRem(startIndex, frameLength, out int timeIdx);
+                int remainingTimeAtFreq = Math.Max(frameLength - timeIdx, 0);
+                int timeSegmentSize = Math.Min(count, remainingTimeAtFreq);
+                int timeSegmentLimit = timeIdx + timeSegmentSize;
+
+                int i = startIndex;
+
+                // We dispatch for frameLength^2 or frameLength * (frameLength / 2 + 1)
+                // in batches of whatever, so note we can straddle one or many matrix rows:
+                while (count > 0)
+                {
+                    for (; timeIdx < timeSegmentLimit; i++, timeIdx++)
+                    {
+                        if (hasAlternateRealImaOnRows)
+                        {
+                            RealPartptr[i] = WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx] * scale;
+                            ImaPartptr[i] = WindowedDFTMatrixptr[(2 * freq + 1) * frameLength + timeIdx] * scale;
+                        }
+                        else
+                        {
+                            RealPartptr[i] = WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx * 2] * scale;
+                            ImaPartptr[i] = WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx * 2 + 1] * scale;
+                        }
+                    }
+                    count -= timeSegmentSize;
+                    timeSegmentSize = Math.Min(count, frameLength);
+                    // At each step we switch rows since if frameLength >= count,
+                    // then we're done with our batch anyway and will exit the while,
+                    // otherwise we've done one row:
+                    freq++;
+                    timeIdx = 0;
+                    timeSegmentLimit = timeSegmentSize;
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct WindowedDFTMatrixJob : IParallelForBatch
+        {
+            [NoAlias] [NativeDisableUnsafePtrRestriction] [Collections.ReadOnly] public float* Windowptr;
+            [NoAlias] [NativeDisableUnsafePtrRestriction] public float* WindowedDFTMatrixptr;
+
+            public int frameLength;
+            public float fundamentalFreq;
+            public bool inverse;
+            public float scale;
+            public bool alternateRealImaOnRows;
+
+            public void Execute(int startIndex, int count)
+            {
+                int freq = Math.DivRem(startIndex, frameLength, out int timeIdx);
+                int remainingTimeAtFreq = Math.Max(frameLength - timeIdx, 0);
+                int timeSegmentSize = Math.Min(count, remainingTimeAtFreq);
+                int timeSegmentLimit = timeIdx + timeSegmentSize;
+
+                int i = startIndex;
+
+                // We dispatch for frameLength^2 or frameLength * (frameLength / 2 + 1)
+                // in batches of whatever, so note we can straddle one or many matrix rows:
+                while (count > 0)
+                {
+                    for (; timeIdx < timeSegmentLimit; i++, timeIdx++)
+                    {
+                        float windowTerm = Windowptr != null ? Windowptr[timeIdx] : 1.0f;
+                        float signfactor = inverse ? 1.0f : -1.0f;
+                        float arg = signfactor * 2.0f * Mathf.PI * freq * timeIdx * fundamentalFreq;
+                        float realPart = windowTerm * Mathf.Cos(arg) * scale;
+                        float imaPart = windowTerm * Mathf.Sin(arg) * scale;
+                        if (alternateRealImaOnRows)
+                        {
+                            WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx] = realPart;
+                            WindowedDFTMatrixptr[(2 * freq + 1) * frameLength + timeIdx] = imaPart;
+                        }
+                        else
+                        {
+                            WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx * 2] = realPart;
+                            WindowedDFTMatrixptr[2 * freq * frameLength + timeIdx * 2 + 1] = imaPart;
+                        }
+                    }
+                    count -= timeSegmentSize;
+                    timeSegmentSize = Math.Min(count, frameLength);
+                    // At each step we switch rows since if frameLength >= count,
+                    // then we're done with our batch anyway and will exit the while,
+                    // otherwise we've done one row:
+                    freq++;
+                    timeIdx = 0;
+                    timeSegmentLimit = timeSegmentSize;
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct BlackmanWindowJob : IParallelForBatch, IJobResourceDeclarationO
+        {
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+            public int N;
+
+            public void Execute(int startIndex, int count)
+            {
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = 0.42f - 0.5f * math.cos(6.28318530718f * index / N) + 0.08f * math.cos(12.5663706144f * index / N);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct HammingWindowJob : IParallelForBatch, IJobResourceDeclarationO
+        {
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+            public int N;
+
+            public void Execute(int startIndex, int count)
+            {
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = 0.54347826087f - 0.45652173913f * math.cos(6.28318530718f * index / N);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct HannWindowJob : IParallelForBatch, IJobResourceDeclarationO
+        {
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+            public int N;
+
+            public void Execute(int startIndex, int count)
+            {
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = 0.5f - 0.5f * math.cos(6.28318530718f * index / N);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        unsafe struct MelWeightMatrixJob : IParallelForBatch, IJobResourceDeclarationO
+        {
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+            public int dftLength;
+            public int numMelBins;
+            public float lowerEdgeMel;
+            public float melStep;
+            public int sampleRate;
+
+            static readonly float3 kOffsets = new(0f, 1f, 2f);
+
+            public void Execute(int startIndex, int count)
+            {
+                // from https://github.com/onnx/onnx/blob/main/docs/Operators.md#MelWeightMatrix
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    var freqBins = (int3)math.floor((dftLength + 1) * (700 * (math.pow(10, (lowerEdgeMel + (index + kOffsets) * melStep) / 2595f) - 1)) / sampleRate);
+                    var lowerFreqBin = freqBins[0];
+                    var centreFreqBin = freqBins[1];
+                    var higherFreqBin = freqBins[2];
+                    if (lowerFreqBin == centreFreqBin)
+                    {
+                        if (centreFreqBin >= 0 && centreFreqBin < dftLength / 2 + 1)
+                            Optr[centreFreqBin * numMelBins + index] = 1f;
+                    }
+                    else if (centreFreqBin > lowerFreqBin)
+                    {
+                        for (var j = lowerFreqBin; j <= centreFreqBin; j++)
+                            if (j >= 0 && j < dftLength / 2 + 1)
+                                Optr[j * numMelBins + index] = (float)(j - lowerFreqBin) / (centreFreqBin - lowerFreqBin);
+                    }
+                    if (higherFreqBin > centreFreqBin)
+                    {
+                        for (var j = centreFreqBin + 1; j < higherFreqBin; j++)
+                            if (j >= 0 && j < dftLength / 2 + 1)
+                                Optr[j * numMelBins + index] = (float)(higherFreqBin - j) / (higherFreqBin - centreFreqBin);
                     }
                 }
             }

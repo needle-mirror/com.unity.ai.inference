@@ -8,8 +8,10 @@ using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.GraphAlgorithms;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.DebugHelpers;
-using SymmetricSegment = Microsoft.Msagl.Core.DataStructures.SymmetricTuple<Microsoft.Msagl.Core.Geometry.Point>;
 namespace Microsoft.Msagl.Layout.LargeGraphLayout {
+
+    using SymmetricSegment = SymmetricTuple<Point>;
+
     /// <summary>
     /// class keeping a level info
     /// </summary>

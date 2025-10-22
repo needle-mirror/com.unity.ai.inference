@@ -1,6 +1,6 @@
 ## Create and modify tensors
 
-Tensor methods in Inference Engine are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch.
+Tensor methods in Sentis are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch.
 
 ## Create a tensor
 
@@ -47,7 +47,7 @@ Assert.AreEqual(10, tensor.dataOnBackend.maxCapacity);
 tensor.Reshape(new TensorShape(1, 10));
 ```
 
-When you reshape a tensor, Inference Engine doesn't modify the data or capacity of the underlying [`dataOnBackend`](xref:Unity.InferenceEngine.Tensor.dataOnBackend).
+When you reshape a tensor, Sentis doesn't modify the data or capacity of the underlying [`dataOnBackend`](xref:Unity.InferenceEngine.Tensor.dataOnBackend).
 
 > [!NOTE]
 > You can't reshape a tensor on the graphics processing unit (GPU) when using [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel) because GPU textures aren't stored linearly.

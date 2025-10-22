@@ -710,10 +710,10 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Creates a `TensorShape` by duplicating `this` and reshaping the dimensions to those given.
         ///
-        /// If a dimension in the shape array is -1, Inference Engine infers the value from the size of the `TensorShape` and the remaining dimensions. Only one dimension can be -1.
+        /// If a dimension in the shape array is -1, Sentis infers the value from the size of the `TensorShape` and the remaining dimensions. Only one dimension can be -1.
         /// </summary>
         /// <param name="shape">The new shape as a span of integers.</param>
-        /// <param name="allowZero">When the value is `true`, Inference Engine sets a dimension to zero if the new shape includes a zero. Otherwise Inference Engine retains the corresponding size at that axis from the original shape.</param>
+        /// <param name="allowZero">When the value is `true`, Sentis sets a dimension to zero if the new shape includes a zero. Otherwise Sentis retains the corresponding size at that axis from the original shape.</param>
         /// <returns>The reshape tensor shape.</returns>
         internal TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
         {
@@ -828,7 +828,7 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Creates a `TensorShape` by applying numpy-style broadcasting between `this` and `other`.
         ///
-        /// Inference Engine broadcasts shapes from innermost to outermost dimensions. Two dimensions are compatible when they're equal, or one of the dimensions is 1.
+        /// Sentis broadcasts shapes from innermost to outermost dimensions. Two dimensions are compatible when they're equal, or one of the dimensions is 1.
         /// </summary>
         /// <param name="other">The other tensor shape which which to broadcast.</param>
         /// <returns>The broadcast tensor shape.</returns>
@@ -983,7 +983,7 @@ namespace Unity.InferenceEngine
         /// This version of the op does not allow reducing over length 0 dims.
         /// </summary>
         /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepDim">When the value is `true`, Inference Engine replaces the dimension with 1.</param>
+        /// <param name="keepDim">When the value is `true`, Sentis replaces the dimension with 1.</param>
         /// <returns>The reduced tensor shape.</returns>
         public TensorShape Reduce(int axis, bool keepDim = true)
         {
@@ -1016,7 +1016,7 @@ namespace Unity.InferenceEngine
         /// This version of the op allows reducing over length 0 dims.
         /// </summary>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepDim">When the value is `true`, Inference Engine replaces the reduced axes with 1. Otherwise Inference Engine removes the reduced axes.</param>
+        /// <param name="keepDim">When the value is `true`, Sentis replaces the reduced axes with 1. Otherwise Sentis removes the reduced axes.</param>
         /// <returns>The reduced tensor shape.</returns>
         internal TensorShape Reduce(ReadOnlySpan<int> axes, bool keepDim)
         {
@@ -1192,6 +1192,55 @@ namespace Unity.InferenceEngine
 
             strided.RecomputeLength();
             return strided;
+        }
+
+        internal TensorShape Diagonal(int offset, int dim1, int dim2, ref Span<int> strides, out int storageOffset)
+        {
+            var rankO = rank - 1;
+            var diagonal = Ones(rankO);
+
+            dim1 = Axis(dim1);
+            dim2 = Axis(dim2);
+
+            Logger.AssertIsTrue(dim1 != dim2, "DimError: dim1 {0} cannot equal dim2 {1} for diagonal", dim1, dim2);
+            fixed (int* src = &m_D7)
+            {
+                var dst = &diagonal.m_D7;
+
+                var j = rankO - 2;
+                var runningStride = 1;
+                strides[maxRank - 1] = 0;
+                var size1 = src[(maxRank - rank) + dim1];
+                var size2 = src[(maxRank - rank) + dim2];
+                dst[maxRank - 1] = Mathf.Max(0, Mathf.Min(size1 + Mathf.Min(0, offset), size2 - Mathf.Max(0, offset)));
+                storageOffset = 0;
+                for (var i = rank - 1; i >= 0; i--)
+                {
+                    if (i == dim1)
+                    {
+                        if (offset < 0)
+                            storageOffset = -offset * runningStride;
+                        strides[maxRank - 1] += runningStride;
+                    }
+                    else if (i == dim2)
+                    {
+                        if (offset >= 0)
+                            storageOffset = offset * runningStride;
+                        strides[maxRank - 1] += runningStride;
+                    }
+                    else
+                    {
+                        dst[(maxRank - rankO) + j] = src[(maxRank - rank) + i];
+                        strides[(maxRank - rankO) + j] = runningStride;
+                        j--;
+                    }
+
+                    runningStride *= src[(maxRank - rank) + i];
+                }
+            }
+
+            diagonal.RecomputeLength();
+            return diagonal;
         }
 
         /// <summary>

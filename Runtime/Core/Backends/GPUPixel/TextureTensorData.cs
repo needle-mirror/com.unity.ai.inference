@@ -13,12 +13,12 @@ namespace Unity.InferenceEngine
     /// <summary>
     /// Represents the data storage for a 'Tensor' as a render texture, for backends that use GPU pixel shaders.
     ///
-    /// Inference Engine packs the tensor data into the pixels of an RGBA float4 texture.
+    /// Sentis packs the tensor data into the pixels of an RGBA float4 texture.
     ///
-    /// Inference Engine chooses a single tensor dimension as the blocked axis, across which data is chunked in float4 blocks.
+    /// Sentis chooses a single tensor dimension as the blocked axis, across which data is chunked in float4 blocks.
     ///
     /// Tensor dimensions don't map directly to texture dimensions.
-    /// Inference Engine creates the texture with dimensions large enough to fit all the data and pixel shaders index the data
+    /// Sentis creates the texture with dimensions large enough to fit all the data and pixel shaders index the data
     /// based on both the tensor and texture dimensions (see example below).
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
@@ -249,10 +249,17 @@ namespace Unity.InferenceEngine
                     = m_BlockedAxisDiv4RemainderMask[1]
                     = m_BlockedAxisDiv4RemainderMask[2]
                     = m_BlockedAxisDiv4RemainderMask[3] = 1;
+                // TODO TOCHECK,
+                // Since nothing is 4-packed (the "blocked axis" has element stride = total shape length!)
+                // should be:
+                //m_BlockedAxisDiv4RemainderMask[0] = 1;
+                //m_BlockedAxisDiv4RemainderMask[1]
+                //    = m_BlockedAxisDiv4RemainderMask[2]
+                //    = m_BlockedAxisDiv4RemainderMask[3] = 0;
             }
         }
 
-        bool IsLayoutIdentical(TensorShape newShape, int newBlockedAxis)
+        internal bool IsLayoutIdentical(TensorShape newShape, int newBlockedAxis)
         {
             if (newBlockedAxis >= 0)
             {
@@ -353,7 +360,7 @@ namespace Unity.InferenceEngine
 
                 texture.Apply();
 
-                var func = new PixelFunc("Hidden/InferenceEngine/TextureTensorDataUpload");
+                var func = new PixelFunc("Hidden/Sentis/TextureTensorDataUpload");
                 func.EnableKeyword("TensorFloat");
 
                 func.SetTexture(k_ID_Xptr, texture);
@@ -389,7 +396,7 @@ namespace Unity.InferenceEngine
                 textureLower.Apply();
                 textureUpper.Apply();
 
-                var func = new PixelFunc("Hidden/InferenceEngine/TextureTensorDataUpload");
+                var func = new PixelFunc("Hidden/Sentis/TextureTensorDataUpload");
                 func.EnableKeyword("TensorInt");
 
                 func.SetTexture(k_ID_Xptr, textureLower);
@@ -452,7 +459,7 @@ namespace Unity.InferenceEngine
                     gotTemporary = true;
                     linearRenderTexture = RenderTexture.GetTemporary(linearWidth, linearHeight, 0, RenderTextureFormat.ARGBFloat);
 
-                    var func = new PixelFunc("Hidden/InferenceEngine/TextureTensorDataDownload");
+                    var func = new PixelFunc("Hidden/Sentis/TextureTensorDataDownload");
                     func.EnableKeyword("TensorFloat");
                     func.SetTensor(k_TensorPropertiesX, this);
                     func.SetTensorBlockStride(k_TensorPropertiesX, this);
@@ -490,7 +497,7 @@ namespace Unity.InferenceEngine
                 var textureLower = new Texture2D(linearWidth, linearHeight, TextureFormat.RGBAFloat, false);
                 var textureUpper = new Texture2D(linearWidth, linearHeight, TextureFormat.RGBAFloat, false);
 
-                var func = new PixelFunc("Hidden/InferenceEngine/TextureTensorDataDownload");
+                var func = new PixelFunc("Hidden/Sentis/TextureTensorDataDownload");
                 func.SetTensor(k_TensorPropertiesX, this);
                 func.SetTensorBlockStride(k_TensorPropertiesX, this);
                 func.SetInt(k_TensorPropertiesO.k_ID_WidthShift, linearWidthShift);
@@ -554,21 +561,21 @@ namespace Unity.InferenceEngine
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AdoptTensorData(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit));
+                X.AdoptTensorData(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit), disposePrevious: true, disposeIsDelayed: false);
                 return X.dataOnBackend as TextureTensorData;
             }
 
             if (onDevice is TextureTensorData textureTensorData)
             {
                 var newTextureTensorData = textureTensorData.SwitchBlockedLayout(X.shape, blockAxis);
-                X.AdoptTensorData(newTextureTensorData);
+                X.AdoptTensorData(newTextureTensorData, disposePrevious: true, disposeIsDelayed: false);
                 return X.dataOnBackend as TextureTensorData;
             }
 
             // TODO as IConvertibleToTextureTensorData
             var dataOnBackend = new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit: false);
             dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
-            X.AdoptTensorData(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend, disposePrevious: true, disposeIsDelayed: false);
 
             return X.dataOnBackend as TextureTensorData;
         }
@@ -578,7 +585,7 @@ namespace Unity.InferenceEngine
         /// If the layout of the data hasn't changed this will be the same object,
         /// otherwise we need to run a shader to perform the layout switch.
         /// </summary>
-        TextureTensorData SwitchBlockedLayout(TensorShape newShape, int newBlockedAxis)
+        internal TextureTensorData SwitchBlockedLayout(TensorShape newShape, int newBlockedAxis)
         {
             if (IsLayoutIdentical(newShape, newBlockedAxis))
             {
@@ -587,7 +594,7 @@ namespace Unity.InferenceEngine
             }
 
             var textureTensorData = new TextureTensorData(m_DataType, newShape, newBlockedAxis, false);
-            var func = new PixelFunc("Hidden/InferenceEngine/LayoutSwitchBlockedAxis");
+            var func = new PixelFunc("Hidden/Sentis/LayoutSwitchBlockedAxis");
             func.EnableKeyword(dataType == DataType.Float ? "TENSORFLOAT" : "TENSORINT");
             func.SetTensor(k_TensorPropertiesX, this);
             func.SetTensorBlockStride(k_TensorPropertiesX, this);

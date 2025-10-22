@@ -6,9 +6,14 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `LogSoftmax` activation layer along an axis: f(x, axis) = log(Softmax(x, axis)).
     /// </summary>
     [Operator(category = "ActivationNonLinear")]
-    partial class LogSoftmax : Activation
+    partial class LogSoftmax : Layer
     {
         public int axis;
+
+        internal static PartialTensor InferPartial(PartialTensor input, int axis)
+        {
+            return PartialTensor.Activation(input);
+        }
 
         internal override void Execute(ExecutionContext ctx)
         {
@@ -24,9 +29,14 @@ namespace Unity.InferenceEngine.Layers
     /// Represents a `Softmax` activation layer along an axis: f(x, axis) = exp(X) / ReduceSum(exp(X), axis).
     /// </summary>
     [Operator(category = "ActivationNonLinear")]
-    partial class Softmax : Activation
+    partial class Softmax : Layer
     {
         public int axis;
+
+        internal static PartialTensor InferPartial(PartialTensor input, int axis)
+        {
+            return PartialTensor.Activation(input);
+        }
 
         internal override void Execute(ExecutionContext ctx)
         {

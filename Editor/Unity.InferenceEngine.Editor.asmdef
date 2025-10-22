@@ -4,14 +4,18 @@
     "references": [
         "Unity.InferenceEngine",
         "Unity.InferenceEngine.Editor.Visualizer",
+        "Unity.Mathematics",
         "Unity.InferenceEngine.ONNX.Editor"
     ],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+      "Google.Protobuf_Packed.dll"
+    ],
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],

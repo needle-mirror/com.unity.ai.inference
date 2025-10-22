@@ -53,17 +53,17 @@ Tensor<float> inputTensor = new Tensor<float>(new TensorShape(1, 4, inputTexture
 TextureConverter.ToTensor(inputTexture, inputTensor, swizzleChannelsAndChangeOrigin);
 ```
 
-If the width and height of the texture doesn't match the width and height of the tensor, Inference Engine applies linear resampling to upsample or downsample the texture.
+If the width and height of the texture doesn't match the width and height of the tensor, Sentis applies linear resampling to upsample or downsample the texture.
 
 For more information, refer to the [`TextureTransform`](xref:Unity.InferenceEngine.TextureTransform) API reference.
 
 ### Set a tensor to the correct format
 
-When you convert a texture to a tensor, Inference Engine defaults to the NCHW layout.
+When you convert a texture to a tensor, Sentis defaults to the NCHW layout.
 
 If your model needs a different layout, use [`SetTensorLayout`](xref:Unity.InferenceEngine.TextureTransform.SetTensorLayout*) to set the layout of the converted tensor.
 
-For more information about tensor formats, refer to [Tensor fundamentals in Inference Engine](tensor-fundamentals.md).
+For more information about tensor formats, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md).
 
 ### Avoid Tensor and Texture creation
 
@@ -91,6 +91,6 @@ void Update()
 
 ## Additional resources
 
-- [Tensor fundamentals in Inference Engine](tensor-fundamentals.md)
+- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
 - [Edit a model](edit-a-model.md)
 - [Use output data](use-model-output.md)

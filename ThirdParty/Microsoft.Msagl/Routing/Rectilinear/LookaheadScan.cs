@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Msagl.Core.DataStructures;
 using Microsoft.Msagl.Core.Geometry;
-using RectRout = Microsoft.Msagl.Routing.Rectilinear;
 using Microsoft.Msagl.Core;
 
 namespace Microsoft.Msagl.Routing.Rectilinear {

@@ -24,7 +24,7 @@ public class PollingReadback : MonoBehaviour
         if (!isRunning)
         {
             m_Worker.Schedule(m_Input);
-            // Peek the value from Inference Engine, without taking ownership of the Tensor (see PeekOutput docs for details).
+            // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
             m_Output = m_Worker.PeekOutput() as Tensor<float>;
             // start a readback request. tensor's internal data is scheduled for download once all execution has finished
             m_Output.ReadbackRequest();

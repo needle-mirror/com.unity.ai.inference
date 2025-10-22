@@ -1,8 +1,8 @@
 # Workflow example
 
-This example demonstrates the basic Inference Engine workflow. It includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit.
+This example demonstrates the basic Sentis workflow. It includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit.
 
-Use this example to [Understand the Inference Engine workflow](understand-inference-engine-workflow.md).
+Use this example to [Understand the Sentis workflow](understand-sentis-workflow.md).
 
 ## Use the example
 
@@ -38,7 +38,7 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
         runtimeModel = graph.Compile();
 
         // Create input data as a tensor
-        using Tensor inputTensor = new Tensor<float>(new TensorShape(1, 1, 28, 28);
+        using Tensor<float> inputTensor = new Tensor<float>(new TensorShape(1, 1, 28, 28));
         TextureConverter.ToTensor(inputTexture, inputTensor);
 
         // Create an engine
@@ -80,5 +80,5 @@ In the **Inspector** window of the GameObject, each item of the **Results** arra
 
 ## Additional resources
 - [Samples](package-samples.md)
-- [Understand the Inference Engine workflow](understand-inference-engine-workflow.md)
+- [Understand the Sentis workflow](understand-sentis-workflow.md)
 - [Create a model](create-a-model.md)

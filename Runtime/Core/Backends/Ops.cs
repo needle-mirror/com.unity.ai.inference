@@ -1,17 +1,35 @@
 using System;
-using UnityEngine;
+using static Unity.InferenceEngine.CPUTensorData;
+using Unity.Jobs;
 
 namespace Unity.InferenceEngine
 {
     class CPUOps : Ops
     {
+        CPUBackend m_CPUBackend => m_Backend as CPUBackend;
+
         public CPUOps()
             : base(BackendType.CPU) { }
+
+        public Tensor<float> WindowedDFTMatrix(Tensor<float> window, int dftLength, int inputFrameLength, bool inverse, bool onesided, bool alternateRealImaOnRows)
+        {
+            int outputXformSignalLength = onesided ? dftLength / 2 + 1 : dftLength;
+            int numRows = outputXformSignalLength;
+            if (alternateRealImaOnRows)
+                numRows *= 2;
+            int numCols = alternateRealImaOnRows ? inputFrameLength : inputFrameLength * 2;
+
+            var twiddleMatrixShape = new TensorShape(numRows, numCols);
+            var O = new Tensor<float>(twiddleMatrixShape, data:null);
+
+            m_CPUBackend.WindowedDFTMatrix(window, O, dftLength: dftLength, inputFrameLength: inputFrameLength, inverse: inverse, onesided, alternateRealImaOnRows, scale: 1.0f);
+            return O;
+        }
     }
 
     abstract class Ops : IDisposable
     {
-        IBackend m_Backend;
+        protected IBackend m_Backend;
 
         protected Ops(BackendType backendType)
         {
@@ -149,6 +167,33 @@ namespace Unity.InferenceEngine
             if (O.shape.HasZeroDims())
                 return O;
             m_Backend.MemSet(O, value);
+            return O;
+        }
+
+        public Tensor<T> Copy<T>(Tensor<T> X) where T : unmanaged
+        {
+            var O = new Tensor<T>(X.shape, data: null);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MemCopy(X, O);
+            return O;
+        }
+
+        public Tensor<T> Expand<T>(Tensor<T> X, TensorShape shape) where T : unmanaged
+        {
+            var O = new Tensor<T>(X.shape.Broadcast(shape), data: null);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Expand(X, O);
+            return O;
+        }
+
+        public Tensor<T> Reshape<T>(Tensor<T> X, TensorShape shape) where T : unmanaged
+        {
+            var O = new Tensor<T>(shape, data: null);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MemCopy(X, O);
             return O;
         }
     }

@@ -10,24 +10,20 @@ namespace Unity.InferenceEngine
     public partial class FunctionalTensor
     {
         PartialTensor m_PartialTensor;
-
-        Node m_Source;
-        int m_OutputIndex;
+        FunctionalNode m_Source;
         string m_Name;
 
         internal PartialTensor partialTensor => m_PartialTensor;
         internal DataType dataType => m_PartialTensor.dataType;
         internal DynamicTensorShape shape => m_PartialTensor.shape;
-        internal Node source => m_Source;
-        internal int outputIndex => m_OutputIndex;
-        internal int index => m_Source.OutputIndices[m_OutputIndex];
+        internal FunctionalNode source => m_Source;
         internal string name => m_Name;
 
-        internal FunctionalTensor(PartialTensor partialTensor, Node source, int outputIndex)
+        internal FunctionalTensor(PartialTensor partialTensor, FunctionalNode source, string name = null)
         {
             m_PartialTensor = partialTensor;
             m_Source = source;
-            m_OutputIndex = outputIndex;
+            m_Name = name;
         }
 
         internal void SetName(string name)
@@ -37,36 +33,14 @@ namespace Unity.InferenceEngine
 
         internal FunctionalTensor Copy()
         {
-            return new FunctionalTensor(m_PartialTensor.Copy(), source, m_OutputIndex);
+            return new FunctionalTensor(m_PartialTensor.Copy(), source, name);
         }
 
         internal static FunctionalTensor FromTensor(Tensor tensor)
         {
-            Constant constant;
-            switch (tensor.dataType)
-            {
-                case DataType.Float:
-                {
-                    constant = new Constant(-1, tensor.shape, (tensor as Tensor<float>).DownloadToNativeArray().ToArray());
-                    break;
-                }
-                case DataType.Int:
-                {
-                    constant = new Constant(-1, tensor.shape, (tensor as Tensor<int>).DownloadToNativeArray().ToArray());
-                    break;
-                }
-                default:
-                    throw new NotImplementedException();
-            }
-
-            var constantNode = new ConstantNode(constant);
-            return constantNode.CreateOutputs()[0];
-        }
-
-        internal static FunctionalTensor FromConstant(Constant constant)
-        {
-            var constantNode = new ConstantNode(constant);
-            return constantNode.CreateOutputs()[0];
+            var constantTensor = new ConstantTensor(tensor);
+            var constantNode = new ConstantNode(constantTensor);
+            return new FunctionalTensor(PartialTensor.FromTensor(tensor), constantNode);
         }
 
         /// <summary>

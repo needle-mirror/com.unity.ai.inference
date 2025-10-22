@@ -16,7 +16,7 @@ namespace Unity.InferenceEngine
     }
 
     /// <summary>
-    /// Represents a pseudo-random number generator used by Inference Engine.
+    /// Represents a pseudo-random number generator used by Sentis.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class Random
@@ -27,7 +27,7 @@ namespace Unity.InferenceEngine
         static System.Random s_Random = new System.Random();
 
         /// <summary>
-        /// Sets the global Inference Engine random state for random values without an explicit seed.
+        /// Sets the global Sentis random state for random values without an explicit seed.
         /// </summary>
         /// <param name="seed">The seed to set the state to</param>
         public static void SetSeed(int seed)

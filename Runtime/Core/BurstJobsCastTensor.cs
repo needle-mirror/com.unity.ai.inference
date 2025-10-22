@@ -10,7 +10,7 @@ namespace Unity.InferenceEngine
     static class BurstJobsCastTensor
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        public unsafe struct DoubleBytesAsFloatJob : IJobParallelFor
+        public unsafe struct Float64BytesAsFloatJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public long* src;
             [NoAlias][NativeDisableUnsafePtrRestriction]            public float* dst;
@@ -35,19 +35,6 @@ namespace Unity.InferenceEngine
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-        public unsafe struct LongBytesAsIntJob : IJobParallelFor
-        {
-            [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public long* src;
-            [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
-
-            public void Execute(int index)
-            {
-                long v = src[index];
-                dst[index] = v < (long)int.MinValue ? int.MinValue : v > (long)int.MaxValue ? int.MaxValue : (int)v;
-            }
-        }
-
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         public unsafe struct BoolBytesAsIntJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public bool* src;
@@ -55,8 +42,7 @@ namespace Unity.InferenceEngine
 
             public void Execute(int index)
             {
-                bool v = src[index];
-                dst[index] = v ? 1 : 0;
+                dst[index] = src[index] ? 1 : 0;
             }
         }
 
@@ -68,8 +54,7 @@ namespace Unity.InferenceEngine
 
             public void Execute(int index)
             {
-                byte v = src[index];
-                dst[index] = (int)v;
+                dst[index] = src[index];
             }
         }
 
@@ -81,8 +66,70 @@ namespace Unity.InferenceEngine
 
             public void Execute(int index)
             {
-                sbyte v = src[index];
-                dst[index] = (int)v;
+                dst[index] = src[index];
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Uint16BytesAsIntJob : IJobParallelFor
+        {
+            [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public ushort* src;
+            [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
+
+            public void Execute(int index)
+            {
+                dst[index] = src[index];
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Int16BytesAsIntJob : IJobParallelFor
+        {
+            [NoAlias] [NativeDisableUnsafePtrRestriction] [ReadOnly] public short* src;
+            [NoAlias] [NativeDisableUnsafePtrRestriction]            public int* dst;
+
+            public void Execute(int index)
+            {
+                dst[index] = src[index];
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Uint32BytesAsIntJob : IJobParallelFor
+        {
+            [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public uint* src;
+            [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
+
+            public void Execute(int index)
+            {
+                uint v = src[index];
+                dst[index] = v > int.MaxValue ? int.MaxValue : (int)v;
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Uint64BytesAsIntJob : IJobParallelFor
+        {
+            [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public ulong* src;
+            [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
+
+            public void Execute(int index)
+            {
+                ulong v = src[index];
+                dst[index] = v > int.MaxValue ? int.MaxValue : (int)v;
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Int64BytesAsIntJob : IJobParallelFor
+        {
+            [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public long* src;
+            [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
+
+            public void Execute(int index)
+            {
+                long v = src[index];
+                dst[index] = v < int.MinValue ? int.MinValue : v > int.MaxValue ? int.MaxValue : (int)v;
             }
         }
     }

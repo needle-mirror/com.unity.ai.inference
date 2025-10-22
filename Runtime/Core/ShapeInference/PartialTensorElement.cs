@@ -90,6 +90,15 @@ namespace Unity.InferenceEngine
             }
         }
 
+        public PartialTensorElement<T1> Cast<T1>() where T1 : unmanaged
+        {
+            if (isUnknown)
+                return PartialTensorElement<T1>.Unknown;
+            if (isParam)
+                return PartialTensorElement<T1>.Param(m_Param);
+            return PartialTensorElement<T1>.Value((T1)Convert.ChangeType(m_Value, typeof(T1)));
+        }
+
         /// <summary>
         /// Returns a string that represents the `PartialTensorElement`.
         /// </summary>
@@ -118,16 +127,6 @@ namespace Unity.InferenceEngine
         public bool Equals(T other)
         {
             return m_ElementType == ElementType.Value && Equals(m_Value, other);
-        }
-
-        public bool IsFalse()
-        {
-            return this == Zero;
-        }
-
-        public bool IsTrue()
-        {
-            return m_ElementType == ElementType.Value && !(this == Zero);
         }
 
         public bool Equals(PartialTensorElement<T> other)
@@ -209,6 +208,50 @@ namespace Unity.InferenceEngine
             if (a.isValue && b.isValue)
                 return Lt(a.value, b.value);
             return false;
+        }
+
+        public static PartialTensorElement<T> operator &(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        {
+            if (a == b)
+                return a;
+            if (a == Zero || b == Zero)
+                return Zero;
+            if (a.isValue && b.isValue)
+                return Value(BitwiseAnd(a.value, b.value));
+            return Unknown;
+        }
+
+        public static PartialTensorElement<T> operator |(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        {
+            if (a == b)
+                return a;
+            if (a == Zero)
+                return b;
+            if (b == Zero)
+                return a;
+            if (a.isValue && b.isValue)
+                return Value(BitwiseOr(a.value, b.value));
+            return Unknown;
+        }
+
+        public static PartialTensorElement<T> operator ^(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        {
+            if (a == b)
+                return Zero;
+            if (a == Zero)
+                return b;
+            if (b == Zero)
+                return a;
+            if (a.isValue && b.isValue)
+                return Value(BitwiseXor(a.value, b.value));
+            return Unknown;
+        }
+
+        public static PartialTensorElement<T> operator ~(PartialTensorElement<T> a)
+        {
+            if (a.isValue)
+                return Value(BitwiseNot(a.value));
+            return Unknown;
         }
 
         /// <summary>
@@ -403,10 +446,19 @@ namespace Unity.InferenceEngine
 
         public static PartialTensorElement<int> Eq(PartialTensorElement<T> a, PartialTensorElement<T> b)
         {
-            if (a.isValue && b.isValue)
-                return PartialTensorElement<int>.Value(Eq(a.value, b.value) ? 1 : 0);
             if (a == b)
                 return PartialTensorElement<int>.Value(1);
+            if (a != b)
+                return PartialTensorElement<int>.Value(0);
+            return PartialTensorElement<int>.Unknown;
+        }
+
+        public static PartialTensorElement<int> Ne(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        {
+            if (a != b)
+                return PartialTensorElement<int>.Value(1);
+            if (a == b)
+                return PartialTensorElement<int>.Value(0);
             return PartialTensorElement<int>.Unknown;
         }
 
@@ -462,6 +514,34 @@ namespace Unity.InferenceEngine
         static bool Lt(T a, T b) => Gt(b, a);
 
         static bool Le(T a, T b) => Ge(b, a);
+
+        static T BitwiseAnd(T a, T b)
+        {
+            if (a is int aInt && b is int bInt)
+                return (T)Convert.ChangeType(aInt & bInt, typeof(T));
+            throw new ArgumentException($"Cannot bitwise and {a} and {b}.");
+        }
+
+        static T BitwiseOr(T a, T b)
+        {
+            if (a is int aInt && b is int bInt)
+                return (T)Convert.ChangeType(aInt | bInt, typeof(T));
+            throw new ArgumentException($"Cannot bitwise or {a} and {b}.");
+        }
+
+        static T BitwiseXor(T a, T b)
+        {
+            if (a is int aInt && b is int bInt)
+                return (T)Convert.ChangeType(aInt ^ bInt, typeof(T));
+            throw new ArgumentException($"Cannot bitwise or {a} and {b}.");
+        }
+
+        static T BitwiseNot(T a)
+        {
+            if (a is int aInt)
+                return (T)Convert.ChangeType(~aInt, typeof(T));
+            throw new ArgumentException($"Cannot bitwise not {a}.");
+        }
 
         static T Mul(T a, T b)
         {
@@ -520,18 +600,18 @@ namespace Unity.InferenceEngine
         static T Max(T a, T b)
         {
             if (a is int aInt && b is int bInt)
-                return (T)Convert.ChangeType(Mathf.Max(aInt - bInt), typeof(T));
+                return (T)Convert.ChangeType(Mathf.Max(aInt, bInt), typeof(T));
             if (a is float aFloat && b is float bFloat)
-                return (T)Convert.ChangeType(Mathf.Max(aFloat - bFloat), typeof(T));
+                return (T)Convert.ChangeType(Mathf.Max(aFloat, bFloat), typeof(T));
             throw new ArgumentException($"Cannot max {a} and {b}.");
         }
 
         static T Min(T a, T b)
         {
             if (a is int aInt && b is int bInt)
-                return (T)Convert.ChangeType(Mathf.Min(aInt - bInt), typeof(T));
+                return (T)Convert.ChangeType(Mathf.Min(aInt, bInt), typeof(T));
             if (a is float aFloat && b is float bFloat)
-                return (T)Convert.ChangeType(Mathf.Min(aFloat - bFloat), typeof(T));
+                return (T)Convert.ChangeType(Mathf.Min(aFloat, bFloat), typeof(T));
             throw new ArgumentException($"Cannot min {a} and {b}.");
         }
 

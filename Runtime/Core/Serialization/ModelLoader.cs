@@ -5,7 +5,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using SentisFlatBuffer;
 using Unity.InferenceEngine.Google.FlatBuffers;
-using Unity.InferenceEngine.Layers;
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.RuntimeTests")]
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.EditorTests")]
@@ -60,7 +59,7 @@ namespace Unity.InferenceEngine
                 var modelDescriptionBytes = new byte[modelDescriptionSize + sizeof(int)];
                 System.Buffer.BlockCopy(prefixSizeBytes, 0, modelDescriptionBytes, 0, sizeof(int));
                 stream.Read(modelDescriptionBytes, sizeof(int), modelDescriptionSize);
-                var weightBuffersConstantsOffsets = LoadModelDescription(modelDescriptionBytes, ref model);
+                var weightBuffersConstantsOffsets = LoadModelDescription(modelDescriptionBytes, model);
 
                 for (var i = 0; i < weightBuffersConstantsOffsets.Length; i++)
                 {
@@ -69,59 +68,31 @@ namespace Unity.InferenceEngine
                     var modelWeightsBufferBytes = new byte[modelWeightsChunkSize + sizeof(int)];
                     System.Buffer.BlockCopy(prefixSizeBytes, 0, modelWeightsBufferBytes, 0, sizeof(int));
                     stream.Read(modelWeightsBufferBytes, sizeof(int), modelWeightsChunkSize);
-                    LoadModelWeights(modelWeightsBufferBytes, weightBuffersConstantsOffsets[i], ref model);
+                    LoadModelWeights(modelWeightsBufferBytes, weightBuffersConstantsOffsets[i], model);
                 }
 
                 return model;
             }
             catch (Exception e)
             {
-                D.LogError($"Failed to load serialized .sentis model, ensure model was exported with Inference Engine or with Sentis 1.4 or newer. ({e.Message})");
+                D.LogError($"Failed to load serialized .sentis model, ensure model was exported with Sentis 1.4 or newer (or Inference Engine). ({e.Message})");
                 return null;
             }
-        }
-
-        internal static int OptionalInput(this Chain chain, int index)
-        {
-            var input = index < chain.InputsLength ? chain.Inputs(index) : -1;
-            return input;
-        }
-
-        internal static int RequiredInput(this Chain chain, int index)
-        {
-            Logger.AssertIsTrue(index < chain.InputsLength, "Input Required");
-            var input = chain.Inputs(index);
-            Logger.AssertIsTrue(input != -1, "Input Required");
-            return input;
-        }
-
-        internal static int OptionalOutput(this Chain chain, int index)
-        {
-            var output = index < chain.OutputsLength ? chain.Outputs(index) : -1;
-            return output;
-        }
-
-        internal static int RequiredOutput(this Chain chain, int index)
-        {
-            Logger.AssertIsTrue(index < chain.OutputsLength, "Output Required");
-            var output = chain.Outputs(index);
-            Logger.AssertIsTrue(output != -1, "Output Required");
-            return output;
         }
 
         internal static Model LoadModelDescription(byte[] modelDescription)
         {
             var model = new Model();
-            LoadModelDescription(modelDescription, ref model);
+            LoadModelDescription(modelDescription, model);
             return model;
         }
 
         internal static Model LoadModel(byte[] modelDescription, byte[][] modelWeights)
         {
             var model = new Model();
-            var weightsConstantIndexesOffsets = LoadModelDescription(modelDescription, ref model);
+            var weightsConstantIndexesOffsets = LoadModelDescription(modelDescription, model);
             for (var i = 0; i < weightsConstantIndexesOffsets.Length; i++)
-                LoadModelWeights(modelWeights[i], weightsConstantIndexesOffsets[i], ref model);
+                LoadModelWeights(modelWeights[i], weightsConstantIndexesOffsets[i], model);
             return model;
         }
 
@@ -148,7 +119,7 @@ namespace Unity.InferenceEngine
             return shape;
         }
 
-        static List<(int, int)>[] LoadModelDescription(byte[] modelDescription, ref Model model)
+        static List<(int, int)>[] LoadModelDescription(byte[] modelDescription, Model model)
         {
             var bb = new ByteBuffer(modelDescription, sizeof(int));
             var program = Program.GetRootAsProgram(bb);
@@ -162,8 +133,10 @@ namespace Unity.InferenceEngine
                 var originalProgramVersion = program.Version;
                 if (originalProgramVersion < ModelWriter.version)
                     program = ModelUpgrader.Upgrade(program);
+                if (program.Version < ModelWriter.version)
+                    throw new Exception("Model upgrader must upgrade to ModelWriter version");
                 if (originalProgramVersion > ModelWriter.version)
-                    D.LogWarning("Serialized model was exported in a newer version of Inference Engine than the current installed version and may not work as expected. Update the Inference Engine package to ensure compatibility.");
+                    D.LogWarning("Serialized model was exported in a newer version of Sentis than the current installed version and may not work as expected. Update the Sentis package to ensure compatibility.");
                 var executionPlan = program.ExecutionPlan.Value;
 
                 model.symbolicDimNames = new string[executionPlan.SymbolicDimNamesLength];
@@ -175,12 +148,15 @@ namespace Unity.InferenceEngine
                 {
                     int input = executionPlan.Inputs(i);
                     var tensorDesc = executionPlan.Values(input).Value.ValAsTensor();
-                    model.AddInput(executionPlan.InputsName(i), input, (DataType)tensorDesc.ScalarType, GetDynamicShape(tensorDesc));
+                    var name = executionPlan.InputsName(i);
+                    var dataType = (DataType)tensorDesc.ScalarType;
+                    var shape = GetDynamicShape(tensorDesc);
+                    model.inputs.Add(new Model.Input(name, input, dataType, shape));
                 }
                 model.outputs = new List<Model.Output>();
                 for (int i = 0; i < executionPlan.OutputsLength; i++)
                 {
-                    model.AddOutput(executionPlan.OutputsName(i), executionPlan.Outputs(i));
+                    model.outputs.Add(new Model.Output(executionPlan.OutputsName(i), executionPlan.Outputs(i)));
                 }
 
                 // load known data types and shapes
@@ -213,7 +189,7 @@ namespace Unity.InferenceEngine
                         if (constantTensor.ConstantBufferIdx == 0)
                             continue;
                         int lengthByte = constantTensor.LengthByte;
-                        model.AddConstant(new Constant(input, new TensorShape(constantTensor.GetFixedSizesArray()), (DataType)constantTensor.ScalarType, lengthByte));
+                        model.constants.Add(new Constant(input, new TensorShape(constantTensor.GetFixedSizesArray()), lengthByte, (DataType)constantTensor.ScalarType));
                         var idx = (int)(constantTensor.ConstantBufferIdx - 1);
                         var offset = constantTensor.StorageOffset;
                         weightBuffersConstantsOffsets[idx].Add((model.constants.Count - 1, offset));
@@ -230,7 +206,7 @@ namespace Unity.InferenceEngine
                     if (layer == null)
                         throw new NotImplementedException(kernelName);
 
-                    model.AddLayer(layer);
+                    model.layers.Add(layer);
                 }
             }
             catch (Exception e)
@@ -242,7 +218,7 @@ namespace Unity.InferenceEngine
             return weightBuffersConstantsOffsets;
         }
 
-        static void LoadModelWeights(byte[] modelWeightsBufferBytes, List<(int, int)> constantIndexesOffsets, ref Model model)
+        static void LoadModelWeights(byte[] modelWeightsBufferBytes, List<(int, int)> constantIndexesOffsets, Model model)
         {
             try
             {
@@ -252,10 +228,7 @@ namespace Unity.InferenceEngine
                 foreach (var (constantIdx, offset) in constantIndexesOffsets)
                 {
                     var constant = model.constants[constantIdx];
-                    if (constant.lengthBytes == 0)
-                        continue;
-                    var elementCount = constant.lengthBytes / NativeTensorArray.k_DataItemSize;
-                    constant.m_Weights = new NativeTensorArrayFromManagedArray(data, offset, elementCount);
+                    constant.array = new ArraySegment<byte>(data, offset, constant.lengthBytes);
                 }
             }
             catch (InvalidOperationException)

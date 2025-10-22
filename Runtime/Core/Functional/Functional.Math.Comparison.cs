@@ -13,7 +13,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Equals(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Equal(), new[] { input, other });
+            return FunctionalLayer.Equal(input, other);
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor GreaterEqual(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.GreaterOrEqual(), new[] { input, other });
+            return FunctionalLayer.GreaterOrEqual(input, other);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Greater(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Greater(), new[] { input, other });
+            return FunctionalLayer.Greater(input, other);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Unity.InferenceEngine
             // TODO add to backend and layers
             if (input.dataType == DataType.Int)
                 return OnesLike(input);
-            return LogicalNot(LogicalOr(IsInf(input), IsNaN(input)));
+            return FunctionalLayer.Not(FunctionalLayer.Or(IsInf(input), IsNaN(input)));
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Int)
                 return ZerosLike(input);
-            return FromLayer(new Layers.IsInf(true, true), input);
+            return FunctionalLayer.IsInf(input, true, true);
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace Unity.InferenceEngine
         {
             if (input.dataType == DataType.Int)
                 return ZerosLike(input);
-            return FromLayer(new Layers.IsNaN(), input);
+            return FunctionalLayer.IsNaN(input);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LessEqual(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.LessOrEqual(), new[] { input, other });
+            return FunctionalLayer.LessOrEqual(input, other);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Less(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Less(), new[] { input, other });
+            return FunctionalLayer.Less(input, other);
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Max(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Max(), new[] { input, other });
+            return FunctionalLayer.Max(input, other);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor Min(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FromLayer(new Layers.Min(), new[] { input, other });
+            return FunctionalLayer.Min(input, other);
         }
 
         /// <summary>
@@ -156,8 +156,7 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor NotEqual(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            // TODO implement backend and layer
-            return LogicalNot(Equals(input, other));
+            return FunctionalLayer.NotEqual(input, other);
         }
 
         /// <summary>
@@ -171,7 +170,7 @@ namespace Unity.InferenceEngine
         /// <returns>The output values and indices tensors in an array.</returns>
         public static FunctionalTensor[] TopK(FunctionalTensor input, int k, int dim = -1, bool largest = true, bool sorted = true)
         {
-            return FromLayerMultiOutput(new Layers.TopK(dim, largest, sorted), new[] { input, Constant(new[] { k }) });
+            return FunctionalLayer.TopK(input, Constant(new[] { k }), dim, largest, sorted);
         }
     }
 }

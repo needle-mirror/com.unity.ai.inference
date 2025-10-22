@@ -248,6 +248,120 @@ partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct FloorDivFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            float* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                float* Xp = Xptr + offsetX;
+                float* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] float* Xp, uint stepX, [NoAlias] float* Bp, uint stepB, [NoAlias] float* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                float x = Xp[0]; Xp += stepX;
+                float y = Bp[0]; Bp += stepB;
+                Op[i] = (math.floor(x / y));
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct TruncDivFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            float* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                float* Xp = Xptr + offsetX;
+                float* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] float* Xp, uint stepX, [NoAlias] float* Bp, uint stepB, [NoAlias] float* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                float x = Xp[0]; Xp += stepX;
+                float y = Bp[0]; Bp += stepB;
+                Op[i] = (math.trunc(x / y));
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MinFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -820,6 +934,63 @@ partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct NotEqualFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                float* Xp = Xptr + offsetX;
+                float* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] float* Xp, uint stepX, [NoAlias] float* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                float x = Xp[0]; Xp += stepX;
+                float y = Bp[0]; Bp += stepB;
+                Op[i] = (x != y ? 1 : 0);
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct OrJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1219,7 +1390,64 @@ partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-    internal unsafe struct DivIntJob : IParallelForBatch, IJobResourceDeclarationXBO
+    internal unsafe struct FloorDivIntJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                int* Xp = Xptr + offsetX;
+                int* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] int* Xp, uint stepX, [NoAlias] int* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                int x = Xp[0]; Xp += stepX;
+                int y = Bp[0]; Bp += stepB;
+                Op[i] = ((y == 0) ? 0 : (x / y) - (((x ^ y) < 0 && (x % y) != 0) ? 1 : 0));
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct TruncDivIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
@@ -1789,6 +2017,63 @@ partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct NotEqualIntJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                int* Xp = Xptr + offsetX;
+                int* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] int* Xp, uint stepX, [NoAlias] int* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                int x = Xp[0]; Xp += stepX;
+                int y = Bp[0]; Bp += stepB;
+                Op[i] = (x != y ? 1 : 0);
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct ModIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -2012,6 +2297,234 @@ partial class CPUBackend
                 float x = Xp[0]; Xp += stepX;
                 float y = Bp[0]; Bp += stepB;
                 Op[i] = (math.fmod(x, y));
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct Atan2Job : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            float* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                float* Xp = Xptr + offsetX;
+                float* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] float* Xp, uint stepX, [NoAlias] float* Bp, uint stepB, [NoAlias] float* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                float x = Xp[0]; Xp += stepX;
+                float y = Bp[0]; Bp += stepB;
+                Op[i] = (math.atan2(x, y));
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct BitwiseAndJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                int* Xp = Xptr + offsetX;
+                int* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] int* Xp, uint stepX, [NoAlias] int* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                int x = Xp[0]; Xp += stepX;
+                int y = Bp[0]; Bp += stepB;
+                Op[i] = (x & y);
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct BitwiseOrJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                int* Xp = Xptr + offsetX;
+                int* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] int* Xp, uint stepX, [NoAlias] int* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                int x = Xp[0]; Xp += stepX;
+                int y = Bp[0]; Bp += stepB;
+                Op[i] = (x | y);
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct BitwiseXorJob : IParallelForBatch, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public BroadcastHelperXBO broadcast;
+
+        public void Execute(int i, int count)
+        {
+            int* countersX = stackalloc int[TensorShape.maxRank];
+            int* countersB = stackalloc int[TensorShape.maxRank];
+
+            int* Op = Optr + i;
+
+            int offsetX = broadcast.iteratorX.InitialOffset(i, countersX);
+            int offsetB = broadcast.iteratorB.InitialOffset(i, countersB);
+
+            while (count > 0)
+            {
+                int spanRemainingX = broadcast.iteratorX.SpanSize() - countersX[0];
+                int spanRemainingB = broadcast.iteratorB.SpanSize() - countersB[0];
+                int spanRemaining = math.min(spanRemainingX, spanRemainingB);
+                int spanCount = math.min(count, spanRemaining);
+
+                int* Xp = Xptr + offsetX;
+                int* Bp = Bptr + offsetB;
+
+                if (broadcast.iteratorX.IsScalarBroadcast())
+                    ProcessSpan(Xp, 0, Bp, 1, Op, (uint)spanCount);
+                else if (broadcast.iteratorB.IsScalarBroadcast())
+                    ProcessSpan(Xp, 1, Bp, 0, Op, (uint)spanCount);
+                else
+                    ProcessSpan(Xp, 1, Bp, 1, Op, (uint)spanCount);
+
+                Op += spanCount;
+                count -= spanCount;
+
+                if (count > 0)
+                {
+                    offsetX = broadcast.iteratorX.AdvanceOffset(offsetX, spanCount, countersX);
+                    offsetB = broadcast.iteratorB.AdvanceOffset(offsetB, spanCount, countersB);
+                }
+            }
+        }
+
+        private void ProcessSpan([NoAlias] int* Xp, uint stepX, [NoAlias] int* Bp, uint stepB, [NoAlias] int* Op, uint count)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                int x = Xp[0]; Xp += stepX;
+                int y = Bp[0]; Bp += stepB;
+                Op[i] = (x ^ y);
             }
         }
     }

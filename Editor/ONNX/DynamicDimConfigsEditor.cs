@@ -1,9 +1,8 @@
 using System;
-using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-namespace Unity.InferenceEngine.Editor
+namespace Unity.InferenceEngine.Editor.Onnx
 {
     class DynamicDimConfigsEditor : VisualElement
     {

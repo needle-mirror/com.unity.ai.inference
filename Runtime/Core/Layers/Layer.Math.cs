@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 
 namespace Unity.InferenceEngine.Layers
 {
@@ -6,8 +7,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Abs` math layer: f(x) = |x|.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Abs : Activation
+    partial class Abs : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -27,11 +33,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Add : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Add : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return a + b;
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x + y);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) => x + y);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -49,11 +59,137 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `Add` math operation layer: f(a, b) = a + b.
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "y", "x" })]
+    partial class Atan2 : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor y, PartialTensor x)
+        {
+            return PartialTensor.Create(x.dataType, x.shape.Broadcast(y.shape));
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var y = ctx.storage.GetTensor(inputs[0]);
+            var x = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(x, y), x.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Atan2(y as Tensor<float>, x as Tensor<float>, O as Tensor<float>);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `BitwiseAnd` math operation layer: f(a, b) = a &#38; b.
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class BitwiseAnd : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x & y);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]) as Tensor<int>;
+            var B = ctx.storage.GetTensor(inputs[1]) as Tensor<int>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Int, ctx.backend.backendType) as Tensor<int>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.BitwiseAnd(A, B, O);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `BitwiseNot` math layer: f(x) = ~x.
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class BitwiseNot : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Unary(input as PartialTensor<int>, x => ~x);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<int>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Int, ctx.backend.backendType) as Tensor<int>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.BitwiseNot(X, O);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `BitwiseOr` math operation layer: f(a, b) = a &#124; b.
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class BitwiseOr : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x | y);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]) as Tensor<int>;
+            var B = ctx.storage.GetTensor(inputs[1]) as Tensor<int>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Int, ctx.backend.backendType) as Tensor<int>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.BitwiseOr(A, B, O);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `BitwiseXor` math operation layer: f(a, b) = a ^ b.
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class BitwiseXor : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x ^ y);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]) as Tensor<int>;
+            var B = ctx.storage.GetTensor(inputs[1]) as Tensor<int>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Int, ctx.backend.backendType) as Tensor<int>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.BitwiseXor(A, B, O);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Ceil` math layer: f(x) = ceil(x).
     /// </summary>
     [Operator(category = "Math")]
-    partial class Ceil : Activation
+    partial class Ceil : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -71,10 +207,9 @@ namespace Unity.InferenceEngine.Layers
     [Inputs(names = new[] { "input", "min", "max" }, inputCPURead = new[] { 1, 2 })]
     partial class Clip : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor min, PartialTensor max)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -109,10 +244,9 @@ namespace Unity.InferenceEngine.Layers
         public bool reverse;
         public bool exclusive;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor axis, bool reverse, bool exclusive)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -136,17 +270,16 @@ namespace Unity.InferenceEngine.Layers
     /// </summary>
     [Operator(category = "Math")]
     [Inputs(names = new[] { "input", "weights", "bias" })]
-    partial class Dense : FusedActivation
+    partial class Dense : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        public FusableActivation fusedActivation;
+
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor weights, PartialTensor bias, FusableActivation fusedActivation)
         {
-            var X = getPartialTensor(0);
-            var W = getPartialTensor(1);
-            var B = getPartialTensor(2);
-            var shapeOut = X.shape.MatMul(W.shape);
+            var shapeOut = input.shape.MatMul(weights.shape);
             if (shapeOut.hasRank)
-                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(B.shape[0], shapeOut[-1]);
-            setPartialTensor(0, new PartialTensor<float>(shapeOut));
+                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(bias.shape[-1], shapeOut[-1]);
+            return new PartialTensor<float>(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -162,17 +295,16 @@ namespace Unity.InferenceEngine.Layers
 
     [Operator(category = "Math")]
     [Inputs(names = new[] { "input", "weights", "bias" })]
-    partial class DenseBatched : FusedActivation
+    partial class DenseBatched : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        public FusableActivation fusedActivation;
+
+        internal static PartialTensor InferPartial(PartialTensor input, PartialTensor weights, PartialTensor bias, FusableActivation fusedActivation)
         {
-            var X = getPartialTensor(0);
-            var W = getPartialTensor(1);
-            var B = getPartialTensor(2);
-            var shapeOut = X.shape.MatMul(W.shape);
+            var shapeOut = input.shape.MatMul(weights.shape);
             if (shapeOut.hasRank)
-                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(B.shape[-1], shapeOut[-1]);
-            setPartialTensor(0, new PartialTensor<float>(shapeOut));
+                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(bias.shape[-1], shapeOut[-1]);
+            return new PartialTensor<float>(shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -192,11 +324,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Div : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Div : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return a / b;
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x / y);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) => x / y);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -207,7 +343,7 @@ namespace Unity.InferenceEngine.Layers
             if (O.shape.HasZeroDims())
                 return;
             if (A is Tensor<int>)
-                ctx.backend.Div(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
+                ctx.backend.TruncDiv(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
                 ctx.backend.Div(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
@@ -239,15 +375,14 @@ namespace Unity.InferenceEngine.Layers
             operandTensors = new Tensor<float>[inputs.Length];
         }
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor[] inputs, string equation)
         {
-            if (operandShapes is null)
-                Initialize();
+            var operandIndices = new TensorIndex[inputs.Length];
             var inputShapes = new DynamicTensorShape[inputs.Length];
             for (var i = 0; i < inputShapes.Length; i++)
-                inputShapes[i] = getPartialTensor(i).shape;
+                inputShapes[i] = inputs[i].shape;
             var shape = EinsumHelper.ParseEquationStringShape(equation, inputShapes, ref operandIndices, out _, out _);
-            setPartialTensor(0, new PartialTensor<float>(shape));
+            return new PartialTensor<float>(shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -274,8 +409,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Exp` math layer: f(x) = e^{x}.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Exp : Activation
+    partial class Exp : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -287,11 +427,37 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `Expm1` math layer: f(x) = e^{x} - 1.
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Expm1 : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Expm1(X, O);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Floor` math layer: f(x) = floor(x).
     /// </summary>
     [Operator(category = "Math")]
-    partial class Floor : Activation
+    partial class Floor : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -303,11 +469,73 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `FloorDiv` math operation layer: f(a, b) = floor(a / b).
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class FloorDiv : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) =>
+                {
+                    if (y == PartialTensorElement<int>.Zero)
+                        throw new DivideByZeroException();
+                    if (x == PartialTensorElement<int>.Zero)
+                        return x;
+                    if (y == PartialTensorElement<int>.One)
+                        return x;
+                    if (x == y)
+                        return PartialTensorElement<int>.One;
+                    if (x.isValue && y.isValue)
+                        return PartialTensorElement<int>.Value((x.value / y.value) - (((x.value ^ y.value) < 0 && (x.value % y.value) != 0) ? 1 : 0));
+                    return PartialTensorElement<int>.Unknown;
+                });
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) =>
+                {
+                    if (y == PartialTensorElement<float>.Zero)
+                        throw new DivideByZeroException();
+                    if (x == PartialTensorElement<float>.Zero)
+                        return x;
+                    if (y == PartialTensorElement<float>.One)
+                        return x;
+                    if (x == y)
+                        return PartialTensorElement<float>.One;
+                    if (x.isValue && y.isValue)
+                        return PartialTensorElement<float>.Value(math.floor(x.value / y.value));
+                    return PartialTensorElement<float>.Unknown;
+                });
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            if (A is Tensor<int>)
+                ctx.backend.FloorDiv(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
+            else
+                ctx.backend.FloorDiv(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Log` math layer: f(x) = log(x).
     /// </summary>
     [Operator(category = "Math")]
-    partial class Log : Activation
+    partial class Log : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
@@ -319,17 +547,78 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `Log10` math layer: f(x) = log10(x).
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Log10 : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Log10(X, O);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `Log1p` math layer: f(x) = log(1 + x).
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Log1p : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Log1p(X, O);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `Log2` math layer: f(x) = log2(x).
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Log2 : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Log2(X, O);
+        }
+    }
+
+    /// <summary>
     /// Represents a `MatMul` math operation layer which performs a matrix multiplication operation: f(a, b) = a x b.
     /// </summary>
     [Operator(category = "Math")]
     [Inputs(names = new[] { "input0", "input1" })]
     partial class MatMul : Layer
     {
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input0, PartialTensor input1)
         {
-            var A = getPartialTensor(0);
-            var B = getPartialTensor(1);
-            setPartialTensor(0, PartialTensor.Create(A.dataType, A.shape.MatMul(B.shape)));
+            return PartialTensor.Create(input0.dataType, input0.shape.MatMul(input1.shape));
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -356,13 +645,10 @@ namespace Unity.InferenceEngine.Layers
         public bool transposeA;
         public bool transposeB;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input0, PartialTensor input1, bool transposeA, bool transposeB)
         {
-            var A = getPartialTensor(0);
-            var B = getPartialTensor(1);
-
-            var shapeA = A.shape;
-            var shapeB = B.shape;
+            var shapeA = input0.shape;
+            var shapeB = input1.shape;
 
             shapeA.DeclareRank(2);
             shapeB.DeclareRank(2);
@@ -372,7 +658,7 @@ namespace Unity.InferenceEngine.Layers
             Logger.AssertIsFalse(mulXDim != mulYDim, "MatMul2D.ValueError: failed, dims not equal");
 
             var shapeOut = new DynamicTensorShape(transposeA ? shapeA[1] : shapeA[0], transposeB ? shapeB[0] : shapeB[1]);
-            setPartialTensor(0, PartialTensor.Create(A.dataType, shapeOut));
+            return PartialTensor.Create(input0.dataType, shapeOut);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -395,11 +681,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Min : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Min : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Min(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Min);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Min);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -422,11 +712,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Max : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Max : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Max(a, b);
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Max);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Max);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -453,15 +747,24 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Mod : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Mod : Layer
     {
         public bool fmod;
 
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b, bool fmod)
         {
-            if (!fmod)
-                return PartialTensorElement<T>.Mod(a, b);
-            return PartialTensorElement<T>.FMod(a, b);
+            if (fmod)
+            {
+                if (a is PartialTensor<int>)
+                    return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.FMod);
+                else
+                    return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.FMod);
+            }
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Mod);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Mod);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -494,11 +797,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Mul : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Mul : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return a * b;
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x * y);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) => x * y);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -519,11 +826,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Neg` math layer: f(x) = -x.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Neg : Unary
+    partial class Neg : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            return -a;
+            if (input is PartialTensor<int>)
+                return PartialTensor.Unary(input as PartialTensor<int>, x => -x);
+            return PartialTensor.Unary(input as PartialTensor<float>, x => -x);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -545,11 +854,20 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Pow : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Pow : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return PartialTensorElement<T>.Pow(a, b);
+            if (a is PartialTensor<int>)
+            {
+                if (b is PartialTensor<int>)
+                    return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, PartialTensorElement<int>.Pow);
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<float>, (_, _) => PartialTensorElement<float>.Unknown);
+            }
+            if (b is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<int>, (_, _) => PartialTensorElement<float>.Unknown);
+            return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, PartialTensorElement<float>.Pow);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -581,8 +899,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Reciprocal` math layer: f(x) = 1 / x.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Reciprocal : Activation
+    partial class Reciprocal : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -597,8 +920,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Round` math layer: f(x) = round(x).
     /// </summary>
     [Operator(category = "Math")]
-    partial class Round : Activation
+    partial class Round : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -613,13 +941,18 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Mad` math operation: multiplies and adds bias to a tensor: f(T, s, b) = s * T + b.
     /// </summary>
     [Operator(category = "Math")]
-    partial class ScalarMad : Activation
+    partial class ScalarMad : Layer
     {
         public DataType dataType;
         public float sFloat;
         public float bFloat;
         public int sInt;
         public int bInt;
+
+        internal static PartialTensor InferPartial(PartialTensor input, DataType dataType, float sFloat, float bFloat, int sInt, int bInt)
+        {
+            return PartialTensor.Create(input.dataType, input.shape);
+        }
 
         internal override void Execute(ExecutionContext ctx)
         {
@@ -643,10 +976,9 @@ namespace Unity.InferenceEngine.Layers
         public float bias;
         public float lambd;
 
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
+        internal static PartialTensor InferPartial(PartialTensor input, float bias, float lambd)
         {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            return PartialTensor.Create(input.dataType, input.shape);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -663,17 +995,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Sign` math layer: f(x) = 1 if x > 0. f(x) = -1 if x &lt; 0. Otherwise f(x) = 0.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Sign : Unary
+    partial class Sign : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            return PartialTensorElement<T>.Sign(a);
-        }
-
-        internal override void InferPartial(Func<int, PartialTensor> getPartialTensor, Action<int, PartialTensor> setPartialTensor)
-        {
-            var X = getPartialTensor(0);
-            setPartialTensor(0, PartialTensor.Create(X.dataType, X.shape));
+            if (input is PartialTensor<int>)
+                return PartialTensor.Unary(input as PartialTensor<int>, PartialTensorElement<int>.Sign);
+            return PartialTensor.Unary(input as PartialTensor<float>, PartialTensorElement<float>.Sign);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -690,11 +1018,37 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
+    /// Represents an element-wise `Rsqrt` math layer: f(x) = 1 / sqrt(x).
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Rsqrt : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.Rsqrt(X as Tensor<float>, O);
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `Sqrt` math layer: f(x) = sqrt(x).
     /// </summary>
     [Operator(category = "Math")]
-    partial class Sqrt : Activation
+    partial class Sqrt : Layer
     {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
@@ -709,11 +1063,13 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Square` math layer: f(x) = x * x.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Square : Unary
+    partial class Square : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a)
+        internal static PartialTensor InferPartial(PartialTensor input)
         {
-            return a * a;
+            if (input is PartialTensor<int>)
+                return PartialTensor.Unary(input as PartialTensor<int>, x => x * x);
+            return PartialTensor.Unary(input as PartialTensor<float>, x => x * x);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -735,11 +1091,15 @@ namespace Unity.InferenceEngine.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Operator(category = "Math")]
-    partial class Sub : Broadcast
+    [Inputs(names = new[] { "a", "b" })]
+    partial class Sub : Layer
     {
-        internal override PartialTensorElement<T> InferPartial<T>(PartialTensorElement<T> a, PartialTensorElement<T> b)
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
         {
-            return a - b;
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) => x - y);
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) => x - y);
         }
 
         internal override void Execute(ExecutionContext ctx)
@@ -753,6 +1113,87 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.Sub(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
                 ctx.backend.Sub(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `Trunc` math layer: f(x) = trunc(x).
+    /// </summary>
+    [Operator(category = "Math")]
+    partial class Trunc : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor input)
+        {
+            return PartialTensor.Activation(input);
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            if (X is Tensor<int>)
+                ctx.backend.MemCopy(X as Tensor<int>, O as Tensor<int>);
+            else
+                ctx.backend.Trunc(X as Tensor<float>, O as Tensor<float>);
+        }
+    }
+
+    /// <summary>
+    /// Represents an element-wise `TruncDiv` math operation layer: f(a, b) = trunc(a / b).
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    [Operator(category = "Math")]
+    [Inputs(names = new[] { "a", "b" })]
+    partial class TruncDiv : Layer
+    {
+        internal static PartialTensor InferPartial(PartialTensor a, PartialTensor b)
+        {
+            if (a is PartialTensor<int>)
+                return PartialTensor.Broadcast(a as PartialTensor<int>, b as PartialTensor<int>, (x, y) =>
+                {
+                    if (y == PartialTensorElement<int>.Zero)
+                        throw new DivideByZeroException();
+                    if (x == PartialTensorElement<int>.Zero)
+                        return x;
+                    if (y == PartialTensorElement<int>.One)
+                        return x;
+                    if (x == y)
+                        return PartialTensorElement<int>.One;
+                    if (x.isValue && y.isValue)
+                        return PartialTensorElement<int>.Value(x.value / y.value);
+                    return PartialTensorElement<int>.Unknown;
+                });
+            else
+                return PartialTensor.Broadcast(a as PartialTensor<float>, b as PartialTensor<float>, (x, y) =>
+                {
+                    if (y == PartialTensorElement<float>.Zero)
+                        throw new DivideByZeroException();
+                    if (x == PartialTensorElement<float>.Zero)
+                        return x;
+                    if (y == PartialTensorElement<float>.One)
+                        return x;
+                    if (x == y)
+                        return PartialTensorElement<float>.One;
+                    if (x.isValue && y.isValue)
+                        return PartialTensorElement<float>.Value(math.trunc(x.value / y.value));
+                    return PartialTensorElement<float>.Unknown;
+                });
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            if (A is Tensor<int>)
+                ctx.backend.TruncDiv(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
+            else
+                ctx.backend.TruncDiv(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
     }
 }

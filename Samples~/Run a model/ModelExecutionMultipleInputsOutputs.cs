@@ -39,7 +39,7 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
 
     void OnDisable()
     {
-        // Clean up Inference Engine resources.
+        // Clean up Sentis resources.
         m_Worker.Dispose();
         foreach (var tensor in m_Inputs) { tensor.Dispose(); }
     }

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// A binary representation of an Inference Engine asset.
+    /// A binary representation of a Sentis asset.
     /// </summary>
     /// <remarks>
     /// Represents the full description of the <see cref="Model" />, including inputs, outputs, constants, layers, metadata, and weights, in binary format.
