@@ -119,7 +119,8 @@ The following table shows the LiteRT operators that Sentis supports. It also out
 |[transpose_conv](https://www.tensorflow.org/mlir/tfl_ops#tfltranspose_conv_tfltransposeconvop) | `ConvTranspose` | float | float* | float | Supports 1D, 2D or 3D convolutions. Dynamic `output_shape` input tensor is not supported. |
 |[unpack](https://www.tensorflow.org/mlir/tfl_ops#tflunpack_tflunpackop) | `Select` | float, int | float, int | float, int | |
 |[where](https://www.tensorflow.org/mlir/tfl_ops#tflwhere_tflwhereop) | `NonZero` + `Transpose` | float, int | float, int | float, int |
-|[zeros_like](https://www.tensorflow.org/mlir/tfl_ops#tflzeros_like_tflzeroslikeop) | `Shape` + `ConstantOfShape` | float, int | float, int | float, int |
+|[zeros_like](https://www.tensorflow.org/mlir/tfl_ops#tflzeros_like_tflzeroslikeop) | `Shape` + `ConstantOfShape` | float, int | float, int | float, int ||
+
 \* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
 
 ### Additional layers

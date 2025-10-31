@@ -17,7 +17,7 @@ This is a summary of the changes from Inference Engine 2.3 to Sentis 2.4.
 
 ## Fixed
 
-- Many small import, inference and documation issues.
+- Many small import, inference and documentation issues.
 
 
 # What's new in Inference Engine 2.3

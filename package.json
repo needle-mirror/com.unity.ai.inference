@@ -1,7 +1,7 @@
 {
   "name": "com.unity.ai.inference",
   "displayName": "Sentis",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "unity": "6000.0",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
   "dependencies": {
@@ -15,16 +15,16 @@
     "com.unity.ai.inference.tests": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- LiteRT model import\n- Tokenization API\n- STFT and DFT ONNX operators\n- BlackmanWindow, HammingWindow, HannWindow and MelWeightMatrix ONNX operators\n- BitwiseAnd, BitwiseOr, BitwiseXor, BitwiseNot ONNX operators and functional methods\n- AsStrided, Atan2, Expm1, Log10, Log1p, Log2, Rsqrt, Trunc, ReduceVariance, Diagonal layers, functional methods and optimizer passes\n- NotEqual, FloorDiv, TrueDiv layers and LiteRT operators\n\n### Changed\n- Renamed Inference Engine to Sentis in package name and documentation\n- Improved model import time for ONNX models\n- ONNX model import operator order now consistent with the original model\n- Improved optimization passes to reduce operator count in imported models\n- Improved visualizer loading times and consistency in displaying attributes\n- ScatterND operator can now run on much larger tensors, enabling new models\n- ScatterND operator now allows negative indices\n- ONNX model outputs that are not connected to any inputs are no longer incorrectly pruned\n- Improve model import warning and error display in the inspector\n\n### Fixed\n- Small errors in documentation\n- Faulty optimization passes that could lead to inference issues\n- Memory leaks on model constants\n- Non-matching ProfilerMarker calls\n- Issues in CPU callback which could lead to incorrect inference on some models\n- Enable missing modes for GridSample and Upsample operators"
+    "changelog": "### Fixed\n- Small error in documentation preventing user manual publication"
   },
   "upmCi": {
-    "footprint": "066dee9e42e29cea7e5b7161cfc449ff3f7abcd1"
+    "footprint": "9c1dec254dd7587c4ab4d885d1957ed1f9e8c98e"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.4/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "f7122005bb4fd10413d56f58cbdf5e702f6afb8d"
+    "revision": "de8961cc6617388ab664c86c2c9b164f41609a99"
   },
   "samples": [
     {
