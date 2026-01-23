@@ -1,7 +1,6 @@
 using System;
 using Unity.AppUI.Redux;
 using Unity.AppUI.UI;
-using Unity.InferenceEngine.Compiler.Analyser;
 using Unity.InferenceEngine.Editor.Visualizer.Extensions;
 using Unity.InferenceEngine.Editor.Visualizer.LayerAnalysis;
 using Unity.InferenceEngine.Editor.Visualizer.StateManagement;
@@ -67,7 +66,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
             iconButton.clickable.clicked += () =>
             {
-                m_StoreManager.Store.Dispatch(m_StoreManager.SetSelectedObject.Invoke(tensorData.sentisIndex));
+                m_StoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(tensorData.sentisIndex));
             };
 
             Add(iconButton);

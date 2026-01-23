@@ -1,17 +1,18 @@
 # Sentis models
 
-Sentis can import and run trained machine learning model files in Open Neural Network Exchange (ONNX) and LiteRT (formerly TensorFlow Lite) formats.
+Sentis can import and run trained machine learning model files in Open Neural Network Exchange (ONNX), LiteRT (formerly TensorFlow Lite), and PyTorch formats.
 
 To get a model that's compatible with Sentis, you can do one of the following:
 
-- Train a model with a framework like TensorFlow, PyTorch, or Keras, and subsequently [export it in ONNX format](export-convert-onnx.md) or [export it in LiteRT format](export-convert-litert.md).
+- Train a model with a framework like TensorFlow, PyTorch, or Keras. Subsequently, export it in [ONNX format](export-convert-onnx.md), [LiteRT format](export-convert-litert.md), or [PyTorch format](export-convert-torch.md).
 - Download a trained model file and [convert to ONNX format](export-convert-onnx.md). For more information, refer to the [ONNXXMLTools](https://github.com/onnx/onnxmltools) Python package.
 - Download a trained model file and [convert to LiteRT format](export-convert-litert.md).
-- Download a trained model that's already in ONNX or LiteRT format, such as those available in the [ONNX Model Zoo](https://github.com/onnx/models). For more resources, refer to [supported models](supported-models.md).
+- Download a trained model file and [convert to PyTorch format](export-convert-torch.md).
+- Download a trained model that's already in ONNX, LiteRT, or PyTorch format, such as those available in the [ONNX Model Zoo](https://github.com/onnx/models). For more resources, refer to [supported models](supported-models.md).
 
 ## How Sentis optimizes a model
 
-When you import an ONNX model, each ONNX operator in the model graph becomes a Sentis layer. Similarly, when you import a LiteRT model, each LiteRT operator is mapped to one or more Sentis layers.
+When you import an ONNX model, each ONNX operator in the model graph becomes a Sentis layer. Similarly, when you import a LiteRT or PyTorch model, each operator is mapped to one or more Sentis layers.
 
 To check the list of layers in the imported model, in the order Sentis runs them, open the **[Model Asset Inspector](model-asset-inspector.md)**. For more information, refer to [Supported ONNX operators](supported-operators.md).
 
@@ -73,5 +74,7 @@ For more information on how to set a static value for a dynamic dimension, refer
 - [Import settings for LiteRT models](litert-import-settings.md)
 - [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
 - [Export a LiteRT file from a machine learning framework](export-convert-litert.md)
+- [Export a PyTorch file from a machine learning framework](export-convert-torch.md)
 - [Supported ONNX operators](supported-operators.md)
 - [Supported LiteRT operators](supported-litert-operators.md)
+- [Supported PyTorch operators](supported-torch-export-operators.md)

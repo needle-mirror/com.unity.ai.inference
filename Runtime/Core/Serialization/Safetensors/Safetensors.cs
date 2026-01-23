@@ -22,11 +22,10 @@ namespace Unity.InferenceEngine.Serialization
                 var cmp = x.Item2.data_offsets[0].CompareTo(y.Item2.data_offsets[0]);
                 if (cmp != 0)
                     return cmp;
+                // if starts are the same compare the ends, this deals with tensors of length 0 correctly
                 cmp = x.Item2.data_offsets[1].CompareTo(y.Item2.data_offsets[1]);
-                if (cmp != 0)
-                    return cmp;
-                // Final tiebreaker: sort by tensor name to ensure uniqueness
-                return string.Compare(x.Item1, y.Item1, StringComparison.Ordinal);
+                // in last resort, compare the names
+                return cmp != 0 ? cmp : string.CompareOrdinal(x.Item1, y.Item1);
             }));
             foreach (var (name, tensorInfo) in safetensorsInfo.tensors)
                 sortedTensorInfos.Add((name, tensorInfo));
@@ -51,7 +50,7 @@ namespace Unity.InferenceEngine.Serialization
                     "I32" => new Tensor<int>(tensorShape, null),
                     "I16" => new Tensor<short>(tensorShape, null),
                     "U8" => new Tensor<byte>(tensorShape, null),
-                    _ => throw new NotSupportedException(),
+                    _ => throw new Exception($"Tensor \"{name}\": type {tensorInfo.dtype} is not supported."),
                 };
 
                 Logger.AssertIsTrue(tensorInfo.data_offsets[0] == currentOffset, "Safetensor error: the byte buffer needs to be entirely indexed, cannot be shared, and cannot contain holes.");
@@ -88,7 +87,7 @@ namespace Unity.InferenceEngine.Serialization
                     DataType.Int => "I32",
                     DataType.Short => "I16",
                     DataType.Byte => "U8",
-                    _ => throw new NotSupportedException()
+                    _ => throw new Exception($"Tensor \"{name}\": type {tensor.dataType} is not supported."),
                 };
                 tensorInfo.shape = new List<long>();
                 for (var i = 0; i < tensor.shape.rank; i++)

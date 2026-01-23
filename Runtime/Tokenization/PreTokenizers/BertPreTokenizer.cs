@@ -18,7 +18,8 @@ namespace Unity.InferenceEngine.Tokenization.PreTokenizers
                 throw new ArgumentNullException(nameof(input));
 
             var (source, offsets) = input;
-            var (offset, limit) = offsets.GetOffsetAndLength(source.Length);
+            var (offset, length) = offsets.GetOffsetAndLength(source.Length);
+            var limit = offset + length;
             while (offset < limit)
             {
                 // consume white spaces

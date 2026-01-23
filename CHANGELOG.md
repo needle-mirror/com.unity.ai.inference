@@ -3,11 +3,74 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [2.5.0] - 2026-01-23
+
+### Added
+- `PyTorch` model import
+- `LRN (Local Response Normalization)` operator implemented on all backends
+- `3D MaxPool` and `AveragePool` operators implemented on all backends
+- Sentis Importer: Allow users to specify dynamic dimensions as static on Sentis model import, same as we do for ONNX
+- Tokenizer Additions
+    - `Hugging Face` parser
+	- Sequence decoder
+	- Regex replace decoder
+	- String split pre-tokenizer
+	- Unigram Mapper
+	- Byte-based substring feature to SubString
+	- Padding: support "pad multiple of" option
+	- Split pre-tokenizers: support "invert"
+	- StripAccents normalizer
+	- Rune split pre-tokenizer
+	- Strip normalizer
+	- WordLevel model
+	- WhitespaceSplit pre-tokenizer
+	- Metaspace pre-tokenizer and decoder
+	- Whitespace pre-tokenizer
+	- NMT normalizer
+	- Punctuation pre-tokenizer
+	- Digits pre-tokenizer
+	- CharDelimiterSplit pre-tokenizer
+	- BPE decoder
+
+### Changed
+- Model Visualizer: Async loading of model
+- Model Visualizer: updating com.unity.dt.app-ui to 1.3.3
+- Resize operator on CPU no longer uses main (mono) thread path
+- All model converters use switch-case instead of if-else cascade
+- Migrate Mono APIs to CoreCLR-compatible APIs
+
+### Fixed
+- Editor crash when quitting in play mode
+- Memory Leak in FuseConstantPass
+- `Clip` operator improvement: no longer need CPU fallback for min/max parameters
+- `Mod` operator fix: on some platform with float operands, could return incorrect value when one of them was 0
+- Faulty optimization pass
+- Fix in existing burst code for 2D pooling vectorization calculations
+- `TopK` issue on `GPUCompute` when dimension is specified
+- Fix source generator empty array
+- Tokenizer Fixes
+	- Special added token decoding condition
+	- Fix added token whole word handling
+	- Gpt2Splitter subtring length computation
+	- Added vocabulary pre-tokenization.
+	- ByteLevelDecoder empty-byte guard in string generation
+	- DefaultDecoder: joining tokens with whitespace
+	- BPE: fix merging, applying on each word instead of the whole string
+	- DefaultPostProcessor: apply the proper type id
+	- RobertaPostProcessor: fix attention and type id assignment
+	- TemplatePostProcessor: fix type id assignment
+	- Assign default type id to sequences
+	- Better surrogate characters support
+	- Fix ByteFallback: inserting the right amount of \ufffd char
+	- Fix BertPreTokenizer
+	- Default model determination based of chain of responsibility
+
 ## [2.4.1] - 2025-10-31
 
 ### Fixed
 - Small error in documentation preventing user manual publication
-  
+
 ## [2.4.0] - 2025-10-22
 
 ### Added

@@ -24,7 +24,8 @@ namespace Unity.InferenceEngine.Tokenization.Mappers
                 FuseUnknown = options.FuseUnknown ?? k_DefaultFuseUnknown,
                 ByteFallback = options.ByteFallback ?? k_DefaultByteFallback,
                 SubWordPrefix = options.SubWordPrefix,
-                WordSuffix = options.WordSuffix
+                WordSuffix = options.WordSuffix,
+                UnknownToken = options.UnknownToken,
             };
 
         readonly Pool<List<Token>> m_ListOfTokenPool = new(() => new(), output => output.Clear());
@@ -187,9 +188,9 @@ namespace Unity.InferenceEngine.Tokenization.Mappers
             {
                 var input = inputs[sI];
                 m_Tokenizer.Convert(input, tokenized.AsOutput());
+                m_Merger.Convert(tokenized, output);
+                tokenized.Clear();
             }
-
-            m_Merger.Convert(tokenized, output);
         }
 
         /// <inheritdoc />

@@ -33,11 +33,24 @@ namespace Unity.InferenceEngine.Editor
         protected void Warn(WarningType severity, string message)
         {
             Warnings.Add(new ImporterWarning(message, severity));
+
+            switch (severity)
+            {
+                case WarningType.Info:
+                    Debug.Log(message);
+                    break;
+                case WarningType.Warning:
+                    Debug.LogWarning(message);
+                    break;
+                case WarningType.Error:
+                    Debug.LogError(message);
+                    break;
+            }
         }
 
         protected T Warn<T>(WarningType severity, string message, T defaultValue)
         {
-            Warnings.Add(new ImporterWarning(message, severity));
+            Warn(severity, message);
             return defaultValue;
         }
 

@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Activation"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile_local Relu Selu Abs Neg Ceil Floor Trunc Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Mish Elu LeakyRelu Exp Expm1 Log Log10 Log1p Log2 Rsqrt Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu GeluFast Shrink
+            #pragma multi_compile_local Relu Selu Abs Neg Ceil Floor Trunc Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Mish Elu LeakyRelu Exp Expm1 Log Log10 Log1p Log2 Rsqrt Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow HardTanh Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu GeluFast Shrink
 
             #pragma vertex vert
             #pragma fragment frag
@@ -201,7 +201,7 @@ Shader "Hidden/Sentis/Activation"
                 #ifdef Pow
                     v = pow(v, Alpha);
                 #endif
-                #ifdef Clip
+                #ifdef HardTanh
                     //v = clamp(v, Alpha, Beta);
                     // The built-in HLSL clamp doesn't garantee the series of instructions below, so use that instead, if that is what is expected:
                     v = min(max(v, Alpha), Beta);

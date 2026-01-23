@@ -30,6 +30,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
 
         NodeData m_HighestNodeData;
         EditorApplication.CallbackFunction m_OnAnimationUpdate;
+        IDisposableSubscription m_StoreSubscription;
 
         public Dictionary<NodeData, NodeView> NodeViews => m_NodeViews;
         public Dictionary<EdgeData, EdgeView> EdgeViews => m_EdgeViews;
@@ -38,19 +39,16 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
         {
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(k_StylePath);
             styleSheets.Add(styleSheet);
+            maxZoom = 2.5f;
         }
 
         public void Initialize(GraphStoreManager storeManager)
         {
             m_StoreManager = storeManager;
-            CreateGraph();
-            this.AddManipulator(new FramingManipulator(m_StoreManager));
-            maxZoom = 2.5f;
-        }
 
-        void CreateGraph()
-        {
             Clear();
+
+            this.AddManipulator(new FramingManipulator(m_StoreManager));
 
             m_ScrollOffsetManipulator = new ScrollOffsetManipulator();
             this.AddManipulator(m_ScrollOffsetManipulator);
@@ -62,24 +60,23 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
 
             // Setup finder and add it to the panel
             m_GraphFinder = new GraphFinder(this, m_StoreManager);
-            var appUiPanel = GetFirstAncestorOfType<Panel>();
-            appUiPanel.Add(m_GraphFinder);
+            var currentIndex = parent.IndexOf(this);
+
+            // Insert after the GraphView in the hierarchy, making sure it's under elements over the canvas
+            parent.Insert(currentIndex + 1, m_GraphFinder);
 
             RegisterCallback<PointerDownEvent>(OnPointerDown);
-            InitializeVisuals();
             MarkDirtyRepaint();
-
-            RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
 
             // We use trickle down to intercept the event before base class can consume it
             RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
         }
 
-        void InitializeVisuals()
+        public void InitializeNodeViews()
         {
             Clear();
             var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
-            foreach (var node in state.Graph.Nodes)
+            foreach (var node in state.Nodes)
             {
                 var nodeView = new NodeView(m_StoreManager, node);
                 m_NodeViews.Add(node, nodeView);
@@ -97,7 +94,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                 }
                 else //Handle view reset
                 {
-                    _ = FrameHighestNodeNextFrames(0);
+                    _ = FrameHighestNode();
                 }
 
                 evt.StopPropagation();
@@ -105,44 +102,15 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
             }
         }
 
-        void OnGeometryChanged(GeometryChangedEvent evt)
-        {
-            UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-            ComputeLayout();
-
-            m_VisualsStateHandler = new VisualsStateHandler(m_StoreManager, m_NodeViews, m_EdgeViews);
-            this.AddManipulator(m_VisualsStateHandler);
-        }
-
         void OnPointerDown(PointerDownEvent evt)
         {
             if (evt.button != 0)
                 return;
 
-            m_StoreManager.Store.Dispatch(m_StoreManager.SetSelectedObject?.Invoke(null));
+            m_StoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject?.Invoke(null));
         }
 
-        void ComputeLayout()
-        {
-            var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
-            UpdateNodesCanvasSize();
-            state.Graph.ComputeLayout();
-            CreateEdges();
-            UpdateNodesCanvasPosition();
-            _ = FrameHighestNodeNextFrames(3);
-        }
-
-        void UpdateNodesCanvasSize()
-        {
-            foreach (var nodeKvp in m_NodeViews)
-            {
-                var node = nodeKvp.Key;
-                var nodeView = nodeKvp.Value;
-                node.CanvasSize = new Vector2(nodeView.worldBound.width, nodeView.worldBound.height);
-            }
-        }
-
-        void UpdateNodesCanvasPosition()
+        public void UpdateNodesCanvasPosition()
         {
             foreach (var nodeKvp in m_NodeViews)
             {
@@ -155,9 +123,20 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                     m_HighestNodeData = nodeKvp.Key;
                 }
             }
+
+            if (m_VisualsStateHandler != null)
+            {
+                this.RemoveManipulator(m_VisualsStateHandler);
+                m_VisualsStateHandler = null;
+            }
+
+            m_VisualsStateHandler = new VisualsStateHandler(m_StoreManager, m_NodeViews, m_EdgeViews);
+            this.AddManipulator(m_VisualsStateHandler);
+
+            _ = FrameHighestNode();
         }
 
-        void CreateEdges()
+        public void CreateEdges()
         {
             foreach (var edge in m_EdgeViews.Values)
             {
@@ -167,7 +146,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
             m_EdgeViews.Clear();
 
             var state = m_StoreManager.Store.GetState<GraphState>(GraphSlice.Name);
-            foreach (var edge in state.Graph.Edges)
+            foreach (var edge in state.Edges)
             {
                 var edgeView = new EdgeView(m_StoreManager, edge);
                 m_EdgeViews.Add(edge, edgeView);
@@ -244,16 +223,10 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
             }
         }
 
-        async Task FrameHighestNodeNextFrames(int frameCount = 1)
+        async Task FrameHighestNode()
         {
             // Hide content until framing is complete
             contentContainer.style.display = DisplayStyle.None;
-
-            // Wait for layout to stabilize
-            for (var i = 0; i < frameCount; i++)
-            {
-                await Task.Yield();
-            }
 
             // Center highest node vertically in view
             var startPosition = m_HighestNodeData.CanvasPosition;

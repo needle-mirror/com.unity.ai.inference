@@ -17,7 +17,7 @@ namespace Unity.InferenceEngine.Tokenization.SplitDelimiterBehaviors
         /// <inheritdoc />
         public void Apply(
             SubString source,
-            IReadOnlyList<(Range offsets, bool isContent)> splits,
+            IReadOnlyList<(Range offsets, bool isMatch)> splits,
             Output<SubString> output)
         {
             if(source.IsNull)
@@ -29,8 +29,8 @@ namespace Unity.InferenceEngine.Tokenization.SplitDelimiterBehaviors
             Range? delimOffsets = null;
             for (var i = 0; i < splits.Count; i++)
             {
-                var (offsets, isContent) = splits[i];
-                if (!isContent)
+                var (offsets, isMatch) = splits[i];
+                if (isMatch)
                 {
                     delimOffsets = delimOffsets.HasValue
                         ? new(delimOffsets.Value.Start, offsets.End)

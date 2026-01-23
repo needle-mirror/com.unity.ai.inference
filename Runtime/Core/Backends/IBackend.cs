@@ -247,6 +247,17 @@ namespace Unity.InferenceEngine
         void BatchNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> mean, Tensor<float> variance, Tensor<float> O, float epsilon);
 
         /// <summary>
+        /// Computes the local response normalization (LRN) of the input tensor.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="supportLength">The local support length over which to normalize.</param>
+        /// <param name="bias">bias added to the sum of square denominator normalization term.</param>
+        /// <param name="alpha">alpha scaling value multiplied to the sum of square denominator normalization term.</param>
+        /// <param name="beta">beta exponent to which the sum of square denominator normalization term is raised.</param>
+        void LocalResponseNormalization(Tensor<float> X, Tensor<float> O, int supportLength, float bias, float alpha, float beta);
+
+        /// <summary>
         /// Computes the index of the element which cumulative sum until said element is >= than a random value
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -536,22 +547,31 @@ namespace Unity.InferenceEngine
         void Ceil(Tensor<float> X, Tensor<float> O);
 
         /// <summary>
-        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(x, min, max).
+        /// Computes an output tensor by applying the element-wise `HardTanh` math function: f(x) = clamp(x, min, max).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        /// <param name="min">The lower clip value.</param>
-        /// <param name="max">The upper clip value.</param>
-        void Clip(Tensor<float> X, Tensor<float> O, float min, float max);
+        /// <param name="minVal">The lower clip value.</param>
+        /// <param name="maxVal">The upper clip value.</param>
+        void HardTanh(Tensor<float> X, Tensor<float> O, float minVal, float maxVal);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(x, min, max).
         /// </summary>
         /// <param name="X">The input tensor.</param>
-        /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="min">The lower clip value.</param>
         /// <param name="max">The upper clip value.</param>
-        void Clip(Tensor<int> X, Tensor<int> O, int min, int max);
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Clip(Tensor<float> X, Tensor<float> min, Tensor<float> max, Tensor<float> O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(x, min, max).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="min">The lower clip value.</param>
+        /// <param name="max">The upper clip value.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Clip(Tensor<int> X, Tensor<int> min, Tensor<int> max, Tensor<int> O);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Floor` math function: f(x) = floor(x).

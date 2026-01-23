@@ -4,7 +4,7 @@ To run a model, you need to create a worker. A worker is the engine that breaks 
 
 ## Create a Worker
 
-Use [`new Worker(...)`](xref:Unity.InferenceEngine.Worker.#ctor*) to create a worker. You must specify a backend type, which tells Sentis where to run the worker and a [runtime model](import-a-model-file.md#create-a-runtime-model).
+Use [`new Worker(...)`](xref:Unity.InferenceEngine.Worker#constructors) to create a worker. You must specify a backend type, which tells Sentis where to run the worker and a [runtime model](import-a-model-file.md#create-a-runtime-model).
 
 For example, the following code creates a worker that runs on the GPU with Sentis compute shaders.
 
@@ -30,7 +30,7 @@ public class CreateWorker : MonoBehaviour
 
 Sentis provides CPU and GPU backend types. To understand how Sentis runs operations with the different backends, refer to [How Sentis runs a model](how-sentis-runs-a-model.md).
 
-If a backend type doesn't support a Sentis layer in a model, the worker will assert. For more information, refer to [Supported ONNX operators](supported-operators.md) and [Supported LiteRT operators](supported-litert-operators.md).
+If a backend type doesn't support a Sentis layer in a model, the worker will assert. For more information, refer to [Supported ONNX operators](supported-operators.md), [Supported LiteRT operators](supported-litert-operators.md), and [Supported PyTorch operators](supported-torch-export-operators.md).
 
 | BackendType | Usage |
 | ----------- | ----- |
@@ -49,4 +49,5 @@ To understand a model's performance, it’s important to [Profile a model](profi
 - [How Sentis runs a model](how-sentis-runs-a-model.md)
 - [Supported ONNX operators](supported-operators.md)
 - [Supported LiteRT operators](supported-litert-operators.md)
+- [Supported PyTorch operators](supported-torch-export-operators.md)
 - [Run a model](run-a-model.md)

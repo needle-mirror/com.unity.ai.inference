@@ -68,5 +68,10 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
             newState.HoveredObjects = new List<object>(state.HoveredObjects);
             return newState;
         }
+
+        public static GraphState UpdateLoadingState(GraphState state, IAction<GraphState.LoadingState> loadingState)
+        {
+            return state with { LoadingStatus = loadingState.payload };
+        }
     }
 }

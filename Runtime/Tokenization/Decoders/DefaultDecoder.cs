@@ -15,7 +15,7 @@ namespace Unity.InferenceEngine.Tokenization.Decoders
             Output<string> output)
         {
             Assert.IsNotNull(tokens);
-            output.AddRange(tokens);
+            output.Add(string.Join(" ", tokens));
         }
     }
 }

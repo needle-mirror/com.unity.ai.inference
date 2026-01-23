@@ -8,7 +8,7 @@ Most machine learning frameworks let you to export models in ONNX format.
 
 To export files in ONNX format from common machine learning frameworks, refer to the following documentation:
 
-- [Exporting a model from PyTorch to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html) on the PyTorch website.
+- [Exporting a model from PyTorch to ONNX](https://docs.pytorch.org/tutorials/beginner/onnx/export_simple_model_to_onnx_tutorial.html) on the PyTorch website.
 - [Convert TensorFlow, Keras, Tensorflow.js and Tflite models to ONNX](https://github.com/onnx/tensorflow-onnx) on the ONNX GitHub repository.
 
 > [!NOTE]
@@ -37,27 +37,27 @@ Checkpoints in TensorFlow can consist up of two file formats:
 
 If you have both the graph and weight file types, use the [tf2onnx](https://github.com/onnx/tensorflow-onnx) tool to create an ONNX file.
 
-If you only have the `.ckpt` file, find the Python code that constructs the model and loads in the weights. After that, proceed to [export the model to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html).
+If you only have the `.ckpt` file, find the Python code that constructs the model and loads in the weights. After that, proceed to export the model to ONNX.
 
 ## Convert PyTorch files to ONNX
 
-The following sections explain how to convert PyTorch files to the ONNX format.
+Use this information to convert PyTorch files to the ONNX format.
 
 ### PyTorch Model files
 
-PyTorch model files usually have the `.pt` file extension.
+PyTorch model files usually have the `.pt2` file extension.
 
 To export a model file to ONNX, refer to the links in the following instructions:
 1. [Load the model](https://pytorch.org/tutorials/beginner/saving_loading_models.html) in Python.
-2. [Export the model](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html) as an ONNX file. When you export your model, it's recommended to use Opset `15` or higher.
+2. [Export the model](https://docs.pytorch.org/tutorials/beginner/onnx/export_simple_model_to_onnx_tutorial.html) as an ONNX file. When you export your model, it's recommended to use Opset `15` or higher.
 
-If your `.pt` file doesn't contain the model graph, find the Python code that constructs the model and loads in the weights. After that, [export the model to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html).
+If your `.pt2` file doesn't contain the model graph, find the Python code that constructs the model and loads in the weights. After that, [export the model to ONNX](https://docs.pytorch.org/tutorials/beginner/onnx/export_simple_model_to_onnx_tutorial.html).
 
 ###  Checkpoints
 
 You can create [Checkpoints](https://pytorch.org/docs/stable/checkpoint.html) in PyTorch to save the state of your model at any instance of time. Checkpoint files are usually denoted with the `.tar` or `.pth` extension.
 
-To convert a checkpoint file to ONNX, find the Python code which constructs the model and loads in the weights. After that, proceed to [export the model to ONNX](https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html).
+To convert a checkpoint file to ONNX, find the Python code which constructs the model and loads in the weights. After that, proceed to [export the model to ONNX](https://docs.pytorch.org/tutorials/beginner/onnx/export_simple_model_to_onnx_tutorial.html).
 
 ## Additional resources
 

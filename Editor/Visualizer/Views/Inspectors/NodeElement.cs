@@ -50,7 +50,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
             iconButton.clickable.clicked += () =>
             {
-                m_storeManager.Store.Dispatch(m_storeManager.SetSelectedObject.Invoke(m_NodeData));
+                m_storeManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(m_NodeData));
             };
             label.Add(iconButton);
 

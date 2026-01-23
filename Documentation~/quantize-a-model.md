@@ -25,7 +25,7 @@ The impact of quantization on model accuracy varies depending on the model type.
 
 To quantize a model in code, follow these steps:
 
-1. Use the [`ModelQuantizer`](xref:Unity.InferenceEngine.Quantization.ModelQuantizer) API to apply quantization to the model.
+1. Use the [`ModelQuantizer`](xref:Unity.InferenceEngine.ModelQuantizer) API to apply quantization to the model.
 1. Use the [`ModelWriter`](xref:Unity.InferenceEngine.ModelWriter) API to serialize and save the quantized model to disk.
 
 ```

@@ -1,6 +1,6 @@
 # Convert a texture to a tensor
 
-Use [`TextureConverter.ToTensor`](Unity.InferenceEngine.TextureConverter.ToTensor*) to convert a [`Texture2D`](xref:UnityEngine.Texture2D) or a [`RenderTexture`](xref:UnityEngine.RenderTexture) to a tensor.
+Use [`TextureConverter.ToTensor`](xref:Unity.InferenceEngine.TextureConverter.ToTensor*) to convert a [`Texture2D`](xref:UnityEngine.Texture2D) or a [`RenderTexture`](xref:UnityEngine.RenderTexture) to a tensor.
 
 ```
 using UnityEngine;
@@ -65,9 +65,9 @@ If your model needs a different layout, use [`SetTensorLayout`](xref:Unity.Infer
 
 For more information about tensor formats, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md).
 
-### Avoid Tensor and Texture creation
+### Avoid tensor and texture creation
 
-Allocating memory affects performance. If possible, allocate all necessary memory on startup. Use [`TextureConverter`](Unity.InferenceEngine.TextureConverter) methods to directly operate on pre-allocated tensor and textures.
+Allocating memory affects performance. If possible, allocate all necessary memory on startup. Use [`TextureConverter`](xref:Unity.InferenceEngine.TextureConverter) methods to directly operate on pre-allocated tensor and textures.
 
 For example, to read data from a webcam every frame, copy the webcam texture content into the input tensor. Don't create a new tensor every frame.
 

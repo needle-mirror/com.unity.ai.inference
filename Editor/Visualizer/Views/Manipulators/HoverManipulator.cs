@@ -45,7 +45,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Manipulators
             if (state.HoveredObjects.Contains(m_HoverTarget))
                 return;
 
-            m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.AddHoveredObject.Invoke(m_HoverTarget));
+            m_GraphStoreManager.Store.Dispatch(GraphStoreManager.AddHoveredObject.Invoke(m_HoverTarget));
         }
 
         void OnPointerLeave(PointerLeaveEvent evt)
@@ -53,7 +53,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Manipulators
             if (!IsInitialized)
                 return;
 
-            m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.RemoveHoveredObject.Invoke(m_HoverTarget));
+            m_GraphStoreManager.Store.Dispatch(GraphStoreManager.RemoveHoveredObject.Invoke(m_HoverTarget));
         }
     }
 }

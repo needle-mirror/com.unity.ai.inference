@@ -5,8 +5,6 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEngine;
-using UnityEngine.Assertions;
-using static Unity.InferenceEngine.CPUBackend;
 
 namespace Unity.InferenceEngine
 {
@@ -48,6 +46,8 @@ namespace Unity.InferenceEngine
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class CPUTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData
     {
+        static int s_MainThreadId;
+
         bool m_IsDisposed;
         JobHandle m_ReadFence;
         JobHandle m_WriteFence;
@@ -71,6 +71,28 @@ namespace Unity.InferenceEngine
 
         /// <inheritdoc/>
         public unsafe void* rawPtr => m_Array.AddressAt<float>(0);
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Capture the correct main thread ID for Unity Editor
+        /// is guaranteed to run on the main thread during Unity Editor initialization
+        /// </summary>
+        [UnityEditor.InitializeOnLoadMethod]
+        static void SetMainThread()
+        {
+            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
+        }
+#endif
+
+        /// <summary>
+        /// Capture the correct main thread ID for Unity Runtime
+        /// RuntimeInitializeOnLoadMethod is guaranteed to run on the main thread during Unity runtime initialization
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetMainThread()
+        {
+            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
+        }
 
         /// <summary>
         /// Initializes and returns an instance of `CPUTensorData`, and allocates storage for a tensor with the shape of `shape`.
@@ -112,17 +134,33 @@ namespace Unity.InferenceEngine
                 return;
             if (m_IsDisposed)
                 return;
-
             D.LogWarning($"Found unreferenced, but undisposed CPUTensorData which might lead to CPU resource leak");
         }
 
         /// <summary>
         /// Disposes of the `CPUTensorData` and any associated memory.
+        /// Dispose() must be called from the main thread
+        /// Do not call from a finalizer that might be called by the garbage collector on finalizer thread
         /// </summary>
         public void Dispose()
         {
             if (!m_SafeToDispose)
-                CompleteAllPendingOperations();
+            {
+                // Only complete operations if the job system is available (must be on main thread)
+                if (Thread.CurrentThread.ManagedThreadId == s_MainThreadId)
+                {
+                    CompleteAllPendingOperations();
+                }
+                else if (m_ReadFence.IsCompleted && m_WriteFence.IsCompleted)
+                {
+                    m_SafeToDispose = true;
+                }
+                else
+                {
+                    D.LogWarning("CPUTensorData.Dispose() called from a non-main thread while operations are pending");
+                    return;
+                }
+            }
 
             if (!m_IsDisposed)
             {

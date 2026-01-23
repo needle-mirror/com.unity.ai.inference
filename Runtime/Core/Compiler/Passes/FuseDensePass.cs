@@ -66,6 +66,9 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                         if ((DataType)outNode.args[1].AsInt == DataType.Int || (float)outNode.args[2] != 1f)
                             continue;
                         var biasValue = (float)outNode.args[3];
+                        // Skip fusion if bias is zero. This is just MatMul, not Dense
+                        if (biasValue == 0f)
+                            continue;
                         using var biasTensor = ops.ConstantOfShape(new TensorShape(weightsNode.partialTensor.shape.ToTensorShape()[shouldTransposeWeights ? -2 : -1]), biasValue);
                         biasNode = GraphPassUtil.AddConstant(gm, node, biasTensor);
                     }

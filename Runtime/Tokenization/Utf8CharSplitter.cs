@@ -12,27 +12,17 @@ namespace Unity.InferenceEngine.Tokenization
 
         public void Convert(SubString input, Output<SubString> output)
         {
-            var (source, offsets) = input;
-            var (offset, length) =  offsets.GetOffsetAndLength(source.Length);
-            var to = offset + length;
-
-            while (offset < to)
+            var charOffset = 0;
+            while (charOffset < input.Length)
             {
-                if (!char.IsSurrogate(source[offset]))
-                {
-                    output.Add(new SubString(source, offset .. (offset + 1)));
-                    offset++;
-                }
-
-                // Simple character
-                else
-                {
-                    var end = offset + 1;
-                    while (end < to && char.IsSurrogate(source[end]))
-                        end++;
-                    output.Add(new SubString(source, offset .. end));
-                    offset = end;
-                }
+                var charTo = charOffset;
+                var c = input[charTo];
+                if (char.IsHighSurrogate(c) && charTo + 1 < input.Length
+                    && char.IsLowSurrogate(input[charTo + 1]))
+                    charTo++;
+                charTo++;
+                output.Add(input[charOffset .. charTo]);
+                charOffset = charTo;
             }
         }
     }

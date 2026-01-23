@@ -34,6 +34,8 @@ Sentis supports most models in Open Neural Network Exchange (ONNX) format with a
 
 Sentis supports most models in [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) format. For more information, refer to [Supported LiteRT operators](supported-litert-operators.md).
 
+Sentis supports most models (exported programs) in [PyTorch](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html) format if they are decomposed to [Core ATen IR operators](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html). For more information, refer to [Supported PyTorch operators](supported-torch-export-operators.md).
+
 ## Places to find pre-trained models
 
 [!include[](snippets/model-registry.md)]
@@ -47,4 +49,4 @@ Sentis supports most models in [LiteRT (formerly TensorFlow Lite)](https://ai.go
 - [Tensor fundamentals in Sentis](tensor-fundamentals.md)
 - [The AI menu](https://docs.unity3d.com/Manual/ai-menu.html) in Unity Editor
 - [Unity Dashboard AI settings](https://docs.unity.com/en-us/ai)
-- [Tokenization](tokenizer.md)
+- [Tokenize text for input](tokenizer.md)

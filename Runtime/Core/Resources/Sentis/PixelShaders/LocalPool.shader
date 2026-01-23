@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/LocalPool"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile_local POOL1D POOL2D
+            #pragma multi_compile_local POOL1D POOL2D POOL3D
             #pragma multi_compile_local MAXPOOL AVGPOOL
 
             #pragma vertex vert
@@ -24,10 +24,10 @@ Shader "Hidden/Sentis/LocalPool"
 
             DECLARE_TENSOR(X, float);
 
-            uint O_width, O_height, O_channelsDiv4;
-            uint X_width, X_height, X_channelsDiv4;
+            uint O_width, O_height, O_depth, O_channelsDiv4;
+            uint X_width, X_height, X_depth, X_channelsDiv4;
 
-            int StrideY, StrideX, PadY, PadX, PoolY, PoolX;
+            int StrideZ, StrideY, StrideX, PadZ, PadY, PadX, PoolZ, PoolY, PoolX;
 
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
@@ -35,44 +35,66 @@ Shader "Hidden/Sentis/LocalPool"
                 uint n = blockIndexO;
                 uint w = n % O_width;
                 n /= O_width;
-                #if defined(POOL2D)
+                #if defined(POOL2D) || defined(POOL3D)
                 uint h = n % O_height;
                 n /= O_height;
                 #endif
+                #if defined(POOL3D)
+                uint d = n % O_depth;
+                n /= O_depth;
+                #endif
                 uint cDiv4 = n % O_channelsDiv4;
-                n /= O_channelsDiv4;
+                uint outerIdx = n / O_channelsDiv4;
 
-                uint4 indexX = X_width * (cDiv4 + X_channelsDiv4 * n);
+                // init 4 indexX at spatial base
+                #if defined(POOL3D)
+                uint4 indexX = (X_channelsDiv4 * outerIdx + cDiv4) * X_depth * X_height * X_width;
+                #elif defined(POOL2D)
+                uint4 indexX = (X_channelsDiv4 * outerIdx + cDiv4) * X_height * X_width;
+                #else
+                uint4 indexX = (X_channelsDiv4 * outerIdx + cDiv4) * X_width;
+                #endif
 
                 float counter = 0.0f;
                 float4 accVal = 0.0f;
                 #ifdef MAXPOOL
                 accVal = FLT_MIN;
                 #endif
-                #if defined(POOL2D)
-                indexX *= X_height;
-                for (int dy = 0; dy < PoolY; ++dy)
+
+                #if defined(POOL3D)
+                for (int dz = 0; dz < PoolZ; ++dz)
                 {
-                uint oy = (h * StrideY + dy) - PadY;
-                if (oy >= X_height) continue;
-                indexX[1] = indexX[2] + oy * X_width;
+                    uint oz = (d * StrideZ + dz) - PadZ;
+                    if (oz >= X_depth) continue;
+                    indexX[2] = indexX[3] + oz * (X_width * X_height);
                 #endif
-                for (int dx = 0; dx < PoolX; ++dx)
-                {
-                    uint ox = (w * StrideX + dx) - PadX;
-                    if (ox >= X_width) continue;
-                    float4 v = SampleBlockX(indexX[1] + ox);
-                    #ifdef MAXPOOL
-                    accVal = max(accVal, v);
+                    #if defined(POOL2D) || defined(POOL3D)
+                    for (int dy = 0; dy < PoolY; ++dy)
+                    {
+                        uint oy = (h * StrideY + dy) - PadY;
+                        if (oy >= X_height) continue;
+                        indexX[1] = indexX[2] + oy * X_width;
                     #endif
-                    #ifdef AVGPOOL
-                    accVal += v;
+                        for (int dx = 0; dx < PoolX; ++dx)
+                        {
+                            uint ox = (w * StrideX + dx) - PadX;
+                            if (ox >= X_width) continue;
+                            float4 v = SampleBlockX(indexX[1] + ox);
+                            #ifdef MAXPOOL
+                            accVal = max(accVal, v);
+                            #endif
+                            #ifdef AVGPOOL
+                            accVal += v;
+                            #endif
+                            counter += 1.0f;
+                        }
+                    #if defined(POOL2D) || defined(POOL3D)
+                    }
                     #endif
-                    counter += 1.0f;
-                }
-                #if defined(POOL2D)
+                #if defined(POOL3D)
                 }
                 #endif
+
                 #ifdef AVGPOOL
                 accVal /= counter;
                 #endif

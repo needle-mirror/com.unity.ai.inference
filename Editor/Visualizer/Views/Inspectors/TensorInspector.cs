@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using Unity.AppUI.Redux;
 using Unity.AppUI.UI;
-using Unity.InferenceEngine.Compiler.Analyser;
 using Unity.InferenceEngine.Editor.Visualizer.Extensions;
 using Unity.InferenceEngine.Editor.Visualizer.GraphData;
 using Unity.InferenceEngine.Editor.Visualizer.StateManagement;
@@ -70,7 +69,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
             frameButton.enabledSelf = !isConstant;
             frameButton.clickable.clicked += () =>
             {
-                m_StoreManager.Store.Dispatch(m_StoreManager.SetFocusedObject.Invoke(tensorIndex));
+                m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject.Invoke(tensorIndex));
             };
         }
 
@@ -92,7 +91,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
         void AddSourceNode(GraphState state, int tensorIndex)
         {
-            var sourceNode = state.Graph.Nodes.Find(x => x.SentisOutputs.Contains(tensorIndex));
+            var sourceNode = state.Nodes.Find(x => x.SentisOutputs.Contains(tensorIndex));
             if (sourceNode == null) return;
 
             m_ScrollView.Add(new Divider { direction = Direction.Horizontal });
@@ -108,7 +107,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
         void AddUses(GraphState state, int tensorIndex)
         {
-            var uses = state.Graph.Nodes.Where(x => x.SentisInputs.Contains(tensorIndex)).ToList();
+            var uses = state.Nodes.Where(x => x.SentisInputs.Contains(tensorIndex)).ToList();
             if (uses.Count == 0) return;
 
             m_ScrollView.Add(new Divider { direction = Direction.Horizontal });

@@ -196,7 +196,7 @@ namespace Unity.InferenceEngine.Layers
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Clip(X as Tensor<float>, O, minVal, maxVal);
+            ctx.backend.HardTanh(X as Tensor<float>, O, minVal, maxVal);
         }
     }
 

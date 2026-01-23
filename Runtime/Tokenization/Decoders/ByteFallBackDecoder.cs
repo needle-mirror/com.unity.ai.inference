@@ -12,7 +12,7 @@ namespace Unity.InferenceEngine.Tokenization.Decoders
     /// </summary>
     public class ByteFallbackDecoder : IDecoder
     {
-        static void ConvertByteToToken(List<byte> previousByteTokens, List<string> returnTokens)
+        static unsafe void ConvertByteToToken(List<byte> previousByteTokens, List<string> returnTokens)
         {
             try
             {
@@ -21,10 +21,12 @@ namespace Unity.InferenceEngine.Tokenization.Decoders
                     span[i] = previousByteTokens[i];
 
                 var str = System.Text.Encoding.UTF8.GetString(span);
-                returnTokens.Add(str);
-                if (str.Equals("�"))
-                    for (var i = 0; i < previousByteTokens.Count - 1; i++)
-                        returnTokens.Add("�");
+                if (str.Contains("\ufffd"))
+                {
+                    for (var i = 0; i < previousByteTokens.Count; i++)
+                        returnTokens.Add("\ufffd");
+                }
+                else returnTokens.Add(str);
             }
             catch (DecoderFallbackException)
             {
@@ -57,7 +59,7 @@ namespace Unity.InferenceEngine.Tokenization.Decoders
                         token.AsSpan(3, 2), NumberStyles.HexNumber, null, out var bytes))
                         previousByteTokens.Add(bytes);
                     else
-                        output.Add("�");
+                        output.Add("\ufffd");
                 }
                 else
                 {

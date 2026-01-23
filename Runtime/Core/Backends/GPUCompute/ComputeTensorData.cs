@@ -29,18 +29,31 @@ namespace Unity.InferenceEngine
         static List<ComputeTensorData> m_DisposeQueue = new List<ComputeTensorData>();
         internal static void AddToDisposeQueue(ComputeTensorData ctd) => m_DisposeQueue.Add(ctd);
         internal static bool IsDisposeQueueEmpty => (m_DisposeQueue.Count == 0);
+        internal static bool IsAsyncCallbackCommandBufferEmpty => m_AsyncCallbackCommandBufferEmpty;
 
         // Simple async GPU event mechanism: request a small dummy readback for the ComputeTensorData
         static int s_DummySize = 16;
         static ComputeBuffer m_DummyDestination = new ComputeBuffer(s_DummySize, sizeof(float));
         static CommandBuffer m_AsyncCallbackCommandBuffer = new CommandBuffer();
+        static bool m_AsyncCallbackCommandBufferEmpty = true;
+
+        static void ReInitStaticResources()
+        {
+            CleanupStaticResources();
+            m_DummyDestination = new ComputeBuffer(s_DummySize, sizeof(float));
+            m_AsyncCallbackCommandBuffer = new CommandBuffer();
+            m_AsyncCallbackCommandBufferEmpty = true;
+            m_DisposeQueue?.Clear();
+            m_DisposeQueue = m_DisposeQueue ?? new List<ComputeTensorData>();
+        }
 
         static void CleanupStaticResources()
         {
             m_DummyDestination?.Release();
-            m_AsyncCallbackCommandBuffer?.Release();
             m_DummyDestination = null;
+            m_AsyncCallbackCommandBuffer?.Release();
             m_AsyncCallbackCommandBuffer = null;
+            m_AsyncCallbackCommandBufferEmpty = true;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -48,6 +61,10 @@ namespace Unity.InferenceEngine
         {
 #if UNITY_EDITOR
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += CleanupStaticResources;
+            // Just in case domain reload is disabled in project settings: in that case,
+            // static initializers are not executed again and CleanupStaticResources()
+            // will not be executed through UnityEditor.AssemblyReloadEvents.beforeAssemblyReload as it won't fire.
+            ReInitStaticResources();
 #endif
             Application.quitting += CleanupStaticResources;
         }
@@ -57,6 +74,7 @@ namespace Unity.InferenceEngine
         {
             Graphics.ExecuteCommandBuffer(m_AsyncCallbackCommandBuffer);
             m_AsyncCallbackCommandBuffer.Clear();
+            m_AsyncCallbackCommandBufferEmpty = true;
         }
 
         // Synchronous disposition of the dispose queue
@@ -84,6 +102,12 @@ namespace Unity.InferenceEngine
         internal static void DisposeAfterDispatch(CommandBuffer cb, ComputeTensorData ctd)
         {
             {
+                if (cb == null)
+                    cb = m_AsyncCallbackCommandBuffer;
+
+                if (cb == m_AsyncCallbackCommandBuffer)
+                    m_AsyncCallbackCommandBufferEmpty = false;
+
                 var fn = ComputeFunctions.k_MemCopy;
                 var numWords = ComputeHelper.IDivC(System.Math.Min(s_DummySize, ctd.buffer.count), 4);
                 var wordsHeight = 1;
@@ -96,7 +120,7 @@ namespace Unity.InferenceEngine
                 cb.SetComputeBufferParam(fn.shader, fn.kernelIndex, ShaderPropertyID.k_ID_Optr, m_DummyDestination);
                 cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
             }
-            AsyncGPUReadback.Request(m_DummyDestination, (request) =>
+            cb.RequestAsyncReadback(m_DummyDestination, (request) =>
             {
                 if (request.hasError)
                     D.LogWarning("DisposeAfterDispatch AsyncGPUReadback callback: request has error.");

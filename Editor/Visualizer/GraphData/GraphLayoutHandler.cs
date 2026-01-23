@@ -5,31 +5,26 @@ using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Layout.Layered;
 using Microsoft.Msagl.Miscellaneous;
-using Unity.InferenceEngine.Editor.Visualizer.GraphData;
+using Unity.InferenceEngine.Editor.Visualizer.StateManagement;
 using UnityEngine;
 using Layout = Microsoft.Msagl.Core.Layout;
 
-namespace Unity.InferenceEngine.Editor.Visualizer
+namespace Unity.InferenceEngine.Editor.Visualizer.GraphData
 {
-    sealed class Graph : IDisposable
+    sealed class GraphLayoutHandler : IDisposable
     {
-        readonly Model m_Model;
-        public List<NodeData> Nodes = new();
-        public List<EdgeData> Edges = new();
+        GraphState m_State;
         Layout.GeometryGraph m_GeometryGraph;
 
         public bool LayoutComputed { get; private set; }
 
-        public Graph(Model model)
+        public GraphLayoutHandler(GraphState state)
         {
-            m_Model = model;
+            m_State = state;
         }
 
         public void InitializeNodes()
         {
-            Nodes = new List<NodeData>();
-            Edges = new List<EdgeData>();
-
             AddInputNodes();
             AddLayerNodes();
             AddOutputNodes();
@@ -38,42 +33,42 @@ namespace Unity.InferenceEngine.Editor.Visualizer
 
         void AddInputNodes()
         {
-            for (var i = 0; i < m_Model.inputs.Count; ++i)
+            for (var i = 0; i < m_State.Model.inputs.Count; ++i)
             {
-                var input = m_Model.inputs[i];
-                var inputNode = new InputNodeData(input) { Index = Nodes.Count };
-                Nodes.Add(inputNode);
+                var input = m_State.Model.inputs[i];
+                var inputNode = new InputNodeData(input) { Index = m_State.Nodes.Count };
+                m_State.Nodes.Add(inputNode);
             }
         }
 
         void AddLayerNodes()
         {
-            for (var i = 0; i < m_Model.layers.Count; ++i)
+            for (var i = 0; i < m_State.Model.layers.Count; ++i)
             {
-                var layer = m_Model.layers[i];
-                var layerNode = new LayerNodeData(layer) { Index = Nodes.Count };
-                Nodes.Add(layerNode);
+                var layer = m_State.Model.layers[i];
+                var layerNode = new LayerNodeData(layer) { Index = m_State.Nodes.Count };
+                m_State.Nodes.Add(layerNode);
             }
         }
 
         void AddOutputNodes()
         {
-            for (var i = 0; i < m_Model.outputs.Count; ++i)
+            for (var i = 0; i < m_State.Model.outputs.Count; ++i)
             {
-                var output = m_Model.outputs[i];
-                var outputNode = new OutputNodeData(output) { Index = Nodes.Count };
-                Nodes.Add(outputNode);
+                var output = m_State.Model.outputs[i];
+                var outputNode = new OutputNodeData(output) { Index = m_State.Nodes.Count };
+                m_State.Nodes.Add(outputNode);
             }
         }
 
         void ConnectNodes()
         {
-            foreach (var node in Nodes)
+            foreach (var node in m_State.Nodes)
             {
                 var outputsSet = new HashSet<int>(node.SentisOutputs);
                 var inputsSet = new HashSet<int>(node.SentisInputs);
 
-                foreach (var otherNode in Nodes)
+                foreach (var otherNode in m_State.Nodes)
                 {
                     if (node == otherNode)
                         continue;
@@ -118,9 +113,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer
             m_GeometryGraph = new Layout.GeometryGraph();
             var nodes = new List<Layout.Node>();
 
-            for (var i = 0; i < Nodes.Count; i++)
+            for (var i = 0; i < m_State.Nodes.Count; i++)
             {
-                var node = Nodes[i];
+                var node = m_State.Nodes[i];
                 var nodeLayout = new Layout.Node(CurveFactory.CreateRectangle(node.CanvasSize.x, node.CanvasSize.y, new Point(0f, 0f)))
                 {
                     UserData = node
@@ -147,7 +142,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer
                         () => CurveFactory.CreateRectangle(10, 10, new Point()),
                         () => edge.Source.Center,
                         new Point(0, -edge.Source.Height / 2f));
-                    Edges.Add(new EdgeData(edge, visualizerNode, targetNodeData, tensorIndex));
+                    m_State.Edges.Add(new EdgeData(edge, visualizerNode, targetNodeData, tensorIndex));
                     m_GeometryGraph.Edges.Add(edge);
                 }
 
@@ -174,7 +169,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer
             var setting = new SugiyamaLayoutSettings();
             LayoutHelpers.CalculateLayout(m_GeometryGraph, setting, null);
 
-            for (var i = 0; i < nodes.Count; i++)
+            for (var i = 0; i < m_State.Nodes.Count; i++)
             {
                 var node = nodes[i];
                 var inode = (NodeData)node.UserData;
@@ -200,10 +195,6 @@ namespace Unity.InferenceEngine.Editor.Visualizer
         public void Dispose()
         {
             Clean();
-
-            // Clear edges list
-            Edges.Clear();
-            Nodes.Clear();
         }
     }
 }

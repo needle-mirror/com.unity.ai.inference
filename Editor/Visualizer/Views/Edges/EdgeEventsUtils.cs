@@ -11,9 +11,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Edges
     {
         public static EdgeData GetTouchingEdge(GraphState state, Vector2 position)
         {
-            for (var i = 0; i < state.Graph.Edges.Count; i++)
+            for (var i = 0; i < state.Edges.Count; i++)
             {
-                var edge = state.Graph.Edges[i];
+                var edge = state.Edges[i];
                 var isEdgeOnCurve = IsPointOnCurve(edge.Edge.Curve, position);
                 if (isEdgeOnCurve)
                 {

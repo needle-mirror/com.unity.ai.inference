@@ -1276,6 +1276,27 @@ namespace Unity.InferenceEngine
                     cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
                     cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[3]);
                     break;
+                case 5:
+                    fn = ComputeFunctions.k_MaxPool3D;
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideX, strides[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideY, strides[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideZ, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padX, pads[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padY, pads[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padZ, pads[0]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_inDepth, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[4]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolX, kernelShape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolY, kernelShape[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolZ, kernelShape[0]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_outDepth, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[4]);
+                    break;
                 default:
                     throw new NotImplementedException();
             }
@@ -1312,6 +1333,27 @@ namespace Unity.InferenceEngine
 
                     cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
                     cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[3]);
+                    break;
+                case 5:
+                    fn = ComputeFunctions.k_AveragePool3D;
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideX, strides[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideY, strides[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideZ, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padX, pads[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padY, pads[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padZ, pads[0]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_inDepth, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[4]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolX, kernelShape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolY, kernelShape[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolZ, kernelShape[0]);
+
+                    cb.SetComputeIntParam(fn.shader, k_ID_outDepth, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[4]);
                     break;
                 default:
                     throw new NotImplementedException();

@@ -31,3 +31,4 @@ If your model runs slower than you expect, refer to the following links:
 - [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model)
 - [Supported ONNX operators](supported-operators.md)
 - [Supported LiteRT operators](supported-litert-operators.md)
+- [Supported PyTorch operators](supported-torch-export-operators.md)

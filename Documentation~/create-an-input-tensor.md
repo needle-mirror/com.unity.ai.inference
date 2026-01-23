@@ -80,3 +80,4 @@ Use the functional API to add operations to your model inputs. For more informat
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Edit a model](edit-a-model.md)
 - [Convert a texture to a tensor](convert-texture-to-tensor.md)
+- [Tokenize text for input](tokenizer.md)

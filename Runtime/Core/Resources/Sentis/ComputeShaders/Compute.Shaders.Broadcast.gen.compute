@@ -1,5 +1,6 @@
 // This is auto-generated -- do not modify directly
 
+
 #pragma kernel ScalarBroadcastPRelu SCALARBROADCAST PRELU
 #pragma kernel BroadcastPRelu BROADCAST PRELU
 #pragma kernel ElementwisePRelu ELEMENTWISE PRELU
@@ -1305,7 +1306,7 @@ void ScalarBroadcastModFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 group
 
     float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    float4 O = ((x % y) + y) % y;
+    float4 O = x - floor(x/y) * y;
 
     #if !defined(SHADER_API_D3D11)
     if (idx.x <= MaxIndexO)
@@ -1342,7 +1343,7 @@ void BroadcastModFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : S
 
     float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
-    float4 O = ((x % y) + y) % y;
+    float4 O = x - floor(x/y) * y;
 
     #if !defined(SHADER_API_D3D11)
     if (idx.x <= MaxIndexO)
@@ -1385,7 +1386,7 @@ void ElementwiseModFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     float x = Xptr[indexX];
     float y = Bptr[indexY];
-    Optr[threadIdx] = ((x % y) + y) % y;
+    Optr[threadIdx] = x - floor(x/y) * y;
 }
 #endif
 #endif

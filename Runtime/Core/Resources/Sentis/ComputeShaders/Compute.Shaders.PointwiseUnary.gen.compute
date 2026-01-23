@@ -55,8 +55,7 @@
 #pragma kernel SignInt
 #pragma kernel Not
 #pragma kernel BitwiseNot
-#pragma kernel ClipFloat
-#pragma kernel ClipInt
+#pragma kernel HardTanh
 #pragma kernel ScalarMadFloat
 #pragma kernel ScalarMadInt
 #pragma kernel RangeFloat
@@ -1241,13 +1240,13 @@ void BitwiseNot(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadI
 }
 
 
-inline float OperationClipFloat(float v)
+inline float OperationHardTanh(float v)
 {
     return min(beta, max(v, alpha));
 }
 
 [numthreads(TILE_DIM, 1, 1)]
-void ClipFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+void HardTanh(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
     uint groupLengthX = unrolledDispatchArgs.x;
     uint totalLength  = unrolledDispatchArgs.y;
@@ -1257,27 +1256,7 @@ void ClipFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID
         return;
 
     float v = X_float_ptr[ti];
-    O_float_ptr[ti] = OperationClipFloat(v);
-}
-
-
-inline int OperationClipInt(int v)
-{
-    return min(betai, max(v, alphai));
-}
-
-[numthreads(TILE_DIM, 1, 1)]
-void ClipInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-    uint groupLengthX = unrolledDispatchArgs.x;
-    uint totalLength  = unrolledDispatchArgs.y;
-
-    uint ti = threadIndex + TILE_DIM * (groupID.x + groupID.y * groupLengthX);
-    if (ti >= totalLength)
-        return;
-
-    int v = X_int_ptr[ti];
-    O_int_ptr[ti] = OperationClipInt(v);
+    O_float_ptr[ti] = OperationHardTanh(v);
 }
 
 

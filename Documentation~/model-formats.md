@@ -11,3 +11,4 @@ Page| Description                                                               
 | [Supported functional methods](supported-functional-methods.md) | View the high-level APIs and utility functions you can use to build or manipulate models in code.             |
 | [Supported ONNX operators](supported-operators.md) | Check which ONNX operators Sentis currently supports during model import and processing.                      |
 | [Supported LiteRT operators](supported-litert-operators.md) | Check which LiteRT operators Sentis supports if you import models in the LiteRT format.                       |
+| [Supported PyTorch operators](supported-torch-export-operators.md) | Check which PyTorch operators Sentis supports if you import models in the PyTorch format.                       |

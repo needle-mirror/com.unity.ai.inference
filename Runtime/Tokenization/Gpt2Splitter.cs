@@ -139,7 +139,8 @@ namespace Unity.InferenceEngine.Tokenization
                 return;
 
             var (source, offsets) = input;
-            var (index, limit) = offsets.GetOffsetAndLength(source.Length);
+            var (index, length) = offsets.GetOffsetAndLength(source.Length);
+            var limit = index + length;
 
             while (index < limit && (HandleSpecialCase(source, ref index, limit, out var match)
                 || HandleWord(source, ref index, limit, out match)
@@ -149,6 +150,9 @@ namespace Unity.InferenceEngine.Tokenization
             {
                 output.Add(match);
             }
+
+            if (index < limit)
+                output.Add(new(source, index .. limit));
         }
     }
 }

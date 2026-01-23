@@ -51,12 +51,12 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
 
         void MoveStackIndexUp()
         {
-            m_StoreManager.Store.Dispatch(m_StoreManager.MoveStackIndexUp.Invoke());
+            m_StoreManager.Store.Dispatch(GraphStoreManager.MoveStackIndexUp.Invoke());
         }
 
         void MoveStackIndexDown()
         {
-            m_StoreManager.Store.Dispatch(m_StoreManager.MoveStackIndexDown.Invoke());
+            m_StoreManager.Store.Dispatch(GraphStoreManager.MoveStackIndexDown.Invoke());
         }
 
         void UpdateVisuals(GraphState state)

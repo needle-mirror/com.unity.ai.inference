@@ -13,16 +13,35 @@ namespace Unity.InferenceEngine.Tokenization.Padding
         /// Initializes a new instance of the <see cref="RightPadding" /> type.
         /// </summary>
         /// <param name="paddingSizeProvider">
-        /// Computes the target length of the padded sequences.
+        /// When applying the padding, this object provides the final size of the padded sequence.
         /// </param>
         /// <param name="padToken">
-        /// The token to use to pad a sequence of token.
+        /// The token to use to pad a sequence of tokens.
         /// </param>
         public RightPadding(
             [NotNull] IPaddingSizeProvider paddingSizeProvider,
             Token padToken) : base(paddingSizeProvider, padToken)
         {
         }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RightPadding" /> type.
+        /// </summary>
+        /// <param name="paddingSizeProvider">
+        /// When applying the padding, this object provides the final size of the padded sequence.
+        /// </param>
+        /// <param name="padToken">
+        /// The token to use to pad a sequence of tokens.
+        /// </param>
+        /// <param name="padToMultipleOf">
+        /// Sets the pad length to the upper multiple of this value.
+        /// </param>
+        public RightPadding(
+            [NotNull] IPaddingSizeProvider paddingSizeProvider,
+            Token padToken, int padToMultipleOf = 1) : base(paddingSizeProvider, padToken, padToMultipleOf)
+        {
+        }
+
 
         /// <inheritdoc cref="IPadding.Pad" />
         protected override void PadSequence(IReadOnlyList<Token> tokens, int padSize,

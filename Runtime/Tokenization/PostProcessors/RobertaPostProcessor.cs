@@ -41,8 +41,8 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
         public RobertaPostProcessor(Token sep, Token cls, bool addPrefixSpace = true,
             bool trimOffsets = true)
         {
-            m_SepSequence = new[] {new[] {sep.SetSpecial(true)}};
-            m_ClsSequence = new[] {new[] {cls.SetSpecial(true)}};
+            m_SepSequence = new[] {new[] {sep.SetSpecial(true).SetAttention(true).SetTypeId(0)}};
+            m_ClsSequence = new[] {new[] {cls.SetSpecial(true).SetAttention(true).SetTypeId(0)}};
             (m_TokenPool, m_SequencePool) = InitSequencePool();
         }
 
@@ -64,13 +64,11 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
             return;
 
             void AddSequence(
-                [NotNull] IReadOnlyList<IReadOnlyList<Token>> pSequence,
+                IReadOnlyList<IReadOnlyList<Token>> pSequence,
                 bool pAddSpecialTokens,
                 Output<IEnumerable<IEnumerable<Token>>> pOutput,
                 bool first = false)
             {
-                Assert.IsNotNull(pSequence);
-
                 if (pAddSpecialTokens)
                     pOutput.Add(first ? m_ClsSequence : m_SepSequence);
 
@@ -80,7 +78,17 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
                     var seqTokens = pSequence[seqI];
                     var tokens = m_TokenPool.Get();
                     for (var tI = 0; tI < seqTokens.Count; tI++)
-                        tokens.Add(seqTokens[tI].SetTypeId(0));
+                    {
+                        var token = seqTokens[tI];
+
+                        if (pAddSpecialTokens)
+                            token = token.SetSpecial(false).SetAttention(true);
+
+                        if (seqI == 0 || pAddSpecialTokens)
+                            token = token.SetTypeId(0);
+
+                        tokens.Add(token);
+                    }
 
                     sequence.Add(tokens);
                 }

@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+#if UNITY_6000_5_OR_NEWER
+using UnityEngine.Assemblies;
+#endif
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.MacBLAS")]
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.iOSBLAS")]
@@ -58,7 +61,11 @@ namespace Unity.InferenceEngine
             while (plugins.Count > 0)
             {
                 var candidate = plugins.Pop();
+#if UNITY_6000_5_OR_NEWER
+                foreach (var assembly in CurrentAssemblies.GetLoadedAssemblies())
+#else
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+#endif
                 {
                     var t = assembly.GetType(candidate);
                     if (t != null)

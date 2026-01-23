@@ -760,7 +760,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
-            if (X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
+            if (X.shape.rank < 3 || X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
             {
                 ResizeND(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
                 return;
@@ -1472,6 +1472,32 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void LocalResponseNormalization(Tensor<float> X, Tensor<float> O, int supportLength, float bias, float alpha, float beta)
+        {
+            int channelStride = X.shape.Length(2);
+            int numChannels = X.shape[1];
+
+            float supportHalfSideSize = (supportLength - 1.0f) / 2.0f;
+            int leftSupportLength = (int)Mathf.Floor(supportHalfSideSize);
+            int rightSupportLength = (int)Mathf.Ceil(supportHalfSideSize);
+
+            var fn = ComputeFunctions.k_LocalResponseNormalization;
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channels, numChannels);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_strideC, channelStride);
+            cb.SetComputeIntParam(fn.shader, k_ID_LeftSupportLength, leftSupportLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_RightSupportLength, rightSupportLength);
+            cb.SetComputeFloatParam(fn.shader, k_ID_AlphaDivSupportLength, alpha / (float)(supportLength));
+
+            cb.SetComputeFloatParam(fn.shader, k_ID_Bias, bias);
+            cb.SetComputeFloatParam(fn.shader, k_ID_Beta, beta);
+
+            cb.UnrolledDispatch(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
         public void Range(Tensor<float> O, float start, float delta)
         {
             var fn = ComputeFunctions.k_RangeFloat;
@@ -1661,24 +1687,49 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
+        public void HardTanh(Tensor<float> X, Tensor<float> O, float minVal, float maxVal)
         {
-            var fn = ComputeFunctions.k_ClipFloat;
-            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, min);
-            cb.SetComputeFloatParam(fn.shader, k_ID_beta, max);
+            var fn = ComputeFunctions.k_HardTanh;
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, minVal);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, maxVal);
             cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
             cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
+        public void Clip(Tensor<float> X, Tensor<float> min, Tensor<float> max, Tensor<float> O)
         {
-            var fn = ComputeFunctions.k_ClipInt;
-            cb.SetComputeIntParam(fn.shader, k_ID_alphai, min);
-            cb.SetComputeIntParam(fn.shader, k_ID_betai, max);
-            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
-            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            var fn = ComputeFunctions.k_Clip;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "ClipInt"), false);
+            var useMin = min != null;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "UseMin"), useMin);
+            if (useMin)
+                cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(min));
+            var useMax = max != null;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "UseMax"), useMax);
+            if (useMax)
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(max));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
+        }
+
+        /// <inheritdoc/>
+        public void Clip(Tensor<int> X, Tensor<int> min, Tensor<int> max, Tensor<int> O)
+        {
+            var fn = ComputeFunctions.k_Clip;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "ClipInt"), true);
+            var useMin = min != null;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "UseMin"), useMin);
+            if (useMin)
+                cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(min));
+            var useMax = max != null;
+            fn.shader.SetKeyword(new LocalKeyword(fn.shader, "UseMax"), useMax);
+            if (useMax)
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(max));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
             cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
@@ -3106,11 +3157,11 @@ namespace Unity.InferenceEngine
 
             var fn = ComputeFunctions.k_TopK;
             cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "INT"), X.dataType == DataType.Int);
-            cb.SetKeyword(fn.shader, new LocalKeyword(fn.shader, "LARGEST"), largest);
             cb.SetComputeIntParam(fn.shader, k_ID_innerLength, innerLength);
             cb.SetComputeIntParam(fn.shader, k_ID_outerLength, outerLength);
             cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, reduceLength);
             cb.SetComputeIntParam(fn.shader, k_ID_maxK, k);
+            cb.SetComputeIntParam(fn.shader, k_ID_largest, largest ? 1 : 0);
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_Valuesptr, Pin(values));
             cb.SetTensorAsBuffer(fn, k_ID_Indicesptr, Pin(indices));

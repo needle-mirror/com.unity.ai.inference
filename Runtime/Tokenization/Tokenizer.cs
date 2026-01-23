@@ -173,10 +173,10 @@ namespace Unity.InferenceEngine.Tokenization
 
             try
             {
-                TokenizeInput(inputA, sequenceA.AsOutput());
+                TokenizeInput(inputA, 0, sequenceA.AsOutput());
 
                 if (isPair)
-                    TokenizeInput(inputB, sequenceB.AsOutput());
+                    TokenizeInput(inputB, 1, sequenceB.AsOutput());
             }
             catch (Exception)
             {
@@ -290,28 +290,56 @@ namespace Unity.InferenceEngine.Tokenization
 
             return head;
 
-            void TokenizeInput(string input, Output<Token> output)
+            void TokenizeInput(string input, int typeId,  Output<Token> output)
             {
-                using var chunksHandle = m_ListOfChunkPool.Get(out var chunks);
-                m_AddedVocabulary.Split(input, false, chunks.AsOutput());
+                using var nonNormalizedChunksHandle = m_ListOfChunkPool.Get(out var nonNormalizedChunks);
+                m_AddedVocabulary.Split(input, false, nonNormalizedChunks.AsOutput());
 
-                using var tempOutputHandle = m_ListOfSubStringPool.Get(out var normalizedOutput);
-
-                for (var i = 0; i < chunks.Count; i++)
+                for (var i = 0; i < nonNormalizedChunks.Count; i++)
                 {
-                    var (id, offsets) = chunks[i];
+                    var (id, offsets) = nonNormalizedChunks[i];
                     if (id.HasValue)
                     {
-                        var token = m_Mapper.IdToToken(id.Value);
-                        output.Add(new Token(id.Value, token));
+                        var token = m_AddedVocabulary.TryGetConfiguration(id.Value, out var config)
+                            ? config.Value
+                            : m_Mapper.IdToToken(id.Value);
+                        output.Add(new(id.Value, value: token, typeId: typeId));
+                        continue;
                     }
-                    else
+
+                    var normalizableChunk = new SubString(input, offsets);
+                    var normalizedChunk = m_Normalizer.Normalize(normalizableChunk);
+
+                    using var chunksHandle = m_ListOfChunkPool.Get(out var chunks);
+                    m_AddedVocabulary.Split(normalizedChunk, true, chunks.AsOutput());
+
+                    for (int j = 0; j < chunks.Count; j++)
                     {
-                        var chunk = new SubString(input, offsets);
-                        var normalizedChunk = m_Normalizer.Normalize(chunk);
-                        m_PreTokenizer.PreTokenize(normalizedChunk, normalizedOutput.AsOutput());
-                        m_Mapper.Tokenize(normalizedOutput, output);
-                        normalizedOutput.Clear();
+                        (id, offsets) = chunks[j];
+
+                        if (id.HasValue)
+                        {
+                            var token =
+                                m_AddedVocabulary.TryGetConfiguration(id.Value, out var config)
+                                    ? config.Value
+                                    : m_Mapper.IdToToken(id.Value);
+                            output.Add(new(id.Value, value: token, typeId: typeId));
+                            continue;
+                        }
+
+                        var preTokenizableChunk = normalizedChunk[offsets];
+                        using var preTokenizedOutputHandle =
+                            m_ListOfSubStringPool.Get(out var preTokenizedOutput);
+                        m_PreTokenizer.PreTokenize(preTokenizableChunk,
+                            preTokenizedOutput.AsOutput());
+
+                        using var tokenizerHandle = m_ListOfTokenPool.Get(out var tokenized);
+                        m_Mapper.Tokenize(preTokenizedOutput, tokenized.AsOutput());
+
+                        for (int k = 0; k < tokenized.Count; k++)
+                        {
+                            output.Add(tokenized[k].SetTypeId(typeId));
+                        }
                     }
                 }
             }
@@ -344,7 +372,7 @@ namespace Unity.InferenceEngine.Tokenization
                 var id = input[i];
                 if (m_AddedVocabulary.TryGetConfiguration(id, out var configuration))
                 {
-                    if(configuration.Special && !skipSpecialTokens)
+                    if(!configuration.Special || !skipSpecialTokens)
                         detokenized.Add(configuration.Value);
                 }
                 else

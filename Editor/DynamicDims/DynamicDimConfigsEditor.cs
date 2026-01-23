@@ -1,17 +1,18 @@
 using System;
+using UnityEditor.AssetImporters;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-namespace Unity.InferenceEngine.Editor.Onnx
+namespace Unity.InferenceEngine.Editor.DynamicDims
 {
     class DynamicDimConfigsEditor : VisualElement
     {
-        ONNXModelImporterEditor m_Editor;
-        ONNXModelImporter m_Importer;
+        ScriptedImporterEditor m_Editor;
+        IDynamicDimImporter m_Importer;
 
-        internal DynamicDimConfigsEditor(ONNXModelImporterEditor editor)
+        internal DynamicDimConfigsEditor(ScriptedImporterEditor editor)
         {
-            m_Importer = editor.serializedObject.targetObject as ONNXModelImporter;
+            m_Importer = editor.serializedObject.targetObject as IDynamicDimImporter;
             m_Editor = editor;
 
             InitializeVisuals();

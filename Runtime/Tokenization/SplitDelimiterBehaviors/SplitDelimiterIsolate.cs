@@ -16,7 +16,7 @@ namespace Unity.InferenceEngine.Tokenization.SplitDelimiterBehaviors
         /// <inheritdoc />
         public void Apply(
             SubString source,
-            IReadOnlyList<(Range offsets, bool isContent)> splits,
+            IReadOnlyList<(Range offsets, bool isMatch)> splits,
             Output<SubString> output)
         {
             if(source.IsNull)

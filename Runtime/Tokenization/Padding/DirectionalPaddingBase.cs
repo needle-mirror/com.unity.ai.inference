@@ -20,6 +20,11 @@ namespace Unity.InferenceEngine.Tokenization.Padding
         protected readonly Token PadToken;
 
         /// <summary>
+        /// If set, sets the pad length to the upper multiple of this value.
+        /// </summary>
+        protected readonly int PadToMultipleOf;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="DirectionalPaddingBase" /> type.
         /// </summary>
         /// <param name="paddingSizeProvider">
@@ -38,6 +43,37 @@ namespace Unity.InferenceEngine.Tokenization.Padding
             PadToken = padToken;
             m_SizeProvider = paddingSizeProvider
                 ?? throw new ArgumentNullException(nameof(paddingSizeProvider));
+            PadToMultipleOf = 1;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DirectionalPaddingBase" /> type.
+        /// </summary>
+        /// <param name="paddingSizeProvider">
+        /// When applying the padding, this object provide the final size of the padded sequence.
+        /// </param>
+        /// <param name="padToken">
+        /// The token to use to pad a sequence of token.
+        /// </param>
+        /// <param name="padToMultipleOf">
+        /// Sets the pad length to the upper multiple of this value.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="paddingSizeProvider" /> cannot be null.
+        /// </exception>
+        protected DirectionalPaddingBase(
+            [NotNull] IPaddingSizeProvider paddingSizeProvider,
+            Token padToken,
+            int padToMultipleOf = 1)
+        {
+            PadToken = padToken;
+            m_SizeProvider = paddingSizeProvider
+                ?? throw new ArgumentNullException(nameof(paddingSizeProvider));
+
+            if(padToMultipleOf < 1)
+                throw new ArgumentOutOfRangeException(nameof(padToMultipleOf), "Cannot be less than 1");
+
+            PadToMultipleOf = padToMultipleOf;
         }
 
         /// <summary>
@@ -64,6 +100,9 @@ namespace Unity.InferenceEngine.Tokenization.Padding
 
                 padSize = m_SizeProvider.GetPaddingSize(sizes);
             }
+
+            if (padSize % PadToMultipleOf > 0)
+                padSize = padSize - (padSize % PadToMultipleOf) + PadToMultipleOf;
 
             using var tokensHandle = m_ListOfTokenPool.Get(out var paddedTokens);
 

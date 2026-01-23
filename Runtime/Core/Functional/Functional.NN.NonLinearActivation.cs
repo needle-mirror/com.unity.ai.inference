@@ -252,6 +252,37 @@ namespace Unity.InferenceEngine
         public static FunctionalTensor LocalResponseNorm(FunctionalTensor input, int size, float alpha = 0.0001f, float beta = 0.75f, float k = 1.0f)
         {
             input = input.Float();
+
+            // The note below is about how torch handles support asymmetry when size is even, vs what its doc says,
+            // but the TLDR is we always follow ONNX to simplify our code as in practice it shouldn't change anything.
+
+            // Torch has a slightly different semantics for the support than ONNX:
+            // First the documentation seems to imply that when "size" is even, it doesn't include the point itself for which we do the LRN:
+            // https://docs.pytorch.org/docs/stable/generated/torch.nn.LocalResponseNorm.html
+            // Note the sum from c - n/2 to c + n/2. It would also appear to be always symmetric.
+            //
+            // This is not the case with ONNX: eg when size = 2, the support is the center point and next point,
+            // no points before the center point would be used, but ONNX runtime fails on even sizes anyway.
+            //
+            // However looking at the implementation in pytorch:
+            // https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/normalization.py#L17
+            // https://github.com/pytorch/pytorch/blob/main/torch/nn/functional.py#L2993
+            // eg if input has rank 3, the sum of squares is calculated as such:
+            //
+            //      div = input.mul(input)
+            //      div = div.unsqueeze(1)
+            //      div = pad(div, (0, 0, size // 2, (size - 1) // 2))
+            //      div = avg_pool2d(div, (size, 1), stride = 1).squeeze(1)
+            //
+            // note that because the avg_pool2d kernel size has "size" for support, size is always the true size
+            // of the support and if even, it will not be symmetric. The padding will in fact be 0 on the "right",
+            // so it effectively have the opposite "skew" of ONNX.
+            //
+            // Thus when size is odd, ONNX and PyTorch match even if PyTorch's doc says otherwise,
+            // when size is even the asymmetric support size is forward skewed in ONNX
+            // but backward skewed in PyTorch.
+            // We ignore this slight difference and just use our ONNX implementation.
+
             return FunctionalLayer.LRN(input, alpha, beta, k, size);
         }
     }

@@ -59,7 +59,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
         {
             if (obj.FirstOrDefault() is NodeView nodeView)
             {
-                m_StoreManager.Store.Dispatch(m_StoreManager.SetSelectedObject.Invoke(nodeView.nodeData));
+                m_StoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(nodeView.nodeData));
             }
         }
 

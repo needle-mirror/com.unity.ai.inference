@@ -39,13 +39,13 @@ Use this information to understand how to convert PyTorch files to the LiteRT fo
 
 ### Model files
 
-PyTorch model files usually have the `.pt` file extension.
+PyTorch model files usually have the `.pt2` file extension.
 
 To export a model file to LiteRT, follow these steps:
 1. [Load the model](https://pytorch.org/tutorials/beginner/saving_loading_models.html) in Python.
 2. [Convert the model](https://ai.google.dev/edge/litert/models/convert_pytorch) as a LiteRT file.
 
-If your `.pt` file doesn't contain the model graph, you must find the Python code that constructs the model and loads in the weights.
+If your `.pt2` file doesn't contain the model graph, you must find the Python code that constructs the model and loads in the weights.
 
 ###  Checkpoints
 

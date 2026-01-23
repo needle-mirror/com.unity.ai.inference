@@ -1,3 +1,34 @@
+# What's new in Sentis 2.5
+
+This is a summary of the changes from Sentis 2.4 to Sentis 2.5.
+
+## Added
+
+- `PyTorch` model import to directly import PyTorch files (.pt2) to Sentis without using ONNX.
+- `LRN (LocalResponseNormalization)` operator is now implemented on all backends.
+- `3D MaxPool` and `AveragePool` operators are now implemented on all backends.
+- Sentis Importer now allows users to specify dynamic dimensions as static on Sentis model import, same as we do for ONNX.
+- Tokenizer now parses Hugging Face models.
+- Wider coverage of all the components of the Tokenizer.
+
+## Updated
+
+- Model Visualizer now supports background loading of models.
+- Resize operator on CPU no longer uses main (mono) thread path.
+- All model converters use switch-case instead of if-else cascade for improved performance
+- Mono APIs are migrated to CoreCLR-compatible APIs
+
+## Fixed
+
+- Editor crash when quitting in play mode.
+- Memory leak in FuseConstantPass was fixed.
+- `Clip` operator no longer need CPU fallback for min/max parameters.
+- `Mod` operator fix on some platform with float operands.
+- Faulty optimization pass was corrected.
+- Fix in existing burst code for 2D pooling vectorization calculations.
+- `TopK` issue on `GPUCompute` when dimension is specified.
+- Many fixes to the Tokenizer.
+  
 # What's new in Sentis 2.4
 
 Sentis is the new name for this package.
@@ -18,7 +49,6 @@ This is a summary of the changes from Inference Engine 2.3 to Sentis 2.4.
 ## Fixed
 
 - Many small import, inference and documentation issues.
-
 
 # What's new in Inference Engine 2.3
 

@@ -1,3 +1,8 @@
+
+# Upgrade to Sentis 2.5
+
+You do not need to take any actions to upgrade your project when upgrading from Sentis 2.4. If you are upgrading from an earlier version please follow the instructions below.
+
 # Upgrade to Sentis 2.4
 
 ONNX model input and output names have been fixed to match the spec exactly. If you use hardcoded input and output names in your code these may also need updating to match the corrected versions.

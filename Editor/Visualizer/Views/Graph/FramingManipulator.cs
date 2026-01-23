@@ -29,7 +29,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Graph
                 if (state.FocusedObject != null)
                 {
                     StartFramingObject(state.FocusedObject);
-                    m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.SetFocusedObject?.Invoke(null));
+                    m_GraphStoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject?.Invoke(null));
                 }
             });
         }

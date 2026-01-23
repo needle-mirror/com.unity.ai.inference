@@ -22,9 +22,14 @@ using Unity.InferenceEngine;
 
 ## Load a model
 
-Sentis can import model files in [Open Neural Network Exchange](https://onnx.ai/) (ONNX) and [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) formats. To load a model, follow these steps:
+Sentis can import model files in the following formats:
+* [Open Neural Network Exchange](https://onnx.ai/) (ONNX)
+* [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert)
+* [PyTorch](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html)
 
-1. Export a model [to ONNX format](export-convert-onnx.md) or [to LiteRT format](export-convert-litert.md) from a machine learning framework, or download an ONNX or LiteRT model from the Internet.
+To load a model, follow these steps:
+
+1. Export a model to [ONNX format](export-convert-onnx.md), [LiteRT format](export-convert-litert.md), or [PyTorch format](export-convert-torch.md) from a machine learning framework, or download an ONNX, LiteRT, or PyTorch model from the Internet.
 2. Add the model file to the `Assets` folder of the **Project** window.
 3. Create a runtime model in your script as follows:
 

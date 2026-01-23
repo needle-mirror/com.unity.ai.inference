@@ -22,6 +22,7 @@ namespace Unity.InferenceEngine
         static ComputeShader k_GemmT = Resources.Load<ComputeShader>("Sentis/ComputeShaders/GemmT");
         static ComputeShader k_Pool = Resources.Load<ComputeShader>("Sentis/ComputeShaders/Pool");
         static ComputeShader k_Normalization = Resources.Load<ComputeShader>("Sentis/ComputeShaders/Normalization");
+        static ComputeShader k_LocalResponseNormalizationCS = Resources.Load<ComputeShader>("Sentis/ComputeShaders/LocalResponseNormalization");
         static ComputeShader k_NMS = Resources.Load<ComputeShader>("Sentis/ComputeShaders/NMS");
         static ComputeShader k_ReduceIndices = Resources.Load<ComputeShader>("Sentis/ComputeShaders/ReduceIndices");
         static ComputeShader k_CopyOps = Resources.Load<ComputeShader>("Sentis/ComputeShaders/CopyOps");
@@ -47,6 +48,7 @@ namespace Unity.InferenceEngine
         static ComputeShader k_Spectral = Resources.Load<ComputeShader>("Sentis/ComputeShaders/Spectral");
         static ComputeShader k_BitonicSort = Resources.Load<ComputeShader>("Sentis/ComputeShaders/BitonicSort");
         static ComputeShader k_RoiAlignShader = Resources.Load<ComputeShader>("Sentis/ComputeShaders/RoiAlign");
+        static ComputeShader k_ClipShader = Resources.Load<ComputeShader>("Sentis/ComputeShaders/Clip");
         static ComputeShader k_WindowedDFTMatrix = Resources.Load<ComputeShader>("Sentis/ComputeShaders/WindowedDFTMatrix");
 
         // pixel shaders
@@ -141,6 +143,7 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_LayerNormalizationTail = new(k_Normalization, "LayerNormalizationTail");
         public static ComputeFunction k_RMSNormalizationTail = new(k_Normalization, "RMSNormalizationTail");
         public static ComputeFunction k_BatchNormalization = new(k_Normalization, "BatchNormalization");
+        public static ComputeFunction k_LocalResponseNormalization = new (k_LocalResponseNormalizationCS, "LocalResponseNormalization");
         public static ComputeFunction k_ScaleBias = new(k_Normalization, "ScaleBias");
         public static ComputeFunction k_NMSBitmaskCorners = new(k_NMS, "NMSBitmaskCorners");
         public static ComputeFunction k_NMSBitmaskCenter = new(k_NMS, "NMSBitmaskCenter");
@@ -393,8 +396,7 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_SignInt = new(k_PointwiseUnaryGen, "SignInt");
         public static ComputeFunction k_Not = new(k_PointwiseUnaryGen, "Not");
         public static ComputeFunction k_BitwiseNot = new(k_PointwiseUnaryGen, "BitwiseNot");
-        public static ComputeFunction k_ClipFloat = new(k_PointwiseUnaryGen, "ClipFloat");
-        public static ComputeFunction k_ClipInt = new(k_PointwiseUnaryGen, "ClipInt");
+        public static ComputeFunction k_HardTanh = new(k_PointwiseUnaryGen, "HardTanh");
         public static ComputeFunction k_ScalarMadFloat = new(k_PointwiseUnaryGen, "ScalarMadFloat");
         public static ComputeFunction k_ScalarMadInt = new(k_PointwiseUnaryGen, "ScalarMadInt");
         public static ComputeFunction k_RangeFloat = new(k_PointwiseUnaryGen, "RangeFloat");
@@ -406,9 +408,11 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_PadSymmetricND = new(k_PadA, "PadSymmetricND");
         public static ComputeFunction k_PadEdgeND = new(k_PadA, "PadEdgeND");
         public static ComputeFunction k_PadWrapND = new(k_PadA, "PadWrapND");
+        public static ComputeFunction k_MaxPool3D = new(k_PoolA, "MaxPool3D");
         public static ComputeFunction k_MaxPool2D = new(k_PoolA, "MaxPool2D");
-        public static ComputeFunction k_AveragePool2D = new(k_PoolA, "AveragePool2D");
         public static ComputeFunction k_MaxPool1D = new(k_PoolA, "MaxPool1D");
+        public static ComputeFunction k_AveragePool3D = new(k_PoolA, "AveragePool3D");
+        public static ComputeFunction k_AveragePool2D = new(k_PoolA, "AveragePool2D");
         public static ComputeFunction k_AveragePool1D = new(k_PoolA, "AveragePool1D");
         public static ComputeFunction k_EinsumOne = new(k_Einsum, "EinsumOne");
         public static ComputeFunction k_EinsumTwo = new(k_Einsum, "EinsumTwo");
@@ -428,6 +432,7 @@ namespace Unity.InferenceEngine
         public static ComputeFunction k_BitonicSortStep = new(k_BitonicSort, "BitonicSortStep");
         public static ComputeFunction k_BitonicSortKeyStep = new(k_BitonicSort, "BitonicSortKeyStep");
         public static ComputeFunction k_RoiAlign = new(k_RoiAlignShader, "RoiAlign");
+        public static ComputeFunction k_Clip = new(k_ClipShader, "Clip");
 
         // Windowed DFT Matrix
         public static ComputeFunction k_WindowedDFTMatrixSplitReImTo2Rows_Half_32x32Data_256T = new(k_WindowedDFTMatrix, "k_WindowedDFTMatrixSplitReImTo2Rows_Half_32x32Data_256T");

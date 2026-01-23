@@ -167,7 +167,7 @@ namespace Unity.InferenceEngine.Graph
         /// <summary>
         /// Creates a get attribute node at the current insert. The qualified name should match a name in the graph module attributes.
         /// </summary>
-        public Node GetAttr(string qualifiedName, Type type = null)
+        public Node GetAttr(string qualifiedName, string name = null, Type type = null)
         {
             return CreateNode(Node.kOpGetAttr, qualifiedName, Array.Empty<Argument>(), type: type);
         }

@@ -6,7 +6,7 @@ Encrypt a model so that only a user with the correct key can read the model desc
 
 Use the following steps to encrypt and save a model to disk, typically in the Unity Editor before you build and distribute your project:
 
-1. To get a Sentis model, import an ONNX or LiteRT file or use the Sentis functional API.
+1. To get a Sentis model, import an ONNX, LiteRT, or PyTorch file or use the Sentis functional API.
 2. Create a `Stream` object for the encrypted model with a cryptography API and your encryption key.
 3. Call [`ModelWriter.Save`](xref:Unity.InferenceEngine.ModelWriter.Save*) to serialize and encrypt the model to the stream.
 
@@ -18,7 +18,7 @@ Use the following steps to encrypt and save a model to disk, typically in the Un
 To decrypt and load a model before you run it, follow these steps:
 
 1. Create a `Stream` object for the encrypted model with a cryptography API and your key.
-2. Decrypt and deserialize the model with the [`ModelLoader.Load`](Unity.InferenceEngine.ModelLoader.Load*) method.
+2. Decrypt and deserialize the model with the [`ModelLoader.Load`](xref:Unity.InferenceEngine.ModelLoader.Load*) method.
 
 ## Example: encrypt and decrypt a model with AES
 

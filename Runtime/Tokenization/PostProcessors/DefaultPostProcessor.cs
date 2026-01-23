@@ -29,14 +29,15 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
             if (sequenceA is null)
                 throw new System.ArgumentNullException(nameof(sequenceA));
 
-            AddSequence(sequenceA, output);
+            AddSequence(sequenceA, 0, output);
             if (sequenceB != null)
-                AddSequence(sequenceB, output);
+                AddSequence(sequenceB, 1, output);
 
             return;
 
             void AddSequence(
                 [NotNull] IReadOnlyList<IReadOnlyList<Token>> pSequence,
+                int typeId,
                 Output<IEnumerable<IEnumerable<Token>>> pOutput)
             {
                 Assert.IsNotNull(pSequence);
@@ -47,7 +48,7 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
                     var seqTokens = pSequence[seqI];
                     var tokens = m_TokenPool.Get();
                     for (var tI = 0; tI < seqTokens.Count; tI++)
-                        tokens.Add(seqTokens[tI]);
+                        tokens.Add(seqTokens[tI].SetTypeId(typeId));
 
                     sequence.Add(tokens);
                 }

@@ -20,9 +20,9 @@ For details on how to index and access the tensor, refer to [tensor fundamentals
 
 ## Convert to a render texture
 
-To convert a tensor to a render texture, use [`TextureConverter.RenderToTexture`](xref:TextureConverter.RenderToTexture*) to write tensor data to an existing render texture.
+To convert a tensor to a render texture, use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.TextureConverter#Unity_InferenceEngine_TextureConverter_RenderToTexture_Unity_InferenceEngine_Tensor_System_Single__UnityEngine_RenderTexture_Unity_InferenceEngine_TextureTransform_) to write tensor data to an existing render texture.
 
-When you use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.TextureConverter.ToTexture*), if the dimensions of the tensor doesn't match those of the render texture, Sentis makes the following adjustments:
+When you use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.TextureConverter#Unity_InferenceEngine_TextureConverter_RenderToTexture_Unity_InferenceEngine_Tensor_System_Single__UnityEngine_RenderTexture_Unity_InferenceEngine_TextureTransform_), if the dimensions of the tensor don't match those of the render texture, Sentis makes the following adjustments:
 
 - Samples the tensor linearly if the dimensions don't match.
 - Removes channels from the end if the render texture has fewer channels than the tensor.
@@ -112,7 +112,7 @@ public class StyleTransfer : MonoBehaviour
 }
 ```
 
-When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call [`RenderToScreen`](xref:Unity.InferenceEngine.TextureConverter.RenderToScreen*) in the [`RenderPipelineManager.endFrameRendering`](UnityEngine.Rendering.RenderPipelineManager.endFrameRendering(System.Action`2<UnityEngine.Rendering.ScriptableRenderContext,UnityEngine.Camera[]>)) or [`RenderPipelineManager.endContextRendering`](xref:UnityEngine.Rendering.RenderPipelineManager.endContextRendering(System.Action2<UnityEngine.Rendering.ScriptableRenderContext,System.Collections.Generic.List1<UnityEngine.Camera>>)) callbacks. For more information, refer to [Rendering.RenderPipelineManager](xref:UnityEngine.Rendering.RenderPipelineManager).
+When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call [`RenderToScreen`](xref:Unity.InferenceEngine.TextureConverter.RenderToScreen*) in the [`RenderPipelineManager.endFrameRendering`](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Rendering.RenderPipelineManager-endFrameRendering) or [`RenderPipelineManager.endContextRendering`](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Rendering.RenderPipelineManager-endContextRendering) callbacks. For more information, refer to [Rendering.RenderPipelineManager](xref:UnityEngine.Rendering.RenderPipelineManager).
 
 For an example, refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md).
 

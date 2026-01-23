@@ -1,16 +1,28 @@
 using System;
 using System.Collections.Generic;
+using Unity.InferenceEngine.Editor.Visualizer.GraphData;
+using Unity.InferenceEngine.Editor.Visualizer.Views;
 
 namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
     record GraphState: IDisposable
     {
+
+        // Model State
         [NonSerialized]
         public Model Model;
         public ModelAsset ModelAsset;
+
+        // Computation State
         [NonSerialized]
         public PartialInferenceContext PartialInferenceContext;
-        public Graph Graph;
+        public GraphView GraphView;
+        public LoadingState LoadingStatus;
+        public string ErrorMessage;
+        public List<NodeData> Nodes = new();
+        public List<EdgeData> Edges = new();
+
+        // UI State
         public object FocusedObject = null;
         public List<object> SelectionHistory = new();
         public int CurrentSelectionIndex = -1;
@@ -33,10 +45,18 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 
         public void Dispose()
         {
-            Graph?.Dispose();
             PartialInferenceContext = null;
             Model = null;
             ModelAsset = null;
+        }
+
+        public enum LoadingState
+        {
+            Idle,
+            LoadingModel,
+            LayoutComputation,
+            Done,
+            Error
         }
     }
 }

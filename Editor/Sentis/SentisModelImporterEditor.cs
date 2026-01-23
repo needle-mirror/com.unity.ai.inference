@@ -1,6 +1,9 @@
+using System;
+using System.Reflection;
+using Unity.InferenceEngine.Editor.DynamicDims;
 using UnityEditor;
 using UnityEditor.AssetImporters;
-using System.Reflection;
+using UnityEngine.UIElements;
 
 namespace Unity.InferenceEngine.Editor.Sentis
 {
@@ -13,6 +16,16 @@ namespace Unity.InferenceEngine.Editor.Sentis
         static SentisModelImporterEditor()
         {
             s_InspectorModeInfo = typeof(SerializedObject).GetProperty("inspectorMode", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        public override VisualElement CreateInspectorGUI()
+        {
+            var container = new VisualElement();
+            var editor = new DynamicDimConfigsEditor(this);
+            container.Add(editor);
+            container.Add(new IMGUIContainer(ApplyRevertGUI));
+
+            return container;
         }
 
         public override void OnInspectorGUI()

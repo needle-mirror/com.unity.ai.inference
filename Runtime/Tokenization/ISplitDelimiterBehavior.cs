@@ -21,7 +21,7 @@ namespace Unity.InferenceEngine.Tokenization
         /// </param>
         void Apply(
             SubString source,
-            [NotNull] IReadOnlyList<(Range offsets, bool isContent)> splits,
+            [NotNull] IReadOnlyList<(Range offsets, bool isMatch)> splits,
             Output<SubString> output);
     }
 }

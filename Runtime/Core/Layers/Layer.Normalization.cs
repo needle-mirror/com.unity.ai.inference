@@ -236,41 +236,13 @@ namespace Unity.InferenceEngine.Layers
                 return;
 
             // https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
-            // However divide the sum by size to follow onnx and pytorch implementation
+            // Like the above paper but we divide the sum by size to follow onnx and pytorch implementation
             // ONNX https://github.com/onnx/onnx/blob/master/docs/Operators.md#LRN
             // PYTORCH https://github.com/pytorch/pytorch/blob/1465970a343e61f2f2b104859ca7f5d7e03f5d02/torch/nn/functional.py#L2069
-            // Tensorflow don't and follow the paper to the letter https://github.com/tensorflow/tensorflow/blob/e6faa845c51bb69465146d93646947fd2ba53efa/tensorflow/python/kernel_tests/lrn_op_test.py#L53
+            // Tensorflow doesn't do that and follow the paper to the letter https://github.com/tensorflow/tensorflow/blob/e6faa845c51bb69465146d93646947fd2ba53efa/tensorflow/python/kernel_tests/lrn_op_test.py#L53
             // However they bake the division to alpha when exporting to ONNX https://github.com/onnx/tensorflow-onnx/blob/7c37ccb97e0fd478ce093910c4a1411b18e44fd7/tf2onnx/onnx_opset/math.py
 
-
-            // need to download, if gpucompute need to execute commandbuffer and flush.
-            if (ctx.backend is GPUComputeBackend gpuBackend)
-                gpuBackend.ExecuteCommandBufferAndClear();
-
-            var arrayX = (X as Tensor<float>).DownloadToNativeArray();
-            var arrayO = new NativeArray<float>(O.shape.length, Allocator.Temp);
-
-            float sizef = count;
-
-            var itRemap = new TensorNDIterator(O.shape);
-            for (var it = new TensorNDIterator(O.shape); it.HasNext(); it.MoveNext())
-            {
-                int c = it[1];
-                float regionCenter = (sizef - 1.0f) / 2.0f;
-                int regionStart = Math.Max(0, c - (int)Mathf.Floor(regionCenter));
-                int regionEnd = Math.Min(X.shape[1], c + (int)Mathf.Ceil(regionCenter) + 1);
-                float sumOfSquared = 0.0f;
-                for (int ci = regionStart; ci < regionEnd; ++ci)
-                {
-                    itRemap.CopyNDIndex(it);
-                    itRemap[1] = ci;
-                    float regionValue = arrayX[itRemap.index];
-                    sumOfSquared += regionValue * regionValue;
-                }
-
-                arrayO[it.index] = arrayX[it.index] / Mathf.Pow(bias + alpha * sumOfSquared / sizef, beta);
-            }
-            O.dataOnBackend.Upload(arrayO, arrayO.Length);
+            ctx.backend.LocalResponseNormalization(X, O, count, bias, alpha, beta);
         }
     }
 }

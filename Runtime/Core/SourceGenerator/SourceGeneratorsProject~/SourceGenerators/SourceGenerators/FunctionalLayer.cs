@@ -13,6 +13,9 @@ namespace SourceGenerators
     {
         public static void GenerateFunctionalLayer(SourceProductionContext spc, ImmutableArray<INamedTypeSymbol> classSymbols)
         {
+            if (classSymbols.Length == 0)
+                return;
+
             // TODO fix hack to prevent multiple model loader classes being created in different assemblies
             if (classSymbols[0].ContainingNamespace.ToString() != "Unity.InferenceEngine.Layers")
                 return;

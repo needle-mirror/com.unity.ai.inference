@@ -31,6 +31,9 @@ public class AttributeBasedFieldGenerator : IIncrementalGenerator
     // generate the Layer.g.cs file with the partial layer classes with the generated methods for all the ops
     void GenerateLayerClasses(SourceProductionContext spc, ImmutableArray<INamedTypeSymbol> classSymbols)
     {
+        if (classSymbols.Length == 0)
+            return;
+
         using MemoryStream sourceStream = new();
         using StreamWriter sourceStreamWriter = new(sourceStream, Encoding.UTF8);
         using IndentedTextWriter codeWriter = new(sourceStreamWriter);

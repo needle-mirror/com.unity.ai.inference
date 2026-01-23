@@ -56,11 +56,11 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Edges
             if (edge != null && edge.TensorIndex != m_LastHoveredIndex)
             {
                 m_LastHoveredIndex = edge.TensorIndex;
-                m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.AddHoveredObject.Invoke(edge.TensorIndex));
+                m_GraphStoreManager.Store.Dispatch(GraphStoreManager.AddHoveredObject.Invoke(edge.TensorIndex));
             }
             else if (edge == null && m_LastHoveredIndex != -1)
             {
-                m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.RemoveHoveredObject.Invoke(m_LastHoveredIndex));
+                m_GraphStoreManager.Store.Dispatch(GraphStoreManager.RemoveHoveredObject.Invoke(m_LastHoveredIndex));
                 m_LastHoveredIndex = -1;
             }
         }
@@ -74,7 +74,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Edges
                 evt.StopImmediatePropagation();
                 evt.StopPropagation();
 
-                m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.SetSelectedObject.Invoke(edge.TensorIndex));
+                m_GraphStoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(edge.TensorIndex));
             }
         }
 
@@ -88,7 +88,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Edges
         {
             if (m_LastHoveredIndex != -1)
             {
-                m_GraphStoreManager.Store.Dispatch(m_GraphStoreManager.RemoveHoveredObject.Invoke(m_LastHoveredIndex));
+                m_GraphStoreManager.Store.Dispatch(GraphStoreManager.RemoveHoveredObject.Invoke(m_LastHoveredIndex));
                 m_LastHoveredIndex = -1;
             }
         }

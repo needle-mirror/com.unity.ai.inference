@@ -96,7 +96,7 @@ When you use `CopyOutput`, you're responsible for managing the tensor that recei
 
 ## Multiple outputs
 
-If the model has multiple outputs, you can use each output name as a parameter in [`Worker.PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput(string)).
+If the model has multiple outputs, you can use each output name as a parameter in [`Worker.PeekOutput`](xref:Unity.InferenceEngine.Worker#Unity_InferenceEngine_Worker_PeekOutput_System_String_).
 
 ## Additional resources
 

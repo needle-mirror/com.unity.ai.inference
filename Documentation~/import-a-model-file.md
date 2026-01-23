@@ -1,6 +1,6 @@
 # Import a model file
 
-To import an ONNX or LiteRT model file into your Unity project, drag the file from your computer into the `Assets` folder of the **Project** window.
+To import an ONNX, LiteRT, or PyTorch model file into your Unity project, drag the file from your computer into the `Assets` folder of the **Project** window.
 
 If your model has external weights files, put them in the same directory as the model file so that Sentis imports them automatically.
 
@@ -33,5 +33,6 @@ After the model is loaded, you can [create an engine to run a model](create-an-e
 - [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model)
 - [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
 - [Export a LiteRT file from a machine learning framework](export-convert-litert.md)
+- [Export a PyTorch file from a machine learning framework](export-convert-torch.md)
 - [Model Asset Inspector](model-asset-inspector.md)
 - [Supported models](supported-models.md)

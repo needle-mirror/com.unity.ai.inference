@@ -204,7 +204,7 @@ namespace Unity.InferenceEngine.Layers
     /// Represents an element-wise `Clip` math layer: f(x, xmin, xmax) = min(max(x, xmin), xmax)
     /// </summary>
     [Operator(category = "Math")]
-    [Inputs(names = new[] { "input", "min", "max" }, inputCPURead = new[] { 1, 2 })]
+    [Inputs(names = new[] { "input", "min", "max" })]
     partial class Clip : Layer
     {
         internal static PartialTensor InferPartial(PartialTensor input, PartialTensor min, PartialTensor max)
@@ -215,21 +215,18 @@ namespace Unity.InferenceEngine.Layers
         internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
+            var min = ctx.storage.GetTensor(inputs[1]);
+            var max = ctx.storage.GetTensor(inputs[2]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            // TODO don't switch data type at runtime
             if (X is Tensor<int>)
             {
-                var min = ctx.storage.GetInt(inputs[1], int.MinValue);
-                var max = ctx.storage.GetInt(inputs[2], int.MaxValue);
-                ctx.backend.Clip(X as Tensor<int>, O as Tensor<int>, min, max);
+                ctx.backend.Clip(X as Tensor<int>, min as Tensor<int>, max as Tensor<int>, O as Tensor<int>);
             }
             else
             {
-                var min = ctx.storage.GetFloat(inputs[1], float.MinValue);
-                var max = ctx.storage.GetFloat(inputs[2], float.MaxValue);
-                ctx.backend.Clip(X as Tensor<float>, O as Tensor<float>, min, max);
+                ctx.backend.Clip(X as Tensor<float>, min as Tensor<float>, max as Tensor<float>, O as Tensor<float>);
             }
         }
     }

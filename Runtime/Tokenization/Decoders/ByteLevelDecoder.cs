@@ -71,6 +71,9 @@ namespace Unity.InferenceEngine.Tokenization.Decoders
 
         unsafe string FromBytes(IReadOnlyList<byte> bytes)
         {
+            if(bytes.Count == 0)
+                return string.Empty;
+
             var byteArray = stackalloc byte[bytes.Count];
             for (var i = 0; i < bytes.Count; i++)
                 byteArray[i] = bytes[i];

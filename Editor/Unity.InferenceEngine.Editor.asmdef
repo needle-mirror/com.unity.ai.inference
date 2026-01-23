@@ -14,9 +14,9 @@
     "allowUnsafeCode": true,
     "overrideReferences": true,
     "precompiledReferences": [
-      "Google.Protobuf_Packed.dll"
+        "Google.Protobuf_Packed.dll",
+        "Newtonsoft.Json.dll"
     ],
-    "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],

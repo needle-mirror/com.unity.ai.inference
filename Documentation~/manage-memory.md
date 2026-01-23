@@ -1,6 +1,6 @@
 # Manage memory with tensors
 
-As a Sentis user, it's important to call [`Dispose`](xref:Unity.InferenceEngine.Worker.Dispose) on any workers and tensors you instantiate. Additionally, ensure you call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](Unity.InferenceEngine.Tensor.ReadbackAndClone*) method.
+When you use the Sentis API, always call [`Dispose`](xref:Unity.InferenceEngine.Worker.Dispose) on any workers and tensors you instantiate. Additionally, ensure you call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](xref:Unity.InferenceEngine.Tensor.ReadbackAndClone*) method.
 
 > [!NOTE]
 > You must call `Dispose` to free up graphics processing unit (GPU) resources.

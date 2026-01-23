@@ -159,7 +159,14 @@ Shader "Hidden/Sentis/Broadcast"
                     v = va % vb;
                 #endif
                 #ifdef Mod
-                    float4 u = ((va % vb) + vb) % vb;
+                    // Was previously value = ((x % y) + y) % y
+                    // This boils down to fmod(fmod(x, y) + y, y)
+                    // and depending on shader compiling pipeline seems to be generating incorrect
+                    // results.
+                    // Just use what is intended:
+                    // fmod is := x - trunc(x/y) * y
+                    // glsl-style mod is := x - floor(x/y) * y,
+                    float4 u = va - floor(va/vb) * vb;
                     v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
                     v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
                     v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;

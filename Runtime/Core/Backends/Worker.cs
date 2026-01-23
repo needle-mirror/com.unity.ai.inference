@@ -242,7 +242,7 @@ namespace Unity.InferenceEngine
                 // If we used the CPU fallback backend, we could have pending GPU buffer disposes to do:
                 if (!ComputeTensorDataReaper.IsDisposeQueueEmpty)
                 {
-                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer());
+                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend?.GetCommandBuffer());
                 }
                 markerType.End();
 
@@ -253,8 +253,16 @@ namespace Unity.InferenceEngine
             ctx.backend = m_Backend;
 
             // gpucompute: need to execute commandbuffer and flush.
-            if (ctx.backend is GPUComputeBackend gpuBackend && gpuBackend.InternalCommandBuffer())
-                gpuBackend.ExecuteCommandBufferAndClear();
+            if (ctx.backend is GPUComputeBackend gpuBackend)
+            {
+                if (gpuBackend.InternalCommandBuffer())
+                    gpuBackend.ExecuteCommandBufferAndClear();
+            }
+            // If we don't have a compute backend, we need to dispatch our GPU buffer cleanup command buffer:
+            else if (!ComputeTensorDataReaper.IsAsyncCallbackCommandBufferEmpty)
+            {
+                ComputeTensorDataReaper.ExecuteAsyncDisposeCommandBufferAndClear();
+            }
 
             // Note: if ComputeTensorData.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer())
             // isn't used like above, it should be done here.
@@ -329,7 +337,7 @@ namespace Unity.InferenceEngine
                 // If we used the CPU fallback backend, we could have pending GPU buffer disposes to do:
                 if (!ComputeTensorDataReaper.IsDisposeQueueEmpty)
                 {
-                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend.GetCommandBuffer());
+                    ComputeTensorDataReaper.MoveDisposeQueueAsAsyncGPUEvents(originalBackendAsGPUBackend?.GetCommandBuffer());
                 }
                 markerType.End();
 
@@ -337,12 +345,18 @@ namespace Unity.InferenceEngine
                 // Make sure to restore the original backend:
                 ctx.backend = m_Backend;
 
+                // gpucompute: need to execute commandbuffer and flush.
+                if (ctx.backend is GPUComputeBackend gpuBackend)
+                {
+                    if (gpuBackend.InternalCommandBuffer())
+                        gpuBackend.ExecuteCommandBufferAndClear();
+                }
+                // If we don't have a compute backend, we need to dispatch our GPU buffer cleanup command buffer:
+                else if (!ComputeTensorDataReaper.IsAsyncCallbackCommandBufferEmpty)
+                    ComputeTensorDataReaper.ExecuteAsyncDisposeCommandBufferAndClear();
+
                 if (!cpuLayer)
                 {
-                    // gpucompute: need to execute commandbuffer and flush.
-                    if (ctx.backend is GPUComputeBackend gpuBackend && gpuBackend.InternalCommandBuffer())
-                        gpuBackend.ExecuteCommandBufferAndClear();
-
                     ProfilerMarkers.Schedule.End();
                     yield return null;
                     ProfilerMarkers.Schedule.Begin();

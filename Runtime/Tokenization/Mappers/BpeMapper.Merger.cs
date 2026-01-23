@@ -26,6 +26,9 @@ namespace Unity.InferenceEngine.Tokenization.Mappers
                 IReadOnlyList<Token> input,
                 Output<Token> output)
             {
+                if (input.Count == 0)
+                    return;
+
                 var symbols = new Symbol[input.Count];
                 for (var position = 0; position < input.Count; position++)
                 {

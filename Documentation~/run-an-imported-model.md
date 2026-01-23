@@ -6,6 +6,7 @@ Use Sentis to run an imported model with input data and get the output data.
 |-|-|
 |[How Sentis runs a model](how-sentis-runs-a-model.md)|Understand how Sentis runs a model.|
 |[Create input for a model](create-an-input-tensor.md)|Create input data for a model from an array or a texture.|
+|[Tokenize text for input](tokenizer.md)|Use the tokenizer to convert text into numerical tokens to use as input for models that process text.|
 |[Convert a texture to a tensor](convert-texture-to-tensor.md)|Convert a texture to a tensor, and override texture shape and layout.|
 |[Create an engine to run a model](create-an-engine.md)|Create a worker, which is the engine that breaks the model down into executable tasks.|
 |[Run a model](run-a-model.md)|Run a model in a single frame.|

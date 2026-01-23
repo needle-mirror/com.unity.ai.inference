@@ -1198,11 +1198,11 @@ partial class CPUBackend
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-    internal unsafe struct ClipFloatJob : IParallelForBatch, IJobResourceDeclarationXO
+    internal unsafe struct HardTanhJob : IParallelForBatch, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-        public float minValue, maxValue;
+        public float minVal, maxVal;
 
         public void Execute(int startIndex, int count)
         {
@@ -1214,27 +1214,7 @@ partial class CPUBackend
 
         public float Operation(float v)
         {
-            return min(maxValue, max(v, minValue));
-        }
-    }
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
-    internal unsafe struct ClipIntJob : IParallelForBatch, IJobResourceDeclarationXO
-    {
-        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
-        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
-        public int minValue, maxValue;
-
-        public void Execute(int startIndex, int count)
-        {
-            for (int index = startIndex; index < startIndex + count; ++index)
-            {
-                Optr[index] = Operation(Xptr[index]);
-            }
-        }
-
-        public int Operation(int v)
-        {
-            return min(maxValue, max(v, minValue));
+            return min(maxVal, max(v, minVal));
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]

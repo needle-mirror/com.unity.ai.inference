@@ -96,7 +96,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
 
         void OnClose()
         {
-            m_StoreManager.Store.Dispatch(m_StoreManager.SetSelectedObject.Invoke(null));
+            m_StoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(null));
         }
 
         void InitializeTray()
@@ -110,7 +110,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                 m_Tray.view.style.backgroundColor = new Color(0.5f, 0.5f, 0.5f, 0.0f);
                 m_Tray.dismissed += (_, _) =>
                 {
-                    m_StoreManager.Store.Dispatch(m_StoreManager.SetSelectedObject.Invoke(null));
+                    m_StoreManager.Store.Dispatch(GraphStoreManager.SetSelectedObject.Invoke(null));
                 };
 
                 var trayContent = m_Tray.view.Q<VisualElement>("appui-tray__tray");

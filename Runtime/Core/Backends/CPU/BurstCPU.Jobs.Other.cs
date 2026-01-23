@@ -94,6 +94,112 @@ namespace Unity.InferenceEngine
             }
         }
 
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMinMaxFloatJob : IParallelForBatch, IJobResourceDeclarationXSBO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var minVal = Sptr[0];
+                var maxVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.min(math.max(Xptr[index], minVal), maxVal);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMinFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var minVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.max(Xptr[index], minVal);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMaxFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var maxVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.min(Xptr[index], maxVal);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMinMaxIntJob : IParallelForBatch, IJobResourceDeclarationXSBO
+        {
+            public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } int* Sptr => (int*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var minVal = Sptr[0];
+                var maxVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.min(math.max(Xptr[index], minVal), maxVal);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMinIntJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var minVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.max(Xptr[index], minVal);
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct ClipMaxIntJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+            public void Execute(int startIndex, int count)
+            {
+                var maxVal = Bptr[0];
+                for (int index = startIndex; index < startIndex + count; ++index)
+                {
+                    Optr[index] = math.min(Xptr[index], maxVal);
+                }
+            }
+        }
+
         /// <summary>
         /// Creates a Mathematics.Random struct to be used inside the inner loop of a burst job.
         /// The seed is given per job and the threadIndex is per output tensor entry, subsequent calls
@@ -568,6 +674,82 @@ namespace Unity.InferenceEngine
                 int v = (axisIdx == index) ? onValue : offValue;
 
                 Optr[threadIdx] = v;
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        unsafe struct Resize1DJob : IParallelForBatch, IJobResourceDeclarationXO
+        {
+            public ReadOnlyMemResource X { get; set; }
+            float* Xptr => (float*)X.ptr;
+            public ReadWriteMemResource O { get; set; }
+            float* Optr => (float*)O.ptr;
+            public int innerLength;
+            public int outerLength;
+            public int inputWidth;
+            public int outputWidth;
+            public float scale;
+            public float bias;
+            public Mode mode;
+
+            public enum Mode
+            {
+                NearestCeil = 0,
+                NearestFloor,
+                Linear,
+            }
+
+            public void Execute(int i, int count)
+            {
+                int innerIdx = i % innerLength;
+                int tmp = i / innerLength;
+                int axisIdx = tmp % outputWidth;
+                int outerIdx = tmp / outputWidth;
+
+                while (count > 0)
+                {
+                    int outputCountInnerRemaining = innerLength - innerIdx;
+                    int outputCountInner = math.min(count, outputCountInnerRemaining);
+                    count -= outputCountInner;
+                    float scaledAxisIdx = axisIdx * scale + bias;
+
+                    for (; outputCountInner > 0; outputCountInner -= 1, innerIdx++)
+                    {
+                        switch (mode)
+                        {
+                            case Mode.Linear:
+                                {
+                                    float axisIdxFloor = math.floor(scaledAxisIdx);
+                                    float axisIdxFrac = scaledAxisIdx - axisIdxFloor;
+                                    float p0 = Xptr[outerIdx * inputWidth * innerLength + math.clamp((int)axisIdxFloor + 0, 0, inputWidth - 1) * innerLength + innerIdx];
+                                    float p1 = Xptr[outerIdx * inputWidth * innerLength + math.clamp((int)axisIdxFloor + 1, 0, inputWidth - 1) * innerLength + innerIdx];
+                                    Optr[outerIdx * outputWidth * innerLength + axisIdx * innerLength + innerIdx] = p1 * axisIdxFrac + p0 * (1 - axisIdxFrac);
+                                }
+                                break;
+                            case Mode.NearestCeil:
+                                {
+                                    int axisIdxCeil = (int)math.ceil(scaledAxisIdx);
+                                    Optr[outerIdx * outputWidth * innerLength + axisIdx * innerLength + innerIdx] = Xptr[outerIdx * inputWidth * innerLength + math.clamp(axisIdxCeil, 0, inputWidth - 1) * innerLength + innerIdx];
+                                }
+                                break;
+                            case Mode.NearestFloor:
+                                {
+                                    int axisIdxFloor = (int)math.floor(scaledAxisIdx);
+                                    Optr[outerIdx * outputWidth * innerLength + axisIdx * innerLength + innerIdx] = Xptr[outerIdx * inputWidth * innerLength + math.clamp(axisIdxFloor, 0, inputWidth - 1) * innerLength + innerIdx];
+                                }
+                                break;
+                        }
+                    }
+                    // If we're not done with our total count to do for the worker thread,
+                    // it means we reached the end of the inner combined dimensions index,
+                    // switch to the next axisIdx (and then if necessary, the next combined outer dimensions index):
+                    innerIdx = 0;
+                    if (++axisIdx >= outputWidth)
+                    {
+                        axisIdx = 0;
+                        outerIdx++;
+                    }
+                }
             }
         }
 
@@ -2124,7 +2306,7 @@ namespace Unity.InferenceEngine
                         Ip[idx] = Ip[idxPrev];
                         Ip[idxPrev] = swapi;
                     }
-                    minOValue = math.min(direction * Vp[(k - 1) * innerLength], value);
+                    minOValue = direction * Vp[(k - 1) * innerLength];
                 }
             }
         }
@@ -2195,7 +2377,7 @@ namespace Unity.InferenceEngine
                         Ip[idx] = Ip[idxPrev];
                         Ip[idxPrev] = swapi;
                     }
-                    minOValue = math.min(direction * Vp[(k - 1) * innerLength], value);
+                    minOValue = direction * Vp[(k - 1) * innerLength];
                 }
             }
         }

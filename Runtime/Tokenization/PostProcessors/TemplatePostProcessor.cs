@@ -146,7 +146,14 @@ namespace Unity.InferenceEngine.Tokenization.PostProcessors
                     var seqTokens = pSequence[sI];
                     var tokens = m_TokenPool.Get();
                     for (var tI = 0; tI < seqTokens.Count; tI++)
-                        tokens.Add(seqTokens[tI].SetTypeId(pTypeId).SetAttention(true));
+                    {
+                        var token = seqTokens[tI].SetAttention(true);
+
+                        // for some reason, tokenizers only applies type_id to the main sequence.
+                        if (sI == 0)
+                            token = token.SetTypeId(pTypeId);
+                        tokens.Add(token);
+                    }
 
                     newSequence.Add(tokens);
                 }

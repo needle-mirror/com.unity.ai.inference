@@ -1,33 +1,27 @@
 using System;
+using System.Threading.Tasks;
 using Unity.AppUI.Redux;
-using Unity.InferenceEngine.Compiler.Analyser;
+using Unity.InferenceEngine.Editor.Visualizer.Views;
 
 namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
     sealed class GraphStoreManager : IDisposable
     {
         public IStore<PartitionedState> Store { get; }
-        public ActionCreator<object> SetFocusedObject = new(GraphSlice.SetFocusedObject);
-        public ActionCreator<object> SetSelectedObject = new(GraphSlice.SetSelectedObject);
-        public ActionCreator MoveStackIndexUp = new(GraphSlice.MoveStackIndexUp);
-        public ActionCreator MoveStackIndexDown = new(GraphSlice.MoveStackIndexDown);
-        public ActionCreator<object> AddHoveredObject = new(GraphSlice.AddHoveredObject);
-        public ActionCreator<object> RemoveHoveredObject = new(GraphSlice.RemoveHoveredObject);
+        public static ActionCreator<object> SetFocusedObject = new(GraphSlice.SetFocusedObject);
+        public static ActionCreator<object> SetSelectedObject = new(GraphSlice.SetSelectedObject);
+        public static ActionCreator MoveStackIndexUp = new(GraphSlice.MoveStackIndexUp);
+        public static ActionCreator MoveStackIndexDown = new(GraphSlice.MoveStackIndexDown);
+        public static ActionCreator<object> AddHoveredObject = new(GraphSlice.AddHoveredObject);
+        public static ActionCreator<object> RemoveHoveredObject = new(GraphSlice.RemoveHoveredObject);
+        public static ActionCreator<GraphState.LoadingState> UpdateLoadingState = new(GraphSlice.UpdateLoadingState);
+        public static readonly AsyncThunkCreator<GraphState> ComputeGraph = new(GraphSlice.ComputeGraph, GraphAsyncThunks.LoadAndComputeGraph);
 
-        public GraphStoreManager(ModelAsset modelAsset)
+        public GraphStoreManager(ModelAsset modelAsset, GraphView graphView)
         {
-            var model = ModelLoader.Load(modelAsset);
-
-            var graph = new Graph(model);
-            graph.InitializeNodes();
-
-            var partialInferenceContext = PartialInferenceAnalysis.InferModelPartialTensors(model);
-
-            var state = new GraphState { ModelAsset = modelAsset, Model = model, PartialInferenceContext = partialInferenceContext, Graph = graph};
-
             var slice = StoreFactory.CreateSlice(
                 GraphSlice.Name,
-                state,
+                new GraphState { ModelAsset = modelAsset, GraphView = graphView },
                 builder =>
                 {
                     builder.AddCase(SetFocusedObject, GraphReducers.SetFocusedNode);
@@ -36,8 +30,19 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
                     builder.AddCase(MoveStackIndexDown, GraphReducers.MoveStackIndexDown);
                     builder.AddCase(AddHoveredObject, GraphReducers.AddHoveredObject);
                     builder.AddCase(RemoveHoveredObject, GraphReducers.RemoveHoveredObject);
+                    builder.AddCase(UpdateLoadingState, GraphReducers.UpdateLoadingState);
+                    builder.AddCase(ComputeGraph.fulfilled, (_, action) => action.payload);
+                    builder.AddCase(ComputeGraph.rejected, (_, action) =>
+                    {
+                        Debug.LogError(action.payload.ErrorMessage);
+                        return action.payload;
+                    });
                 });
+
             Store = StoreFactory.CreateStore(new[] { slice });
+
+            var action = ComputeGraph.Invoke();
+            _ = Store.DispatchAsyncThunk(action);
         }
 
         public void Dispose()

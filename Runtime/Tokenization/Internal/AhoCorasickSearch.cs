@@ -31,7 +31,7 @@ namespace Unity.InferenceEngine.Tokenization
             /// <summary>
             /// The pattern found.
             /// </summary>
-            public readonly string Pattern;
+            public readonly SubString Pattern;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="Match"/> type.
@@ -42,7 +42,7 @@ namespace Unity.InferenceEngine.Tokenization
             /// <param name="pattern">
             /// The pattern found.
             /// </param>
-            public Match(int index, string pattern)
+            public Match(int index, SubString pattern)
             {
                 Index = index;
                 Pattern = pattern;
@@ -63,7 +63,7 @@ namespace Unity.InferenceEngine.Tokenization
             /// <param name="pattern">
             /// The pattern found.
             /// </param>
-            public void Deconstruct(out Range offsets, out string pattern)
+            public void Deconstruct(out Range offsets, out SubString pattern)
             {
                 offsets = Offsets;
                 pattern = Pattern;

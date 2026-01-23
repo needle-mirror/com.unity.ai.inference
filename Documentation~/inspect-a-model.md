@@ -69,3 +69,4 @@ To view a runtime model as a graph, refer to the [Model Visualizer](visualizer.m
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Supported ONNX operators](supported-operators.md)
 - [Supported LiteRT operators](supported-litert-operators.md)
+- [Supported PyTorch operators](supported-torch-export-operators.md)

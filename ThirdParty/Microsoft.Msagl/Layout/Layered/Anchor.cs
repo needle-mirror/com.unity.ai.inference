@@ -352,15 +352,29 @@ namespace Microsoft.Msagl.Layout.Layered {
             Point u = first.Point;
             Point v = second.Point;
             Point w = third.Point;
+
+            // Handle degenerate case where points are too close together
+            var uvVec = v - u;
+            if (uvVec.Length < ApproximateComparer.Tolerance) {
+                // Degenerate case: u and v are identical or too close
+                a = b = v + new Point(padding, 0);
+                return 1;
+            }
+
             bool ccw = Point.GetTriangleOrientation(u, v, w) == TriangleOrientation.Counterclockwise;
 
             //uvPerp has to look outside of the curve
-            var uvPerp = (v - u).Rotate((ccw? - Math.PI:Math.PI) / 2).Normalize();
-
-
+            var uvPerp = uvVec.Rotate((ccw? - Math.PI:Math.PI) / 2).Normalize();
 
             //l is bisector of the corner (u,v,w) pointing out of the corner - outside of the polyline
-            Point l = (v - u).Normalize() + (v - w).Normalize();
+            var vwVec = v - w;
+            if (vwVec.Length < ApproximateComparer.Tolerance) {
+                // Degenerate case: v and w are identical or too close
+                a = b = v + padding * uvPerp;
+                return 1;
+            }
+
+            Point l = uvVec.Normalize() + vwVec.Normalize();
             Debug.Assert(l * uvPerp >= 0);
             if (l.Length < ApproximateComparer.IntersectionEpsilon) {
                 a = b = v + padding * uvPerp;

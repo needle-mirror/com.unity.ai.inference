@@ -6,7 +6,7 @@ For more information, refer to [How Sentis optimizes a model](models-concept.md#
 
 ## Supported ONNX operators
 
-The following table lists the ONNX operators that Sentis supports and the data types supported for each [backend type](create-an-engine.md#back-end-types).
+The following table lists the ONNX operators that Sentis supports and the data types supported for each [backend type](create-an-engine.md#backend-types).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)|Notes|
 |-|-|-|-|-|

@@ -11,13 +11,13 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public BackendType backendType => BackendType.CPU;
 
-        void ResizeND(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
+        void ResizeNDRef(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
         {
             bool firstAlloc = false;
             for (var i = 0; i < scale.Length; i++)
             {
                 var Otmp = i == scale.Length - 1 ? O : AllocTensorFloat(ShapeInference.Resize(X.shape, i, scale[i]));
-                Resize1D(X, Otmp, i, scale[i], interpolationMode, nearestMode, coordTransformMode);
+                Resize1DRef(X, Otmp, i, scale[i], interpolationMode, nearestMode, coordTransformMode);
                 if (firstAlloc)
                     ReleaseTensorFloat(X);
                 X = Otmp;
@@ -25,7 +25,7 @@ namespace Unity.InferenceEngine
             }
         }
 
-        void Resize1D(Tensor<float> X, Tensor<float> O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void Resize1DRef(Tensor<float> X, Tensor<float> O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             CPUTensorData.Pin(X);
             CPUTensorData.Pin(O);

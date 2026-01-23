@@ -847,15 +847,67 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
+        public void HardTanh(Tensor<float> X, Tensor<float> O, float minVal, float maxVal)
         {
-            Activation(X, O, "Clip", min, max);
+            Activation(X, O, "HardTanh", minVal, maxVal);
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
+        public void Clip(Tensor<float> X, Tensor<float> min, Tensor<float> max, Tensor<float> O)
         {
-            Activation(X, O, "Clip", min, max);
+            var func = new PixelFunc("Hidden/Sentis/Clip");
+
+            var pinX = PinBlockAny(X);
+            var pinO = PinAsSame(O, pinX);
+
+            if (min != null)
+            {
+                func.EnableKeyword("UseMin");
+                var pinS = PinAsSame(min, pinX);
+                func.SetTensor(k_TensorPropertiesS, pinS);
+            }
+
+            if (max != null)
+            {
+                func.EnableKeyword("UseMax");
+                var pinB = PinAsSame(max, pinX);
+                func.SetTensor(k_TensorPropertiesB, pinB);
+            }
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void Clip(Tensor<int> X, Tensor<int> min, Tensor<int> max, Tensor<int> O)
+        {
+            var func = new PixelFunc("Hidden/Sentis/Clip");
+
+            func.EnableKeyword("ClipInt");
+
+            var pinX = PinBlockAny(X);
+            var pinO = PinAsSame(O, pinX);
+
+            if (min != null)
+            {
+                func.EnableKeyword("UseMin");
+                var pinS = PinAsSame(min, pinX);
+                func.SetTensor(k_TensorPropertiesS, pinS);
+            }
+
+            if (max != null)
+            {
+                func.EnableKeyword("UseMax");
+                var pinB = PinAsSame(max, pinX);
+                func.SetTensor(k_TensorPropertiesB, pinB);
+            }
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+
+            func.Dispatch(pinO);
         }
 
         /// <inheritdoc/>
@@ -2525,7 +2577,12 @@ namespace Unity.InferenceEngine
             var numSpatialDims = X.shape.rank - 2;
 
             var func = new PixelFunc("Hidden/Sentis/LocalPool");
-            func.EnableKeyword(numSpatialDims == 2 ? "POOL2D" : "POOL1D");
+            if (numSpatialDims == 3)
+                func.EnableKeyword("POOL3D");
+            else if (numSpatialDims == 2)
+                func.EnableKeyword("POOL2D");
+            else
+                func.EnableKeyword("POOL1D");
             func.EnableKeyword(kernelName);
 
             func.SetInt(k_ID_O_width, pinO.shape[-1]);
@@ -2547,25 +2604,28 @@ namespace Unity.InferenceEngine
                 func.SetInt(k_ID_O_height, pinO.shape[-2]);
             }
 
+            if (numSpatialDims > 2)
+            {
+                func.SetInt(k_ID_StrideZ, stride[numSpatialDims - 3]);
+                func.SetInt(k_ID_PadZ, pad[numSpatialDims - 3]);
+                func.SetInt(k_ID_PoolZ, pool[numSpatialDims - 3]);
+                func.SetInt(k_ID_X_depth, pinX.shape[-3]);
+                func.SetInt(k_ID_O_depth, pinO.shape[-3]);
+            }
+
             func.Dispatch(pinO);
         }
 
         /// <inheritdoc/>
         public void MaxPool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
-            if (X.shape.rank > 4)
-                throw new NotImplementedException();
-            else
-                LocalPool(X, O, kernelShape, strides, pads, "MAXPOOL");
+            LocalPool(X, O, kernelShape, strides, pads, "MAXPOOL");
         }
 
         /// <inheritdoc/>
         public void AveragePool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
-            if (X.shape.rank > 4)
-                throw new NotImplementedException();
-            else
-                LocalPool(X, O, kernelShape, strides, pads, "AVGPOOL");
+            LocalPool(X, O, kernelShape, strides, pads, "AVGPOOL");
         }
 
         /// <inheritdoc/>
@@ -2894,7 +2954,7 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
-            if (X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
+            if (X.shape.rank < 3 || X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
             {
                 ResizeND(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
                 return;
@@ -3099,6 +3159,39 @@ namespace Unity.InferenceEngine
             func.SetInt(k_ID_O_channelsDiv4, pinO.dimAxisDiv4);
 
             func.SetFloat(k_ID_epsilon, epsilon);
+
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void LocalResponseNormalization(Tensor<float> X, Tensor<float> O, int supportLength, float bias, float alpha, float beta)
+        {
+            var func = new PixelFunc("Hidden/Sentis/LocalResponseNormalization");
+
+            int channelStride = X.shape.Length(2);
+            int numChannels = X.shape[1];
+
+            float supportHalfSideSize = (supportLength - 1.0f) / 2.0f;
+            int leftSupportLength = (int)Mathf.Floor(supportHalfSideSize);
+            int rightSupportLength = (int)Mathf.Ceil(supportHalfSideSize);
+
+            var pinX = TextureTensorData.Pin(X, 1);
+            var pinO = PinAsSame(O, pinX);
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+
+            func.SetInt(k_ID_X_channels, numChannels);
+            func.SetInt(k_ID_X_channelsDiv4, ComputeHelper.IDivC(numChannels, 4));
+            func.SetInt(k_ID_X_strideC, channelStride);
+
+            func.SetInt(k_ID_LeftSupportLength, leftSupportLength);
+            func.SetInt(k_ID_RightSupportLength, rightSupportLength);
+            func.SetInt(k_ID_RightSupportLengthCeilDiv4, ComputeHelper.IDivC(rightSupportLength, 4));
+
+            func.SetFloat(k_ID_AlphaDivSupportLength, alpha / (float)(supportLength));
+
+            func.SetFloat(k_ID_Bias, bias);
+            func.SetFloat(k_ID_Beta, beta);
 
             func.Dispatch(pinO);
         }

@@ -20,11 +20,7 @@ namespace Unity.InferenceEngine.Editor.LiteRT
         [SerializeField]
         internal string signatureKey;
 
-        /// <summary>
-        /// Callback that Sentis calls when the LiteRT model has finished importing.
-        /// </summary>
-        /// <param name="ctx">Asset import context</param>
-        public override void OnImportAsset(AssetImportContext ctx)
+        protected override InferenceEngine.Model LoadModel(AssetImportContext ctx)
         {
             var converter = new LiteRTModelConverter(ctx.assetPath, signatureKey);
             var model = converter.Convert();
@@ -48,30 +44,7 @@ namespace Unity.InferenceEngine.Editor.LiteRT
             signatureKeys = converter.signatureKeys;
             signatureKey = converter.signatureKey;
 
-            var asset = ScriptableObject.CreateInstance<ModelAsset>();
-            ModelWriter.SaveModel(model, out var modelDescriptionBytes, out var modelWeightsBytes);
-
-            var modelAssetData = ScriptableObject.CreateInstance<ModelAssetData>();
-            modelAssetData.value = modelDescriptionBytes;
-            modelAssetData.name = "Data";
-            modelAssetData.hideFlags = HideFlags.HideInHierarchy;
-            asset.modelAssetData = modelAssetData;
-
-            asset.modelWeightsChunks = new ModelAssetWeightsData[modelWeightsBytes.Length];
-            for (var i = 0; i < modelWeightsBytes.Length; i++)
-            {
-                asset.modelWeightsChunks[i] = ScriptableObject.CreateInstance<ModelAssetWeightsData>();
-                asset.modelWeightsChunks[i].value = modelWeightsBytes[i];
-                asset.modelWeightsChunks[i].name = "Data";
-                asset.modelWeightsChunks[i].hideFlags = HideFlags.HideInHierarchy;
-
-                ctx.AddObjectToAsset($"model data weights {i}", asset.modelWeightsChunks[i]);
-            }
-
-            ctx.AddObjectToAsset("main obj", asset);
-            ctx.AddObjectToAsset("model data", modelAssetData);
-
-            ctx.SetMainObject(asset);
+            return model;
         }
     }
 }

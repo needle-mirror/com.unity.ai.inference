@@ -369,18 +369,78 @@ namespace Unity.InferenceEngine
             }
         }
 
-        /// <inheritdoc/>
-        public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void ResizeNDPerAxis(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
-            int rankX = X.shape.rank;
-
-            // Handle only the common cases of NCHW or NCDHW resizes where NC is not scaled and delegate
-            // the uncommon cases to the reference implementation.
-            if (rankX > 5 || scale[0] != 1.0f || scale[1] != 1.0f)
+            // calculate first and last axes with scaling
+            var firstScaleAxis = scale.Length;
+            var lastScaleAxis = 0;
+            for (var i = 0; i < scale.Length; i++)
             {
-                ResizeND(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
+                if (scale[i] != 1f)
+                {
+                    firstScaleAxis = Mathf.Min(firstScaleAxis, i);
+                    lastScaleAxis = Mathf.Max(lastScaleAxis, i);
+                }
+            }
+
+            if (firstScaleAxis > lastScaleAxis)
+            {
+                // no scale
+                MemCopy(X, O);
                 return;
             }
+
+            var job = new Resize1DJob();
+            for (var axis = firstScaleAxis; axis <= lastScaleAxis; axis++)
+            {
+                if (scale[axis] == 1f)
+                    continue;
+                var oCur = axis == lastScaleAxis ? O : AllocTensorFloat(ShapeInference.Resize(X.shape, axis, scale[axis]));
+                {
+                    OpsUtils.GetScaleAndBias(X.shape[axis], oCur.shape[axis], scale[axis], coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
+                    if (interpolationMode == Layers.InterpolationMode.Nearest)
+                    {
+                        switch (nearestMode)
+                        {
+                            case Layers.NearestMode.RoundPreferFloor:
+                            case Layers.NearestMode.Ceil:
+                                job.mode = Resize1DJob.Mode.NearestCeil;
+                                break;
+                            case Layers.NearestMode.RoundPreferCeil:
+                            case Layers.NearestMode.Floor:
+                                job.mode = Resize1DJob.Mode.NearestFloor;
+                                break;
+                            default:
+                                throw new NotImplementedException();
+                        }
+                    }
+                    else
+                    {
+                        job.mode = Resize1DJob.Mode.Linear;
+                    }
+
+                    var pinX = Pin(X);
+                    var pinOcur = Pin(oCur);
+
+                    job.inputWidth = X.shape[axis];
+                    job.outputWidth = oCur.shape[axis];
+                    job.scale = outputScale;
+                    job.bias = outputBias;
+
+                    job.innerLength = oCur.shape.Strides(axis);
+                    job.outerLength = oCur.shape.Length(0, axis);
+
+                    job.ScheduleBatchXO(pinX, pinOcur, job.outerLength * job.innerLength * oCur.shape[axis], 128);
+                }
+                if (axis != firstScaleAxis)
+                    ReleaseTensorFloat(X);
+                X = oCur;
+            }
+        }
+
+        void ResizeInnerMost1D2D3D(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        {
+            int rankX = X.shape.rank;
 
             var pinX = Pin(X);
             var pinO = Pin(O);
@@ -495,6 +555,22 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        {
+            int rankX = X.shape.rank;
+
+            // Handle only the common cases of NCHW or NCDHW resizes where NC is not scaled and delegate
+            // the uncommon cases to a slower per axis implementation.
+            if (rankX < 3 || rankX > 5 || scale[0] != 1.0f || scale[1] != 1.0f)
+            {
+                ResizeNDPerAxis(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
+                return;
+            }
+
+            ResizeInnerMost1D2D3D(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
+        }
+
+        /// <inheritdoc/>
         public void GridSample(Tensor<float> X, Tensor<float> grid, Tensor<float> O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
         {
             int n = O.shape[0]; int c = O.shape[1];
@@ -584,15 +660,29 @@ namespace Unity.InferenceEngine
         /// <inheritdoc/>
         public void MaxPool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
-            if (X.shape.rank > 4)
+            if (X.shape.rank == 5)
             {
-                MaxPoolND(X, O, kernelShape, strides, pads);
-                return;
+                var job = new MaxPool3DJob();
+                job.inputDepth = X.shape[2];
+                job.inputHeight = X.shape[3];
+                job.inputWidth = X.shape[4];
+                job.outputDepth = O.shape[2];
+                job.outputHeight = O.shape[3];
+                job.outputWidth = O.shape[4];
+                job.poolDepth = kernelShape[0];
+                job.poolHeight = kernelShape[1];
+                job.poolWidth = kernelShape[2];
+                job.strideDepth = strides[0];
+                job.strideHeight = strides[1];
+                job.strideWidth = strides[2];
+                job.padDepth = pads[0];
+                job.padHeight = pads[1];
+                job.padWidth = pads[2];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
-
-            var job = new MaxPool2DJob();
-            if (X.shape.rank == 4)
+            else if (X.shape.rank == 4)
             {
+                var job = new MaxPool2DJob();
                 job.inputHeight = X.shape[2];
                 job.inputWidth = X.shape[3];
                 job.outputHeight = O.shape[2];
@@ -603,9 +693,11 @@ namespace Unity.InferenceEngine
                 job.strideWidth = strides[1];
                 job.padHeight = pads[0];
                 job.padWidth = pads[1];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
             else
             {
+                var job = new MaxPool2DJob();
                 job.inputHeight = 1;
                 job.inputWidth = X.shape[2];
                 job.outputHeight = 1;
@@ -616,22 +708,36 @@ namespace Unity.InferenceEngine
                 job.strideWidth = strides[0];
                 job.padHeight = 0;
                 job.padWidth = pads[0];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
         public void AveragePool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
-            if (X.shape.rank > 4)
+            if (X.shape.rank == 5)
             {
-                AveragePoolND(X, O, kernelShape, strides, pads);
-                return;
+                var job = new AveragePool3DJob();
+                job.inputDepth = X.shape[2];
+                job.inputHeight = X.shape[3];
+                job.inputWidth = X.shape[4];
+                job.outputDepth = O.shape[2];
+                job.outputHeight = O.shape[3];
+                job.outputWidth = O.shape[4];
+                job.poolDepth = kernelShape[0];
+                job.poolHeight = kernelShape[1];
+                job.poolWidth = kernelShape[2];
+                job.strideDepth = strides[0];
+                job.strideHeight = strides[1];
+                job.strideWidth = strides[2];
+                job.padDepth = pads[0];
+                job.padHeight = pads[1];
+                job.padWidth = pads[2];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
-
-            var job = new AveragePool2DJob();
-            if (X.shape.rank == 4)
+            else if (X.shape.rank == 4)
             {
+                var job = new AveragePool2DJob();
                 job.inputHeight = X.shape[2];
                 job.inputWidth = X.shape[3];
                 job.outputHeight = O.shape[2];
@@ -642,9 +748,11 @@ namespace Unity.InferenceEngine
                 job.strideWidth = strides[1];
                 job.padHeight = pads[0];
                 job.padWidth = pads[1];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
             else
             {
+                var job = new AveragePool2DJob();
                 job.inputHeight = 1;
                 job.inputWidth = X.shape[2];
                 job.outputHeight = 1;
@@ -655,8 +763,8 @@ namespace Unity.InferenceEngine
                 job.strideWidth = strides[0];
                 job.padHeight = 0;
                 job.padWidth = pads[0];
+                job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
             }
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -803,6 +911,41 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
+        public void LocalResponseNormalization(Tensor<float> X, Tensor<float> O, int supportLength, float bias, float alpha, float beta)
+        {
+            int channelStride = X.shape.Length(2);
+            int numChannels = X.shape[1];
+            int batchStride = numChannels * channelStride;
+
+            float supportHalfSideSize = (supportLength - 1.0f) / 2.0f;
+            int leftSupportLength = (int)Mathf.Floor(supportHalfSideSize);
+            int rightSupportLength = (int)Mathf.Ceil(supportHalfSideSize);
+
+            var job = new LocalResponseNormalizationJob();
+
+            job.numChannels = numChannels;
+            job.channelsStride = channelStride;
+            job.batchStride = batchStride;
+            job.leftSupportLength = leftSupportLength;
+            job.rightSupportLength = rightSupportLength;
+            job.alphaDivSupportLength = alpha / (float)(supportLength);
+
+            job.bias = bias;
+            job.beta = beta;
+
+            var pinX = Pin(X);
+            var pinO = Pin(O);
+
+            unsafe
+            {
+                job.Xptr = (float*)pinX.rawPtr;
+                job.Optr = (float*)pinO.rawPtr;
+            }
+
+            pinO.fence = pinX.reuse = job.ScheduleBatch(O.shape.length, Mathf.Clamp(numChannels, 512, 1024), JobHandle.CombineDependencies(pinO.reuse, pinX.fence));
+        }
+
+        /// <inheritdoc/>
         public void Cast(Tensor<float> X, Tensor<int> O)
         {
             var job = new CastFloatToIntJob();
@@ -899,21 +1042,72 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
+        public void HardTanh(Tensor<float> X, Tensor<float> O, float minVal, float maxVal)
         {
-            var job = new ClipFloatJob();
-            job.minValue = min;
-            job.maxValue = max;
+            var job = new HardTanhJob();
+            job.minVal = minVal;
+            job.maxVal = maxVal;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
-        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
+        public void Clip(Tensor<float> X, Tensor<float> min, Tensor<float> max, Tensor<float> O)
         {
-            var job = new ClipIntJob();
-            job.minValue = min;
-            job.maxValue = max;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+            if (min != null)
+            {
+                if (max != null)
+                {
+                    var job = new ClipMinMaxFloatJob();
+                    job.ScheduleBatchXSBO(Pin(X), Pin(min), Pin(max), Pin(O), O.shape.length, 32);
+                }
+                else
+                {
+                    var job = new ClipMinFloatJob();
+                    job.ScheduleBatchXBO(Pin(X), Pin(min), Pin(O), O.shape.length, 32);
+                }
+            }
+            else
+            {
+                if (max != null)
+                {
+                    var job = new ClipMaxFloatJob();
+                    job.ScheduleBatchXBO(Pin(X), Pin(max), Pin(O), O.shape.length, 32);
+                }
+                else
+                {
+                    MemCopy(X, O);
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Clip(Tensor<int> X, Tensor<int> min, Tensor<int> max, Tensor<int> O)
+        {
+            if (min != null)
+            {
+                if (max != null)
+                {
+                    var job = new ClipMinMaxIntJob();
+                    job.ScheduleBatchXSBO(Pin(X), Pin(min), Pin(max), Pin(O), O.shape.length, 32);
+                }
+                else
+                {
+                    var job = new ClipMinIntJob();
+                    job.ScheduleBatchXBO(Pin(X), Pin(min), Pin(O), O.shape.length, 32);
+                }
+            }
+            else
+            {
+                if (max != null)
+                {
+                    var job = new ClipMaxIntJob();
+                    job.ScheduleBatchXBO(Pin(X), Pin(max), Pin(O), O.shape.length, 32);
+                }
+                else
+                {
+                    MemCopy(X, O);
+                }
+            }
         }
 
         /// <inheritdoc/>

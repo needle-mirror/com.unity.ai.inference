@@ -4,7 +4,7 @@ using UnityEngine;
 using System;
 using UnityEngine.UIElements;
 using System.IO;
-using Unity.InferenceEngine.Editor.Visualizer;
+using Unity.InferenceEngine.Editor.Visualizer.Editor;
 
 namespace Unity.InferenceEngine.Editor
 {

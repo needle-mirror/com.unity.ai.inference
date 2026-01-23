@@ -37,3 +37,4 @@ Sentis also converts some tensor data types like booleans to floats or integers.
 - [Import a model file](import-a-model-file.md)
 - [Supported ONNX operators](supported-operators.md)
 - [Supported LiteRT operators](supported-litert-operators.md)
+- [Supported PyTorch operators](supported-torch-export-operators.md)

@@ -1,6 +1,6 @@
 # Create a new model
 
-You can use the Sentis [`Functional`](xref:Unity.InferenceEngine.Functional) API to create a new runtime model without an ONNX or LiteRT file. For example, if you want to perform a series of tensor operations without weights or build your own model serialization from another model format.
+You can use the Sentis [`Functional`](xref:Unity.InferenceEngine.Functional) API to create a new runtime model without an ONNX, LiteRT, or PyTorch file. For example, if you want to perform a series of tensor operations without weights or build your own model serialization from another model format.
 
 ## Using the functional API
 

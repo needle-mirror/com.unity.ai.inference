@@ -20,11 +20,21 @@ float SignedPow(float f, float e)
 {
     // handle negative f
     float v = pow(abs(f), e);
+    float sign_f = sign(f);
     float s = (abs(e % 2) == 1) ?
-        sign(f):    // exponent is odd  => sign(f) * pow(abs(f), e)
-        1;          // exponent is even => pow(abs(f), e)
-    return v * s;
+        sign_f:  // exponent is odd  => sign(f) * pow(abs(f), e)
+        1;       // exponent is even => pow(abs(f), e)
+
+#if UNITY_PLATFORM_ANDROID
+    float factor = 1.0;
+    if (frac(e) != 0 && sign_f < 0.0)
+        factor = asfloat(0x7FC00000);
+#else
+    float factor = frac(e) != 0 ? sqrt(sign_f) : 1.0; // generate a NaN if sign is -1.0
+#endif
+    return v * s * factor;
 }
+
 
 float4 SignedPow(float4 A, float4 B)
 {

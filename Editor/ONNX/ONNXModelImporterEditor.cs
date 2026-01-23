@@ -1,4 +1,5 @@
 using System;
+using Unity.InferenceEngine.Editor.DynamicDims;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;

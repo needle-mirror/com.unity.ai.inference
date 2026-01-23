@@ -8,7 +8,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unity.InferenceEngine.Editor.Visualizer
+namespace Unity.InferenceEngine.Editor.Visualizer.Editor
 {
     class ModelVisualizerWindow : EditorWindow
     {
@@ -29,6 +29,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer
 
         GraphStoreManager m_StoreManager;
         GraphView m_Canvas;
+        LoadingView m_LoadingView;
 
         [SerializeField]
         ModelAsset m_ModelAsset;
@@ -61,6 +62,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer
 
             panel.Add(m_Canvas);
 
+            m_LoadingView = new LoadingView();
+            panel.Add(m_LoadingView);
+
             var currentTheme = EditorGUIUtility.isProSkin switch
             {
                 true => new List<string>(k_DarkStylePaths),
@@ -80,12 +84,13 @@ namespace Unity.InferenceEngine.Editor.Visualizer
                 Initialize(m_ModelAsset);
         }
 
-        void Initialize(ModelAsset modelAsset)
+        internal void Initialize(ModelAsset modelAsset)
         {
             m_ModelAsset = modelAsset;
 
-            m_StoreManager = new GraphStoreManager(modelAsset);
+            m_StoreManager = new GraphStoreManager(modelAsset, m_Canvas);
             m_Canvas.Initialize(m_StoreManager);
+            m_LoadingView.Initialize(m_StoreManager);
 
             titleContent = new GUIContent(modelAsset == null ? k_WindowTitle : modelAsset.name);
         }
@@ -109,7 +114,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer
             CreateGUI();
         }
 
-        void CleanForReuse()
+        internal void CleanForReuse()
         {
             ModelVisualizerSettings.instance.OnPropertiesModified -= OnProjectSettingsSaved;
 

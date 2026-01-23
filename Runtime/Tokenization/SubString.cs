@@ -205,26 +205,14 @@ namespace Unity.InferenceEngine.Tokenization
         /// <summary>
         /// The number of Utf-8 valid characters of this portion.
         /// </summary>
-        public int UtfLength
-        {
-            get
-            {
-                if (IsNull)
-                    throw new NullReferenceException(k_NullSourceExceptionMessage);
+        public int UtfLength => IsNull
+            ? throw new NullReferenceException(k_NullSourceExceptionMessage)
+            : TextElementUtility.GetUtfLength(Source.AsSpan()[Offset..(Offset + Length)]);
 
-                var count = 0;
-                for (int i = Offset, limit = Offset + Length; i < limit; i++)
-                {
-                    if (char.IsHighSurrogate(Source[i]) && i + 1 < limit
-                        && char.IsLowSurrogate(Source[i + 1]))
-                        i++;
-
-                    count++;
-                }
-
-                return count;
-            }
-        }
+        /// <summary>
+        /// Gets the byte length of the string.
+        /// </summary>
+        public int Utf8Length => System.Text.Encoding.UTF8.GetByteCount(Source, Offset, Length);
 
         /// <summary>
         /// Tells whether the substring does not reference any valid source.
@@ -371,6 +359,95 @@ namespace Unity.InferenceEngine.Tokenization
 
             offsets = new(Offset + charOffset, Offset + charOffset + charLength);
             return new(Source, offsets);
+        }
+
+        /// <summary>
+        /// Creates a substring based on UTF-8 byte offsets rather than character offsets.
+        /// This method converts UTF-8 byte-based range indices to character-based indices and
+        /// returns the corresponding substring.
+        /// The byte offsets must align with UTF-8 character boundaries.
+        /// </summary>
+        /// <param name="offsets">
+        /// A range specifying the start and end positions in UTF-8 bytes.
+        /// The range is relative to the UTF-8 byte representation of the current substring, and
+        /// both start and end positions must align with character boundaries in the UTF-8 encoding.
+        /// </param>
+        /// <returns>
+        /// A new <see cref="SubString"/> representing the portion of the current substring
+        /// specified by the UTF-8 byte range.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when the specified byte offsets do not align with character boundaries in the
+        /// UTF-8 encoding, or when the offsets extend beyond the bounds of the current substring.
+        /// </exception>
+        /// <remarks>
+        /// This method properly handles Unicode surrogate pairs and multi-byte UTF-8 characters.
+        /// It ensures that the resulting substring boundaries align with complete Unicode
+        /// characters rather than splitting characters in the middle.
+        /// The conversion process walks through the string character by character, accumulating
+        /// UTF-8 byte counts until the specified byte positions are reached.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var text = new SubString("Hello 世界");
+        /// // "世" is 3 bytes in UTF-8, "界" is 3 bytes in UTF-8
+        /// var substring = text.Utf8ByteSub(6..9); // Gets "世" (bytes 6-8 in UTF-8)
+        /// </code>
+        /// </example>
+        public SubString Utf8ByteSub(Range offsets)
+        {
+            var byteLength = System.Text.Encoding.UTF8.GetByteCount(Source, Offset, Length);
+
+            var (subByteOffset, subByteLength) = offsets.GetOffsetAndLength(byteLength);
+
+            var charStart = 0;
+            var byteI = 0;
+            while (byteI < subByteOffset)
+            {
+                if (charStart >= Length)
+                    throw new ArgumentNullException(nameof(offsets),
+                        "Byte offset must match a character");
+
+                var utfCharCount = char.IsHighSurrogate(Source[Offset + charStart])
+                    && charStart + 1 < Length
+                    && char.IsLowSurrogate(Source[Offset + charStart + 1])
+                        ? 2
+                        : 1;
+
+                byteI +=
+                    System.Text.Encoding.UTF8.GetByteCount(Source, Offset + charStart,
+                        utfCharCount);
+                charStart += utfCharCount;
+            }
+
+            if(byteI != subByteOffset)
+                throw new ArgumentOutOfRangeException(nameof(offsets), "Byte offset must match a character");
+
+            if (subByteOffset + subByteLength == byteLength)
+                return this[charStart..];
+
+            var charEnd = charStart;
+            while (byteI < subByteOffset + subByteLength)
+            {
+                if (charEnd >= Length)
+                    throw new ArgumentNullException(nameof(offsets),
+                        "Byte offset must match a character");
+
+                var utfCharCount = char.IsHighSurrogate(Source[Offset + charEnd])
+                    && charEnd + 1 < Length
+                    && char.IsLowSurrogate(Source[Offset + charEnd + 1])
+                        ? 2
+                        : 1;
+
+                byteI +=
+                    System.Text.Encoding.UTF8.GetByteCount(Source, Offset + charEnd, utfCharCount);
+                charEnd += utfCharCount;
+            }
+
+            if(byteI != subByteOffset + subByteLength)
+                throw new ArgumentOutOfRangeException(nameof(offsets), "Byte offset must match a character");
+
+            return this[charStart .. charEnd];
         }
 
         /// <summary>
@@ -546,6 +623,39 @@ namespace Unity.InferenceEngine.Tokenization
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Gets all the runes of the substring as substrings.
+        /// </summary>
+        /// <param name="output">
+        /// Target list for characters.
+        /// </param>
+        /// <returns>
+        /// The number of copied characters.
+        /// </returns>
+        public int GetRunes(Output<SubString> output)
+        {
+            if (Source is null)
+                throw new NullReferenceException(k_NullSourceExceptionMessage);
+
+            var count = 0;
+            for (int i = 0, limit = Length; i < limit; i++)
+            {
+                if (char.IsHighSurrogate(this[i]) && i + 1 < limit
+                    && char.IsLowSurrogate(this[i + 1]))
+                {
+                    output.Add(this[i ..(i + 2)]);
+                    i++;
+                }
+                else
+                {
+                    output.Add(this[i..(i + 1)]);
+                }
+
+                count++;
+            }
+            return count;
         }
 
         /// <inheritdoc />

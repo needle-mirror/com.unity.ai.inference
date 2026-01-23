@@ -19,6 +19,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
             var tensorArrays = new Dictionary<Node, Tensor[]>();
             var constantTensors = new Dictionary<Node, Tensor>();
             var calculatedTensors = new Dictionary<Node, Tensor>();
+            var storageInstancesToDispose = new List<ModelStorage>();
 
             foreach (var node in gm.graph.Nodes())
             {
@@ -88,6 +89,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 
                             using var backend = new CPUBackend();
                             var vars = new ModelStorage();
+                            storageInstancesToDispose.Add(vars);
                             var executionContext = new ExecutionContext
                             {
                                 backend = backend,
@@ -153,7 +155,18 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 gm.graph.EraseNode(node);
             }
 
-            gm.graph.EliminateDeadCode();
+            try
+            {
+                gm.graph.EliminateDeadCode();
+            }
+            finally
+            {
+                // Dispose all ModelStorage instances after tensors have been processed
+                foreach (var storage in storageInstancesToDispose)
+                {
+                    storage?.Dispose();
+                }
+            }
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Unity.InferenceEngine.Tokenization
         /// <summary>
         /// Initializes a new instance of the <see cref="UtfCharToByteConverter" /> type.
         /// </summary>
-        public UtfCharToByteConverter() : this(SEncoding.Unicode)
+        public UtfCharToByteConverter() : this(SEncoding.UTF8)
         { }
 
         /// <summary>
