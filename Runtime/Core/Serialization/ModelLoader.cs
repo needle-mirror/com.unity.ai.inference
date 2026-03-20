@@ -47,27 +47,67 @@ namespace Unity.InferenceEngine
         /// </summary>
         /// <param name="stream">The stream to load the serialized model from.</param>
         /// <returns>The loaded `Model`.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the stream is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the stream is not readable.</exception>
+        /// <exception cref="EndOfStreamException">Thrown when the stream ends unexpectedly while reading model data.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the stream contains invalid format (invalid model description size, invalid weights chunk size).</exception>
+        /// <exception cref="Exception">Thrown when model description loading or weights loading fails. This can occur if the model was exported with an incompatible version or contains unsupported operators.</exception>
         public static Model Load(Stream stream)
         {
             try
             {
+                if (stream == null)
+                    throw new ArgumentNullException(nameof(stream), "Stream cannot be null");
+
+                if (!stream.CanRead)
+                    throw new ArgumentException("Stream is not readable", nameof(stream));
+
                 var model = new Model();
 
                 var prefixSizeBytes = new byte[sizeof(int)];
-                stream.Read(prefixSizeBytes);
+
+                if (stream.Read(prefixSizeBytes, 0, sizeof(int)) != sizeof(int))
+                    throw new EndOfStreamException("Unexpected end of stream while reading model description size.");
+
                 var modelDescriptionSize = BitConverter.ToInt32(prefixSizeBytes);
+                if (modelDescriptionSize <= 0)
+                    throw new InvalidOperationException("Invalid model description size");
+
                 var modelDescriptionBytes = new byte[modelDescriptionSize + sizeof(int)];
                 System.Buffer.BlockCopy(prefixSizeBytes, 0, modelDescriptionBytes, 0, sizeof(int));
-                stream.Read(modelDescriptionBytes, sizeof(int), modelDescriptionSize);
+
+                var descriptionBytesRead = 0;
+                while (descriptionBytesRead < modelDescriptionSize)
+                {
+                    var read = stream.Read(modelDescriptionBytes, sizeof(int) + descriptionBytesRead, modelDescriptionSize - descriptionBytesRead);
+                    if (read == 0)
+                        throw new EndOfStreamException("Unexpected end of stream while reading model description.");
+                    descriptionBytesRead += read;
+                }
+
                 var weightBuffersConstantsOffsets = LoadModelDescription(modelDescriptionBytes, model);
 
                 for (var i = 0; i < weightBuffersConstantsOffsets.Length; i++)
                 {
-                    stream.Read(prefixSizeBytes);
+                    if (stream.Read(prefixSizeBytes, 0, sizeof(int)) != sizeof(int))
+                        throw new EndOfStreamException($"Unexpected end of stream while reading weights chunk {i} header.");
+
                     var modelWeightsChunkSize = BitConverter.ToInt32(prefixSizeBytes);
+                    if (modelWeightsChunkSize < 0)
+                        throw new InvalidOperationException($"Invalid weights chunk size at index {i}");
+
                     var modelWeightsBufferBytes = new byte[modelWeightsChunkSize + sizeof(int)];
                     System.Buffer.BlockCopy(prefixSizeBytes, 0, modelWeightsBufferBytes, 0, sizeof(int));
-                    stream.Read(modelWeightsBufferBytes, sizeof(int), modelWeightsChunkSize);
+
+                    var weightsBytesRead = 0;
+                    while (weightsBytesRead < modelWeightsChunkSize)
+                    {
+                        var read = stream.Read(modelWeightsBufferBytes, sizeof(int) + weightsBytesRead, modelWeightsChunkSize - weightsBytesRead);
+                        if (read == 0)
+                            throw new EndOfStreamException($"Unexpected end of stream while reading weights chunk {i}.");
+                        weightsBytesRead += read;
+                    }
+
                     LoadModelWeights(modelWeightsBufferBytes, weightBuffersConstantsOffsets[i], model);
                 }
 
@@ -76,7 +116,7 @@ namespace Unity.InferenceEngine
             catch (Exception e)
             {
                 D.LogError($"Failed to load serialized .sentis model, ensure model was exported with Sentis 1.4 or newer (or Inference Engine). ({e.Message})");
-                return null;
+                throw;
             }
         }
 

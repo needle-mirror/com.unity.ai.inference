@@ -32,7 +32,7 @@ namespace Unity.InferenceEngine
         internal static bool IsAsyncCallbackCommandBufferEmpty => m_AsyncCallbackCommandBufferEmpty;
 
         // Simple async GPU event mechanism: request a small dummy readback for the ComputeTensorData
-        static int s_DummySize = 16;
+        static readonly int s_DummySize = 16;
         static ComputeBuffer m_DummyDestination = new ComputeBuffer(s_DummySize, sizeof(float));
         static CommandBuffer m_AsyncCallbackCommandBuffer = new CommandBuffer();
         static bool m_AsyncCallbackCommandBufferEmpty = true;
@@ -65,6 +65,9 @@ namespace Unity.InferenceEngine
             // static initializers are not executed again and CleanupStaticResources()
             // will not be executed through UnityEditor.AssemblyReloadEvents.beforeAssemblyReload as it won't fire.
             ReInitStaticResources();
+            // Application.quitting is for the player part when running in the editor,
+            // so when quitting the editor while in playmode, the following is required to cleanup too:
+            UnityEditor.EditorApplication.quitting += CleanupStaticResources;
 #endif
             Application.quitting += CleanupStaticResources;
         }
@@ -203,15 +206,22 @@ namespace Unity.InferenceEngine
         {
             if (m_DelayedDisposeInProgress)
             {
-                D.LogWarning($"Dispose called on ComputeTensorData while m_DelayedDisposeInProgress already true");
+                D.LogWarning($"ComputeTensorData.Dispose called while m_DelayedDisposeInProgress already true, ignoring.");
                 return;
             }
+            if (!TensorDataHelper.OnMainThread)
+            {
+                D.LogWarning($"ComputeTensorData.Dispose called outside main thread, ignoring.");
+                return;
+            }
+
             if (!m_IsDisposed)
             {
                 m_Buffer?.Dispose();
                 m_Buffer = null;
             }
             m_IsDisposed = true;
+            System.GC.SuppressFinalize(this);
         }
 
         // This should only be called by the thread running the AsyncGPUReadback callback.

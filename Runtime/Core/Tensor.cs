@@ -1,4 +1,3 @@
-using UnityEngine.Assertions;
 using System;
 using Unity.Collections;
 using UnityEngine;
@@ -7,26 +6,59 @@ namespace Unity.InferenceEngine
 {
     /// <summary>
     /// Represents data in a multidimensional array-like structure.
-    ///
-    /// Ownership and lifetime:
-    /// * Disposed needs to be called on the main thread.
-    /// * Ownership is always to the owner of the object.
-    ///
-    /// Data Representation:
-    /// * TensorShape represents the data layout of the tensor
-    /// * Data is held by a tensorData (ITensorData) which can be on a given backend
-    /// * Data is stored in a flattened row major format
-    /// * Data can be pending (ie computation is being done in parallel)
-    ///      - call CompleteAllPendingOperations for a blocking call to finish computing the tensor's data
-    ///   Data can be in a non readable type (GPU/NPU)
-    ///      - Call CompleteAllPendingOperations to finish computing the tensor's data
-    ///      - Call ReadbackAndClone or ReadBackAndCloneAsync to allow reading the tensor's data
-    ///
-    /// Data manipulation
-    /// * ToReadOnlyArray returns a copy of the tensor's data
-    /// * dataOnBackend can be manipulated directly to avoid a unnecessary copy
-    ///   see ComputeTensorData/CPUTensorData for info
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Tensors are the fundamental data structure used to represent multidimensional arrays of data, such as images and audio.
+    /// Use them as inputs for models, and to download a copy of the backend output values (<see cref="backendType"/>).
+    /// </para>
+    /// <para>
+    /// <b>Ownership and Lifetime</b><br/>
+    /// Tensors manage native memory resources. You must call <see cref="Dispose"/> of a tensor when it is no longer needed.
+    /// The ownership of the tensor's internal data (<see cref="dataOnBackend"/>) belongs to the <see cref="Tensor"/> object itself.
+    /// Disposing the tensor also disposes its underlying data.
+    /// </para>
+    /// <para>
+    /// <b>Data Representation</b><br/>
+    /// A <see cref="Tensor"/>'s structure is defined by its <see cref="shape"/> (a <see cref="TensorShape"/> object) and its <see cref="dataType"/>.
+    /// The actual data is held by an <see cref="ITensorData"/> implementation, which dictates the physical storage location <see cref="BackendType"/>.
+    /// Data within the tensor is stored in a flattened, row-major format.
+    /// </para>
+    /// <para>
+    /// <b>Asynchronous Operations and Data Access</b><br/>
+    /// Tensor data can be pending a device is performing computations, or if the data is stored
+    /// on a non-readable device-specific type (for example GPU memory).
+    /// To get a CPU readable copy of the data, use <see cref="ReadbackAndClone"/>, or <see cref="ReadbackAndCloneAsync"/> for an asynchronous operation.
+    /// You can check the status of an asynchronous readback request with <see cref="IsReadbackRequestDone"/>.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <para>
+    /// The following example demonstrates how to interact with a <see cref="Tensor"/> object,
+    /// ensuring its data is available on the CPU for reading, and then properly disposing of resources.
+    ///
+    /// For a full workflow example, refer to [Workflow example](xref:sentis-workflow-example).
+    ///
+    /// </para>
+    /// <code lang="cs"><![CDATA[
+    /// // Create a tensor
+    /// m_Tensor = new Tensor<float>(new TensorShape(2, 3), new[] { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f });
+    /// // Alternatively with `using` so you don't need to call `Dispose()` when you are done with the tensor
+    /// using var m_OtherTensor = new Tensor<float>(new TensorShape(2, 3), new[] { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f });
+    ///
+    /// // Get a CPU-accessible clone of the tensor. This copy owns its own data.
+    /// Tensor<float> cpuCopyTensor = m_Tensor.ReadbackAndClone() as Tensor<float>;
+    ///
+    /// // Release memory.
+    /// cpuCopyTensor.Dispose();
+    /// m_Tensor.Dispose();
+    /// ]]></code>
+    /// </example>
+    /// <seealso cref="ITensorData"/>
+    /// <seealso cref="TensorShape"/>
+    /// <seealso cref="DataType"/>
+    /// <seealso cref="BackendType"/>
+    /// <seealso cref="Unity.Collections.NativeArray{T}"/>
     public abstract class Tensor : IDisposable
     {
         private protected ITensorData m_DataOnBackend;
@@ -41,7 +73,7 @@ namespace Unity.InferenceEngine
         public DataType dataType { get { return m_DataType; } }
 
         /// <summary>
-        /// The length of the tensor (32 bit stride).
+        /// The total number of elements in the tensor, calculated as the product of its dimensions.
         /// </summary>
         public int count
         {
@@ -50,7 +82,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// The shape of the tensor, as a `TensorShape`.
+        /// The shape of the tensor, as a <see cref="TensorShape"/> object, defining its dimensions.
         /// </summary>
         public TensorShape shape
         {
@@ -61,6 +93,10 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// The device-specific internal representation of the tensor data.
         /// </summary>
+        /// <remarks>
+        /// Accessing this property allows for direct manipulation of the underlying data,
+        /// but typically requires knowledge of concrete <see cref="ITensorData"/> implementations.
+        /// </remarks>
         public ITensorData dataOnBackend
         {
             get => m_DataOnBackend;
@@ -68,7 +104,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// The backend type where the tensor data is currently stored.
+        /// The backend type where the tensor data is currently stored (for example, CPU, GPU).
         /// </summary>
         public BackendType backendType
         {
@@ -81,18 +117,21 @@ namespace Unity.InferenceEngine
         internal bool disposed => m_Disposed;
 
         /// <summary>
-        /// Changes the shape of a tensor without changing the backing data.
-        ///
-        /// The new shape must fit in the allocated backend tensor data, and the data cannot be on the GPUPixel backend.
+        /// Changes the logical shape of the tensor without changing the backing data's physical allocation.
         /// </summary>
-        /// <param name="shape">The new shape for the tensor.</param>
+        /// <param name="shape">The new shape for the tensor. The total number of elements in the new shape must
+        /// fit within the currently allocated backend tensor data's capacity.</param>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown if the new shape's total elements exceed the allocated capacity.</exception>
         public abstract void Reshape(TensorShape shape);
 
         /// <summary>
-        /// Associates a new tensor data to the tensor.
+        /// Associates a new tensor data object with this tensor.
         /// </summary>
-        /// <param name="tensorData">The new tensor data to associate to the tensor.</param>
-        /// <param name="disposePrevious">Whether to dispose the previous tensor data.</param>
+        /// <param name="tensorData">The new <see cref="ITensorData"/> instance to associate with the tensor.
+        /// This data must have sufficient capacity for the tensor's current count.</param>
+        /// <param name="disposePrevious">If <see langword="true"/>, the previously associated tensor data will be disposed.
+        /// Set to <see langword="false"/> if you intend to manage the lifetime of the previous data manually.</param>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown if the provided `tensorData` has insufficient capacity for the tensor's current element count.</exception>
         public void AdoptTensorData(ITensorData tensorData, bool disposePrevious = true)
         {
             AdoptTensorData(tensorData, disposePrevious, disposeIsDelayed: true);
@@ -127,9 +166,11 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Sets the tensor data to null and return the previous one.
+        /// Detaches the current <see cref="ITensorData"/> object from the tensor and returns it.
+        /// The tensor will no longer manage the lifetime of this data.
         /// </summary>
-        /// <returns>The tensor data.</returns>
+        /// <returns>The <see cref="ITensorData"/> object that was previously associated with this tensor.
+        /// Returns <see langword="null"/> if no data was associated.</returns>
         public ITensorData ReleaseTensorData()
         {
             var tensorData = m_DataOnBackend;
@@ -140,11 +181,9 @@ namespace Unity.InferenceEngine
         internal abstract Tensor CloneEmpty();
 
         /// <summary>
-        /// Checks if asynchronous readback request it done.
-        ///
-        /// Returns true if async readback is successful.
+        /// Checks if an asynchronous readback request for the tensor's data has completed.
         /// </summary>
-        /// <returns>Whether the async readback request is successful.</returns>
+        /// <returns><see langword="true"/> if the asynchronous readback request is done and successful. Otherwise <see langword="false"/>.</returns>
         public bool IsReadbackRequestDone()
         {
             if (m_DataOnBackend == null)
@@ -154,7 +193,8 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Schedules asynchronous download of the internal data.
+        /// Schedules an asynchronous download of the internal tensor data from its backend to a CPU-accessible location.
+        /// You can check the completion of this request using <see cref="IsReadbackRequestDone"/>.
         /// </summary>
         public void ReadbackRequest()
         {
@@ -162,9 +202,11 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Blocking download task of the internal data.
+        /// Performs a blocking download of the internal tensor data from its backend to a new CPU-accessible <see cref="Tensor"/> instance.
+        /// This method ensures all pending operations on the original tensor's data are completed before the download begins.
         /// </summary>
-        /// <returns>CPU copy of the tensor.</returns>
+        /// <returns>A new <see cref="Tensor"/> instance containing a CPU-accessible copy of the original tensor's data.
+        /// This new tensor is independent and must also be disposed of.</returns>
         public Tensor ReadbackAndClone()
         {
             var tensor = CloneEmpty();
@@ -185,9 +227,11 @@ namespace Unity.InferenceEngine
 
         #if UNITY_2023_2_OR_NEWER
         /// <summary>
-        /// Schedules asynchronous download task of the internal data.
+        /// Schedules an asynchronous download of the internal tensor data from its backend to a new CPU-accessible <see cref="Tensor"/> instance.
+        /// This method returns an <see cref="Awaitable{T}"/> that can be used to await the completion of the download operation without blocking the main thread.
         /// </summary>
-        /// <returns>awaitable tensor on the cpu.</returns>
+        /// <returns>An <see cref="Awaitable{T}"/> that resolves to a new <see cref="Tensor"/> instance containing a CPU-accessible copy of the original tensor's data.
+        /// This new tensor is independent and must also be disposed of.</returns>
         public async Awaitable<Tensor> ReadbackAndCloneAsync()
         {
             var tensor = CloneEmpty();
@@ -208,7 +252,8 @@ namespace Unity.InferenceEngine
         #endif
 
         /// <summary>
-        /// Completes all scheduled tensor operations on device.
+        /// Completes all scheduled tensor operations on the device backend.
+        /// This is a blocking call that ensures all pending computations or data transfers related to this tensor have completed.
         /// </summary>
         public void CompleteAllPendingOperations()
         {
@@ -216,7 +261,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Disposes of the tensor and any associated memory.
+        /// Disposes of the tensor and releases any associated unmanaged memory resources.
+        /// This method must be called on the main thread to prevent memory leaks.
+        /// After calling `Dispose`, the tensor instance should no longer be used.
         /// </summary>
         public void Dispose()
         {
@@ -226,9 +273,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns a string that represents the `Tensor`.
+        /// Returns a string that represents the <see cref="Tensor"/>'s data type and shape.
         /// </summary>
-        /// <returns>String representation of tensor.</returns>
+        /// <returns>A string representation of the tensor.</returns>
         public override string ToString()
         {
             return $"{dataType}{shape}";
@@ -286,7 +333,7 @@ namespace Unity.InferenceEngine
                     throw new InvalidOperationException("Tensor data is still pending, cannot write to tensor.");
             }
             else
-                throw new InvalidOperationException("Tensor data cannot be read from, use .ReadbackAndClone() to allow writting to the tensor.");
+                throw new InvalidOperationException("Tensor data cannot be read from, use .ReadbackAndClone() to allow writing to the tensor.");
         }
     }
 }

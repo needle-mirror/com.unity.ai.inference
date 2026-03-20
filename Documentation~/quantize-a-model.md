@@ -1,3 +1,6 @@
+---
+uid: sentis-quantize-a-model
+---
 # Quantize a Model
 
 Sentis imports model constants and weights as 32-bit values. To reduce the model's storage size on disk and memory, use model quantization.
@@ -43,5 +46,5 @@ void QuantizeAndSerializeModel(Model model, string path)
 
 ## Additional resources
 
-- [Inspect a model](inspect-a-model.md)
-- [Create a new model](create-a-new-model.md)
+- [Inspect a model](xref:sentis-inspect-a-model)
+- [Create a new model](xref:sentis-create-a-new-model)

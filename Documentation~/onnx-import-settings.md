@@ -1,3 +1,6 @@
+---
+uid: sentis-onnx-import-settings
+---
 # Import settings for ONNX models
 
 You can import machine learning (ML) models in the `.onnx` format with **Model Asset Import Settings**. These settings control how Unity processes the model before it's processed at runtime.
@@ -16,11 +19,11 @@ If you know the value of a dynamic dimension in advance, for example, if the bat
 
 ## Configure import settings
 
-Use the **Model Asset Import Settings** window to change the import settings for the model.
+Use the **Model Asset Import Settings** to change the import settings for the model.
 
 To set static values for dynamic dimensions, follow these steps:
 
-1. Open the **Model Asset Import Settings** from the **Project** window.
+1. In the **Project** window, select the model asset to view the **Model Asset Import Settings** in the **Inspector**.
 2. Set a static value for any dynamic input dimensions.
 3. Select **Apply**.
 
@@ -37,11 +40,11 @@ The following table describes the properties available for dynamic input dimensi
 | `name`       | The name of the dynamic dimension. This is automatically populated from the ONNX model, such as `batch_size` or `sequence_length`. You can't modify this field. |
 | `value`      | The value assigned to a dynamic input dimension. A value of `-1` keeps the dimension dynamic, while any non-negative value (≥ `0`) sets it to a static size. |
 
-For more information on the shape of your model inputs, refer to [Model inputs](models-concept.md#model-inputs).
+For more information on the shape of your model inputs, refer to [Model inputs](xref:sentis-models-concept#model-inputs).
 
 ## Additional resources
 
-- [Import a model](import-a-model-file.md)
-- [Supported models](supported-models.md)
-- [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
-- [Sentis models](models-concept.md)
+- [Import a model](xref:sentis-import-a-model-file)
+- [Supported models](xref:sentis-supported-models)
+- [Export an ONNX file from a machine learning framework](xref:sentis-export-convert-onnx)
+- [Sentis models](xref:sentis-models-concept)

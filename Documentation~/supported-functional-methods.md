@@ -1,3 +1,6 @@
+---
+uid: sentis-supported-functional-methods
+---
 # Supported functional methods
 
 Sentis provides a set of operators and functional methods to work with tensors. This page lists the supported operators and functional methods, and provides usage examples.
@@ -234,5 +237,5 @@ The input parameters and outputs don't exactly match the PyTorch version. Check 
 
 ## Additional resources
 
-* [Supported ONNX operators](supported-operators.md)
-* [Import settings for ONNX models](onnx-import-settings.md)
+* [Supported ONNX operators](xref:sentis-supported-operators)
+* [Import settings for ONNX models](xref:sentis-onnx-import-settings)

@@ -1,3 +1,6 @@
+---
+uid: sentis-read-output-async
+---
 # Read output from a model asynchronously
 
 After you schedule a model and access an output tensor from [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*), the following are true:
@@ -97,10 +100,10 @@ void Update()
 > [!NOTE]
 > To avoid a Tensor data mutation to a CPU tensor from calling [`ReadbackAndClone`](xref:Unity.InferenceEngine.Tensor.ReadbackAndClone), call [`tensor.dataOnBackend.Download`](xref:Unity.InferenceEngine.ITensorData.Download*) to get the data directly. This keeps the [`tensor.dataOnBackend`](xref:Unity.InferenceEngine.Tensor.dataOnBackend) on the given backend while providing a CPU copy. Be cautious with synchronization issues: if you re-schedule a worker, make a new download request.
 
-For an example, refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md).
+For an example, refer to the `Read output asynchronously` example in the [sample scripts](xref:sentis-package-samples).
 
 ## Additional resources
 
-- [Tensor fundamentals](tensor-fundamentals.md)
-- [Use output data](use-model-output.md)
-- [Get output from a model](get-the-output.md)
+- [Tensor fundamentals](xref:sentis-tensor-fundamentals)
+- [Use output data](xref:sentis-use-model-output)
+- [Get output from a model](xref:sentis-get-the-output)

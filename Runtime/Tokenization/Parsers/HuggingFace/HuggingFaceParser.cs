@@ -10,6 +10,7 @@ using Unity.InferenceEngine.Tokenization.Padding;
 using Unity.InferenceEngine.Tokenization.PostProcessors;
 using Unity.InferenceEngine.Tokenization.PreTokenizers;
 using Unity.InferenceEngine.Tokenization.Truncators;
+using Unity.InferenceEngine.Tokenization.Truncators.Strategies;
 
 namespace Unity.InferenceEngine.Tokenization.Parsers.HuggingFace
 {
@@ -499,18 +500,41 @@ namespace Unity.InferenceEngine.Tokenization.Parsers.HuggingFace
         /// </returns>
         ITruncator BuildTruncator(JToken parameters)
         {
+            const string k_StrategyKey = "strategy";
+            const string k_MaxLengthKey = "max_length";
+            const string k_StrideKey = "stride";
+            const string k_DirectionKey = "direction";
+
+            const string k_DefaultDirection = "Right";
+            const string k_DefaultStrategy = "LongestFirst";
+            const int k_DefaultMaxLength = 512;
+            const int k_DefaultStride = 0;
+
             if (parameters is {Type: JTokenType.Object})
             {
-                var truncationStrategy = parameters["strategy"]?.Value<string>()
-                    ?? throw new("Truncation strategy is missing");
+                var direction = parameters.GetStringOptional(k_DirectionKey, k_DefaultDirection);
+                var rangeGenerator = direction switch
+                {
+                    "Right" => RightDirectionRangeGenerator.Instance,
+                    "Left" => LeftDirectionRangeGenerator.Instance,
+                    _ => throw new($"Unknown direction: {direction}")
+                };
 
-                if (!m_Truncators.TryGetValue(truncationStrategy, out var builder))
-                    throw new DataException(
-                        $"Unsupported truncation strategy {truncationStrategy}");
+                var strategyString = parameters.GetStringOptional(k_StrategyKey, k_DefaultStrategy);
+                var strategy = strategyString switch
+                {
+                    "LongestFirst" => LongestFirstStrategy.Instance,
+                    "OnlySecond" => OnlySecondStrategy.Instance,
+                    "OnlyFirst" => OnlyFirstStrategy.Instance,
+                    _ => throw new($"Unknown strategy: {strategyString}")
+                };
 
-                return builder.Value.Build(parameters, this);
+                var maxLength = parameters.GetIntegerOptional(k_MaxLengthKey, k_DefaultMaxLength);
+                var stride = parameters.GetIntegerOptional(k_StrideKey, k_DefaultStride);
+
+                return new GenericTruncator(strategy, rangeGenerator, maxLength, stride);
             }
-            return null;
+            return DefaultTruncator.Instance;
         }
 
         /// <summary>

@@ -397,7 +397,6 @@ namespace Unity.InferenceEngine
             {
                 case "ConvTranspose": // ConvTranspose now supports dilations and group
                 {
-                    var a = chain.InputsLength;
                     var input = chain.Inputs(0);
                     var weights = chain.Inputs(1);
                     var bias = chain.Inputs(2); // bias: optional
@@ -426,6 +425,41 @@ namespace Unity.InferenceEngine
             }
         }
 
+        static bool UpgradeChainV7toV8(ExecutionPlan executionPlan, Chain chain, FlatBufferBuilder builder,
+            List<string> operators, List<Offset<Chain>> chainsOffsets, List<Offset<EValue>> valuesOffsets)
+        {
+            var instruction = chain.Instructions(0).Value;
+            if (instruction.InstrArgsType != InstructionArguments.KernelCall)
+                return false;
+            var kernel = instruction.InstrArgsAsKernelCall();
+            var k = operators[kernel.OpIndex];
+            switch (k)
+            {
+                case "Swish": // Swish has an additional "alpha" argument that defaults to 1.0.
+                {
+                    var input = chain.Inputs(0);
+                    var output = chain.Outputs(0);
+
+                    var argsList = kernel.GetArgsArray().ToList();
+                    argsList.Add(AddFloatValue(builder, valuesOffsets, 1.0f));
+                    var args = argsList.ToArray();
+
+                    var instructionOffset = Instruction.CreateInstruction(builder, instruction.InstrArgsType, KernelCall.CreateKernelCall(builder, kernel.OpIndex, ExecutionPlan.CreateInputsVector(builder, args)).Value);
+
+                    chainsOffsets.Add(Chain.CreateChain(
+                        builder,
+                        Chain.CreateInputsVector(builder, new[] { input }),
+                        Chain.CreateOutputsVector(builder, new[] { output }),
+                        Chain.CreateInstructionsVector(builder, new[] { instructionOffset }))
+                    );
+
+                    return true;
+                }
+                default:
+                    return false;
+            }
+        }
+
         public static Program Upgrade(Program program)
         {
             if (program.Version == 1)
@@ -440,6 +474,8 @@ namespace Unity.InferenceEngine
                 program = UpgradeFlatbuffer(program, 6, UpgradeChainV5toV6);
             if (program.Version == 6)
                 program = UpgradeFlatbuffer(program, 7);
+            if (program.Version == 7)
+                program = UpgradeFlatbuffer(program, 8, UpgradeChainV7toV8);
             return program;
         }
     }

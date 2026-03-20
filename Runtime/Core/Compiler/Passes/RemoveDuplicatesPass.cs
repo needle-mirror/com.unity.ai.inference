@@ -9,7 +9,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
     /// </summary>
     class RemoveDuplicatesPass : GraphPass
     {
-        static HashSet<string> s_RandomTargets = new() { "RandomNormal", "RandomUniform", "RandomNormalLike", "RandomUniformLike", "Multinomial", "Bernoulli" };
+        static readonly HashSet<string> s_RandomTargets = new() { "RandomNormal", "RandomUniform", "RandomNormalLike", "RandomUniformLike", "Multinomial", "Bernoulli" };
 
         public override void Run(GraphModule gm)
         {

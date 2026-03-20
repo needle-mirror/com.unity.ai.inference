@@ -1,8 +1,11 @@
+---
+uid: sentis-access-tensor-data-directly
+---
 # Access tensor data directly
 
 To avoid slow readbacks when you access a tensor or pass it between models, read from and write to the tensor’s underlying native data directly.
 
-For more information about how Sentis stores tensor data, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location).
+For more information about how Sentis stores tensor data, refer to [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals#memory-location).
 
 ## Check where tensor data is stored
 
@@ -103,7 +106,7 @@ To access a tensor stored in GPU-compute memory, use [`ComputeTensorData.Pin`](x
 
 You can then use the [`buffer`](xref:Unity.InferenceEngine.ComputeTensorData.buffer) property to directly access the tensor data in the compute buffer. For more information about how to access a compute buffer, refer to [`ComputeBuffer`](xref:UnityEngine.ComputeBuffer) in the Unity API reference.
 
-For an example, refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md).
+For an example, refer to the `Read output asynchronously` example in the [sample scripts](xref:sentis-package-samples).
 
 ## Access a tensor in CPU memory
 
@@ -113,9 +116,9 @@ You can then use this object in a Burst function, such as [`IJobParallelFor`](xr
 
 You can also use the methods in the [`NativeTensorArray`](xref:Unity.InferenceEngine.NativeTensorArray) class to read from and write to the tensor data as a native array.
 
-For examples, refer to the `Use the job system to write data` example in the [sample scripts](package-samples.md) and the Unity documentation on [Job System](https://docs.unity3d.com/Manual/JobSystem.html).
+For examples, refer to the `Use the job system to write data` example in the [sample scripts](xref:sentis-package-samples) and the Unity documentation on [Job System](https://docs.unity3d.com/Manual/JobSystem.html).
 
 ## Additional resources
 
-- [Use Tensors](use-tensors.md)
-- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
+- [Use Tensors](xref:sentis-use-tensors)
+- [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals)

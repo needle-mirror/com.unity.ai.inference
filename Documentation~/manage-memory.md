@@ -1,3 +1,6 @@
+---
+uid: sentis-manage-memory
+---
 # Manage memory with tensors
 
 When you use the Sentis API, always call [`Dispose`](xref:Unity.InferenceEngine.Worker.Dispose) on any workers and tensors you instantiate. Additionally, ensure you call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](xref:Unity.InferenceEngine.Tensor.ReadbackAndClone*) method.
@@ -20,7 +23,7 @@ void OnDestroy()
 }
 ```
 
-When you get a handle to a tensor from a worker using the [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*) method, the memory allocator remains responsible for that memory. You don't need to call `Dispose` on it. For more information, refer to [Get output from a model](get-the-output.md).
+When you get a handle to a tensor from a worker using the [`PeekOutput`](xref:Unity.InferenceEngine.Worker.PeekOutput*) method, the memory allocator remains responsible for that memory. You don't need to call `Dispose` on it. For more information, refer to [Get output from a model](xref:sentis-get-the-output).
 
 ## Compute buffer size limit
 
@@ -31,6 +34,6 @@ When working with tensors in Sentis, the size of the compute buffer is subject t
 
 ## Additional resources
 
-- [Profile a model](profile-a-model.md)
-- [Create an engine to run a model](create-an-engine.md)
-- [Create and modify tensors](do-basic-tensor-operations.md)
+- [Profile a model](xref:sentis-profile-a-model)
+- [Create an engine to run a model](xref:sentis-create-an-engine)
+- [Create and modify tensors](xref:sentis-do-basic-tensor-operations)

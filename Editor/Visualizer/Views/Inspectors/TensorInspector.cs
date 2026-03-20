@@ -69,7 +69,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
             frameButton.enabledSelf = !isConstant;
             frameButton.clickable.clicked += () =>
             {
-                m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject.Invoke(tensorIndex));
+                m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject.Invoke(
+                    new FocusData(tensorIndex, Vector2.zero, GraphView.ZoomLevel.MinZoom, false)));
             };
         }
 

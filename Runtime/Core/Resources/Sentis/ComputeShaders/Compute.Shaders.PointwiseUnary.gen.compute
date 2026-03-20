@@ -99,7 +99,7 @@ void LeakyRelu(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID
 
 inline float OperationSwish(float v)
 {
-    return v / (1.0f + exp(-v));
+    return v / (1.0f + exp(-(alpha * v)));
 }
 
 [numthreads(TILE_DIM, 1, 1)]

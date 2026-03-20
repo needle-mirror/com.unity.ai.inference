@@ -7,6 +7,7 @@ using Unity.InferenceEngine.Graph;
 using Unity.InferenceEngine.Layers;
 using UnityEngine;
 using UnityEngine.Assertions;
+using ScaleMode = Unity.InferenceEngine.Layers.ScaleMode;
 
 namespace Unity.InferenceEngine.Editor.LiteRT
 {
@@ -17,6 +18,11 @@ namespace Unity.InferenceEngine.Editor.LiteRT
     {
         public string[] signatureKeys;
         public string signatureKey;
+        internal event Action<Model> OnLiteRTModelLoaded;
+        internal event Action<string> OnLiteRTOperator;
+        internal event Action<string> OnLiteRTOperatorUnsupported;
+        internal event Action<string> OnLiteRTDataType;
+        internal event Action<string> OnLiteRTDataTypeUnsupported;
 
         /// <summary>
         /// Initializes and returns an instance of `LiteRTModelConverter`.
@@ -33,7 +39,9 @@ namespace Unity.InferenceEngine.Editor.LiteRT
         /// <returns>The converted Sentis model.</returns>
         public override InferenceEngine.Model Convert()
         {
+            // Read file into memory once - used for both parsing and hash computation
             var data = File.ReadAllBytes(m_FilePath);
+
             var bb = new ByteBuffer(data, 0);
             var liteModel = Model.GetRootAsModel(bb);
             var gm = new GraphModule();
@@ -45,6 +53,10 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                 throw new LiteRTImportException("Model contains no subgraphs.");
             var subGraph =  liteModel.Subgraphs(0).Value;
             var tensors = new PermutedFunctionalTensor[subGraph.TensorsLength];
+
+            OnLiteRTModelLoaded?.Invoke(liteModel);
+
+            ValidateSubGraph(subGraph, liteModel);
 
             signatureKeys = new string[liteModel.SignatureDefsLength];
 
@@ -100,10 +112,10 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                 }
             }
 
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
+            if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
             {
-                Warn(WarningType.Error, $"Could not import model due to errors with inputs");
-                Debug.LogError(Warnings.Last().Message);
+                var errorMessage = "Could not import model due to errors with inputs";
+                Warn(WarningType.Error, errorMessage);
                 return model;
             }
 
@@ -208,7 +220,6 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                 void WarnOpNotImplemented()
                 {
                     Warn(WarningType.Error, $"Unsupported LiteRT Operator: {builtinCode}");
-                    Debug.LogError(Warnings.Last().Message);
                 }
 
                 void AssertType(DataType inputType, DataType type)
@@ -585,7 +596,7 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                         var rank = GetInputRank(0);
                         var permutation = Permutation.ChannelFirst(rank);
                         var input = GetInput(0, permutation);
-                        var scaleMode = Layers.ScaleMode.Sizes;
+                        var scaleMode = ScaleMode.Sizes;
                         var coordTransformMode = CoordTransformMode.Asymmetric;
                         if (options.HalfPixelCenters)
                             coordTransformMode = CoordTransformMode.HalfPixel;
@@ -642,7 +653,6 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                         break;
                     case BuiltinOperator.CUSTOM:
                         Warn(WarningType.Error, $"{operatorCode.CustomCode} is a custom operator. Custom operators are not supported.");
-                        Debug.LogError(Warnings.Last().Message);
                         break;
                     case BuiltinOperator.EMBEDDING_LOOKUP_SPARSE:
                         WarnOpNotImplemented();
@@ -1310,7 +1320,7 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                         var rank = GetInputRank(0);
                         var permutation = Permutation.ChannelFirst(rank);
                         var input = GetInput(0, permutation);
-                        var scaleMode = Layers.ScaleMode.Sizes;
+                        var scaleMode = ScaleMode.Sizes;
                         var nearestMode = NearestMode.Floor;
                         var coordTransformMode = CoordTransformMode.Asymmetric;
                         if (options.HalfPixelCenters)
@@ -1824,9 +1834,9 @@ namespace Unity.InferenceEngine.Editor.LiteRT
                 }
             }
 
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
+            if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
             {
-                throw new LiteRTImportException($"Error importing model: {Warnings.Last(w => w.MessageSeverity == WarningType.Error).Message}");
+                throw new LiteRTImportException($"Error importing model: {ImportWarnings.Last(w => w.messageSeverity == WarningType.Error).message}");
             }
 
             Node GetOutputTensor(int index, string name)
@@ -1863,15 +1873,67 @@ namespace Unity.InferenceEngine.Editor.LiteRT
 
             gm.Outputs(outputNames.ToArray(), outputNodes.ToArray());
 
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
+            if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
             {
-                throw new LiteRTImportException($"Could not import model due to errors with outputs: {Warnings.Last(w => w.MessageSeverity == WarningType.Error).Message}");
+                var failureMessage = ImportWarnings.Last(w => w.messageSeverity == WarningType.Error).message;
+                throw new LiteRTImportException($"Could not import model due to errors with outputs: {failureMessage}");
             }
 
             ModelOptimizer.OptimizeGraph(gm);
             model = GraphConverter.GraphToModel(gm);
 
             return model;
+        }
+
+        void ValidateSubGraph(SubGraph subGraph, Model liteModel)
+        {
+            // Track unsupported operators and datatypes for error handling
+            var unsupportedOperators = new HashSet<string>();
+            var unsupportedDataTypes = new HashSet<string>();
+
+            for (var i = 0; i < subGraph.TensorsLength; i++)
+            {
+                var tensor = subGraph.Tensors(i).Value;
+                var tensorType = tensor.Type;
+                var typeStr = tensorType.ToString();
+                if (!tensor.Type.IsDataTypeSupported())
+                {
+                    unsupportedDataTypes.Add(typeStr);
+                    OnLiteRTDataTypeUnsupported?.Invoke(typeStr);
+                }
+
+                OnLiteRTDataType?.Invoke(typeStr);
+            }
+
+            for (var opIndex = 0; opIndex < subGraph.OperatorsLength; opIndex++)
+            {
+                var op = subGraph.Operators(opIndex).Value;
+                var operatorCode = liteModel.OperatorCodes((int)op.OpcodeIndex).Value;
+                var builtinCode = operatorCode.BuiltinCode > BuiltinOperator.PLACEHOLDER_FOR_GREATER_OP_CODES ? operatorCode.BuiltinCode : (BuiltinOperator)operatorCode.DeprecatedBuiltinCode;
+
+                var builtinStr = builtinCode.ToString();
+                if (!builtinCode.IsOperatorSupported())
+                {
+                    unsupportedOperators.Add(builtinStr);
+                    OnLiteRTOperatorUnsupported?.Invoke(builtinStr);
+                }
+                OnLiteRTOperator?.Invoke(builtinStr);
+            }
+
+            if (unsupportedOperators.Count > 0)
+            {
+                Warn(WarningType.Error, $"Model contains unsupported operator(s): {string.Join(", ", unsupportedOperators)}");
+            }
+
+            if (unsupportedDataTypes.Count > 0)
+            {
+                Warn(WarningType.Error, $"Model contains unsupported data type(s): {string.Join(", ", unsupportedDataTypes)}");
+            }
+
+            if (unsupportedDataTypes.Count > 0 || unsupportedOperators.Count > 0)
+            {
+                throw new LiteRTImportException("Model contains unsupported operators or data types. See errors for details.");
+            }
         }
 
         // Determine whether a set of permuted functional tensors share a common permutation

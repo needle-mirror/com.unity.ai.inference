@@ -1,12 +1,15 @@
+---
+uid: sentis-use-model-output
+---
 # Use output data
 
-After you [get the output from a model](get-the-output.md) as a tensor, you can post-process the data to use it in your project.
+After you [get the output from a model](xref:sentis-get-the-output) as a tensor, you can post-process the data to use it in your project.
 
 ## Download to a CPU tensor
 
 Use [`ReadbackAndClone`](xref:Unity.InferenceEngine.Tensor.ReadbackAndClone) or [`ReadbackAndCloneAsync`](xref:Unity.InferenceEngine.Tensor.ReadbackAndCloneAsync*) to move a tensor on the graphics processing unit (GPU) to the central processing unit (CPU) to read it.
 
-For best practices on how to do this efficiently, refer to [read the tensor data asynchronously](read-output-async.md).
+For best practices on how to do this efficiently, refer to [read the tensor data asynchronously](xref:sentis-read-output-async).
 
 For example:
 
@@ -16,7 +19,7 @@ var cpuTensor = outputTensor.ReadbackAndClone();
 ```
 The returned tensor is a CPU-based, read-writable copy of the output tensor.
 
-For details on how to index and access the tensor, refer to [tensor fundamentals](tensor-fundamentals.md) and [access tensor data directly](access-tensor-data-directly.md).
+For details on how to index and access the tensor, refer to [tensor fundamentals](xref:sentis-tensor-fundamentals) and [access tensor data directly](xref:sentis-access-tensor-data-directly).
 
 ## Convert to a render texture
 
@@ -28,7 +31,7 @@ When you use [`TextureConverter.RenderToTexture`](xref:Unity.InferenceEngine.Tex
 - Removes channels from the end if the render texture has fewer channels than the tensor.
 - Sets values in RGB channels to `0` and values in the alpha channel to `1` if the render texture has more channels than the tensor.
 
-For working examples, refer to the `Convert tensors to textures` example in the [sample scripts](package-samples.md).
+For working examples, refer to the `Convert tensors to textures` example in the [sample scripts](xref:sentis-package-samples).
 
 ### Example
 
@@ -59,9 +62,9 @@ To copy an output tensor to the screen, follow these steps:
 2. Create a script and attach it to the Camera.
 3. In the script, use [`TextureConverter.RenderToScreen`](xref:Unity.InferenceEngine.TextureConverter.RenderToScreen*) in an event function, such as [`OnRenderImage`](xref:MonoBehaviour.OnRenderImage).
 
-If the image is too bright, the output tensor might be using values from `0` to `255` instead of `0` to `1`. You can use [Edit a model](edit-a-model.md) to remap the values in the output tensor before calling `RenderToScreen`.
+If the image is too bright, the output tensor might be using values from `0` to `255` instead of `0` to `1`. You can use [Edit a model](xref:sentis-edit-a-model) to remap the values in the output tensor before calling `RenderToScreen`.
 
-The following script uses a model to change a texture, then copies the result to the screen. Set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
+The following script uses a model to change a texture, then copies the result to the screen. Set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX and `inputImage` to a texture. [Check the Texture import settings](xref:sentis-convert-texture-to-tensor) to make sure the texture matches the shape and layout the model needs.
 
 ```
 using UnityEngine;
@@ -114,9 +117,9 @@ public class StyleTransfer : MonoBehaviour
 
 When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call [`RenderToScreen`](xref:Unity.InferenceEngine.TextureConverter.RenderToScreen*) in the [`RenderPipelineManager.endFrameRendering`](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Rendering.RenderPipelineManager-endFrameRendering) or [`RenderPipelineManager.endContextRendering`](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Rendering.RenderPipelineManager-endContextRendering) callbacks. For more information, refer to [Rendering.RenderPipelineManager](xref:UnityEngine.Rendering.RenderPipelineManager).
 
-For an example, refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md).
+For an example, refer to the `Copy a texture tensor to the screen` example in the [sample scripts](xref:sentis-package-samples).
 
 ## Additional resources
 
-- [Get output from a model](get-the-output.md)
-- [Create and modify tensors](do-basic-tensor-operations.md)
+- [Get output from a model](xref:sentis-get-the-output)
+- [Create and modify tensors](xref:sentis-do-basic-tensor-operations)

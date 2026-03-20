@@ -1,4 +1,9 @@
+---
+uid: sentis-index
+---
 # Sentis overview
+
+[!include[](snippets/name-change.md)]
 
 Sentis is a neural network inference library for Unity. It lets you import trained neural network models into Unity and run them in real-time with your target device’s compute resources, such as central processing unit (CPU) or graphics processing unit (GPU).
 
@@ -11,11 +16,11 @@ The package is officially released and available to all Unity users through the 
 
 |Section|Description|
 |-|-|
-|[Get started](get-started.md)|Learn how to install Sentis, explore sample projects, and understand the Sentis workflow.|
-|[Create a model](create-a-model.md)|Create a runtime model by importing an ONNX model file or using the Sentis model API.|
-|[Run a model](run-an-imported-model.md)|Create input data for a model, create an engine to run the model, and get output.|
-|[Use Tensors](use-tensors.md)|Learn how to get, set, and modify input and output data.|
-|[Profile a model](profile-a-model.md)|Use Unity tools to profile the speed and performance of a model.|
+|[Get started](xref:sentis-get-started)|Learn how to install Sentis, explore sample projects, and understand the Sentis workflow.|
+|[Create a model](xref:sentis-create-a-model)|Create a runtime model by importing an ONNX model file or using the Sentis model API.|
+|[Run a model](xref:sentis-run-an-imported-model)|Create input data for a model, create an engine to run the model, and get output.|
+|[Use Tensors](xref:sentis-use-tensors)|Learn how to get, set, and modify input and output data.|
+|[Profile a model](xref:sentis-profile-a-model)|Use Unity tools to profile the speed and performance of a model.|
 
 ## Supported platforms
 
@@ -26,15 +31,15 @@ Performance might vary based on:
 * Hardware and software platform constraints of your device
 * Type of engine used
 
-   For more information, refer to [Models](models-concept.md) and [Create an engine](create-an-engine.md).
+   For more information, refer to [Models](xref:sentis-models-concept) and [Create an engine](xref:sentis-create-an-engine).
 
 ## Supported model types
 
-Sentis supports most models in Open Neural Network Exchange (ONNX) format with an [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) between 7 and 15. For more information, refer to [Supported models](supported-models.md) and [Supported ONNX operators](supported-operators.md).
+Sentis supports most models in Open Neural Network Exchange (ONNX) format with an [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) between 7 and 25. For more information, refer to [Supported models](xref:sentis-supported-models) and [Supported ONNX operators](xref:sentis-supported-operators).
 
-Sentis supports most models in [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) format. For more information, refer to [Supported LiteRT operators](supported-litert-operators.md).
+Sentis supports most models in [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) format. For more information, refer to [Supported LiteRT operators](xref:sentis-supported-litert-operators).
 
-Sentis supports most models (exported programs) in [PyTorch](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html) format if they are decomposed to [Core ATen IR operators](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html). For more information, refer to [Supported PyTorch operators](supported-torch-export-operators.md).
+Sentis supports most models (exported programs) in [PyTorch](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html) format if they are decomposed to [Core ATen IR operators](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html). For more information, refer to [Supported PyTorch operators](xref:sentis-supported-torch-export-operators).
 
 ## Places to find pre-trained models
 
@@ -42,11 +47,11 @@ Sentis supports most models (exported programs) in [PyTorch](https://docs.pytorc
 
 ## Additional resources
 
-- [Sample scripts](package-samples.md)
+- [Sample scripts](xref:sentis-package-samples)
 - [Unity Discussions group](https://discussions.unity.com/tag/Sentis)
-- [Understand the Sentis workflow](understand-sentis-workflow.md)
-- [Sentis models](models-concept.md)
-- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
+- [Understand the Sentis workflow](xref:sentis-understand-sentis-workflow)
+- [Sentis models](xref:sentis-models-concept)
+- [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals)
 - [The AI menu](https://docs.unity3d.com/Manual/ai-menu.html) in Unity Editor
 - [Unity Dashboard AI settings](https://docs.unity.com/en-us/ai)
-- [Tokenize text for input](tokenizer.md)
+- [Tokenize text for input](xref:sentis-tokenizer)

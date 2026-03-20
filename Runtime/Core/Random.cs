@@ -1,63 +1,69 @@
-using System;
-using System.Runtime.InteropServices;
+
+using UnityEngine;
 
 namespace Unity.InferenceEngine
 {
-    /// <summary>
-    /// Helper struct class for converting between ints, uints and floats in bytes without allocation
-    /// </summary>
-    [StructLayout(LayoutKind.Explicit)]
-    struct Seed
-    {
-        [FieldOffset(0)]
-        public int intSeed;
-        [FieldOffset(0)]
-        public uint uintSeed;
-    }
-
     /// <summary>
     /// Represents a pseudo-random number generator used by Sentis.
     /// </summary>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class Random
     {
-        /// <summary>
-        /// Static global System.Random used for random values when no seed provided
-        /// </summary>
-        static System.Random s_Random = new System.Random();
+        const uint k_DefaultSeed = 0x6E624EB7u;
 
+        /// <summary>
+        /// Static global Mathematics.Random used for random values when no seed provided
+        /// </summary>
+        static Mathematics.Random s_Random = new (k_DefaultSeed);
+
+#if UNITY_EDITOR
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStaticsOnLoad()
+        {
+            s_Random = new Mathematics.Random(k_DefaultSeed);
+        }
+#endif
         /// <summary>
         /// Sets the global Sentis random state for random values without an explicit seed.
         /// </summary>
         /// <param name="seed">The seed to set the state to</param>
         public static void SetSeed(int seed)
         {
-            s_Random = new System.Random(seed);
+            var uintSeed = (seed == 0) ? k_DefaultSeed : (uint)seed;
+            s_Random = new Mathematics.Random(uintSeed);
         }
 
-        // Local System.Random used for random values when seed is provided
-        System.Random m_Random;
-
-        // Returns either local or global System.Random corresponding to given seed or not
-        System.Random SystemRandom => m_Random ?? s_Random;
+        // Local Mathematics.Random used for random values when seed is provided
+        Mathematics.Random? m_Random;
 
         internal Random() { }
 
         internal Random(int seed)
         {
-            m_Random = new System.Random(new Seed { intSeed = seed }.intSeed);
+            var uintSeed = (seed == 0) ? k_DefaultSeed : (uint)seed;
+            m_Random = new Mathematics.Random(uintSeed);
         }
 
-        // Returns float with random bytes to be used as seed for Random Op
+        // Returns int with random bytes to be used as seed for Random Op
         internal int NextSeed()
         {
-            return new Seed { intSeed = SystemRandom.Next(int.MinValue, int.MaxValue) }.intSeed;
+            if (m_Random.HasValue)
+            {
+                var random = m_Random.Value;
+                var result = random.NextInt(int.MinValue, int.MaxValue);
+                m_Random = random; // Update the struct state
+                return result;
+            }
+            else
+            {
+                return s_Random.NextInt(int.MinValue, int.MaxValue);
+            }
         }
 
         // Returns uint with random bytes to be used as seed inside Op and be passed to a job or as a seed for Mathematics.Random
         internal static uint GetSeed(int? seed)
         {
-            return seed.HasValue ? new Seed { intSeed = seed.Value }.uintSeed : new Seed { intSeed = s_Random.Next(int.MinValue, int.MaxValue) }.uintSeed;
+            return seed.HasValue ? (uint)seed.Value : (uint)s_Random.NextInt(int.MinValue, int.MaxValue);
         }
     }
 }

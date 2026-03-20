@@ -26,8 +26,8 @@ namespace Unity.InferenceEngine.Tokenization.Parsers.HuggingFace
         /// </param>
         /// <param name="parser">
         /// A reference to the parser instance actually building the tokenizer.
-        /// In case of sequences (<see cref="SequenceNormalizer"/>,
-        /// <see cref="SequencePostProcessor"/>, …), it allows the implementation to parse
+        /// In case of sequences (<see cref="Unity.InferenceEngine.Tokenization.Normalizers.SequenceNormalizer"/>,
+        /// <see cref="Unity.InferenceEngine.Tokenization.PostProcessors.SequencePostProcessor"/>, …), it allows the implementation to parse
         /// subcomponents.
         /// </param>
         /// <returns>

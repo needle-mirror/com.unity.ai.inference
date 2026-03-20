@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Unity.AppUI.Redux;
-using Unity.AppUI.UI;
 using Unity.InferenceEngine.Editor.Visualizer.GraphData;
 using Unity.InferenceEngine.Editor.Visualizer.StateManagement;
 using Unity.InferenceEngine.Editor.Visualizer.Views.Edges;
@@ -29,11 +27,11 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
         readonly Dictionary<EdgeData, EdgeView> m_EdgeViews = new();
 
         NodeData m_HighestNodeData;
-        EditorApplication.CallbackFunction m_OnAnimationUpdate;
         IDisposableSubscription m_StoreSubscription;
 
         public Dictionary<NodeData, NodeView> NodeViews => m_NodeViews;
         public Dictionary<EdgeData, EdgeView> EdgeViews => m_EdgeViews;
+        public GraphInspector GraphInspector => m_GraphInspector;
 
         public GraphView()
         {
@@ -82,6 +80,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                 m_NodeViews.Add(node, nodeView);
                 Add(nodeView);
             }
+
+            m_ScrollOffsetManipulator?.UpdateBoundsMarker();
         }
 
         void OnKeyDown(KeyDownEvent evt)
@@ -94,7 +94,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                 }
                 else //Handle view reset
                 {
-                    _ = FrameHighestNode();
+                    m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject?.Invoke(
+                        new FocusData(m_HighestNodeData, Vector2.up, ZoomLevel.MaxZoom, true)));
                 }
 
                 evt.StopPropagation();
@@ -133,7 +134,10 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
             m_VisualsStateHandler = new VisualsStateHandler(m_StoreManager, m_NodeViews, m_EdgeViews);
             this.AddManipulator(m_VisualsStateHandler);
 
-            _ = FrameHighestNode();
+            m_ScrollOffsetManipulator?.UpdateBoundsMarker();
+
+            m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject?.Invoke(
+                new FocusData(m_HighestNodeData, Vector2.up, ZoomLevel.MaxZoom, true)));
         }
 
         public void CreateEdges()
@@ -152,90 +156,6 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views
                 m_EdgeViews.Add(edge, edgeView);
                 Insert(0, edgeView); // Insert at index 0 to render edges behind nodes
             }
-        }
-
-        public async Task FramePosition(Vector2 position, Vector2 rectSize, bool skipAnimation)
-        {
-            this.RemoveManipulator(m_ScrollOffsetManipulator);
-            const float animationSpeed = 0.1f;
-
-            var currentZoom = zoom;
-            var currentTranslation = scrollOffset;
-
-            // Enforce minimum size constraints for better framing
-            rectSize.x = Mathf.Max(rectSize.x, ZoomLevel.MinZoom);
-            rectSize.y = Mathf.Max(rectSize.y, ZoomLevel.MinZoom);
-
-            // Adjust position to center the rect
-            position -= rectSize / 2f;
-
-            // Calculate target zoom and position
-            FrameArea(new Rect(position, rectSize));
-
-            if (skipAnimation)
-            {
-                this.AddManipulator(m_ScrollOffsetManipulator);
-                return;
-            }
-
-            var targetZoom = zoom;
-            var trayElement = m_GraphInspector.Tray.view.Q("appui-tray__tray");
-            var targetTranslation = scrollOffset + new Vector2(trayElement.resolvedStyle.width / 2f, 0);
-
-            // Reset to starting values before animation
-            zoom = currentZoom;
-            scrollOffset = currentTranslation;
-
-            var elapsed = 0.0;
-            var lastTime = EditorApplication.timeSinceStartup;
-
-            // Setup animation callback to run each editor update
-            m_OnAnimationUpdate = () =>
-            {
-                var now = EditorApplication.timeSinceStartup;
-                var deltaTime = now - lastTime;
-                lastTime = now;
-                elapsed += deltaTime;
-                var progress = Mathf.Clamp01((float)(elapsed / animationSpeed));
-
-                // Animate zoom and position
-                zoom = Mathf.Lerp(currentZoom, targetZoom, progress);
-                scrollOffset = Vector2.Lerp(currentTranslation, targetTranslation, progress);
-                MarkDirtyRepaint();
-
-                if (elapsed >= animationSpeed)
-                {
-                    // Cleanup when animation completes
-                    zoom = targetZoom;
-                    scrollOffset = targetTranslation;
-                    EditorApplication.update -= m_OnAnimationUpdate;
-                    m_OnAnimationUpdate = null;
-                    this.AddManipulator(m_ScrollOffsetManipulator);
-                }
-            };
-
-            EditorApplication.update += m_OnAnimationUpdate;
-
-            // Wait for animation to complete
-            while (elapsed < animationSpeed)
-            {
-                await Task.Yield();
-            }
-        }
-
-        async Task FrameHighestNode()
-        {
-            // Hide content until framing is complete
-            contentContainer.style.display = DisplayStyle.None;
-
-            // Center highest node vertically in view
-            var startPosition = m_HighestNodeData.CanvasPosition;
-            startPosition.y += (resolvedStyle.height - m_HighestNodeData.CanvasSize.y) / 2f;
-
-            await FramePosition(startPosition, new Vector2(ZoomLevel.MaxZoom, ZoomLevel.MaxZoom), true);
-
-            // Show content after framing
-            contentContainer.style.display = DisplayStyle.Flex;
         }
 
         public static class ZoomLevel

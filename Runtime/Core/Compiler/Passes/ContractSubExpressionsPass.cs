@@ -68,7 +68,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
 
             // swish
             var swishPattern = CreateGraphModule((g, x) => g.Mul(x, g.Sigmoid(x)));
-            SubgraphRewriter.ReplacePattern(gm, swishPattern, replacementCallback: (_, _, _) => CreateGraphModule((g, x) => g.Swish(x)).graph);
+            SubgraphRewriter.ReplacePattern(gm, swishPattern, replacementCallback: (_, _, _) => CreateGraphModule((g, x) => g.Swish(x, 1.0f)).graph);
 
             // gelu
             var geluPattern = CreateGraphModule((g, x) => g.Mul(g.Mul(x, g.Add(g.Erf(g.Div(x, g.Constant(Mathf.Sqrt(2f)))), g.Constant(1f))), g.Constant(0.5f)));

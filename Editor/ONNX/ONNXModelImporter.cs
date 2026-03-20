@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Unity.InferenceEngine.Editor.DynamicDims;
 using UnityEditor;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Analytics.Import;
+#endif
 
 [assembly: InternalsVisibleTo("Unity.InferenceEngine.EditorTests")]
 
@@ -57,26 +60,26 @@ namespace Unity.InferenceEngine.Editor.Onnx
 
         protected override Model LoadModel(AssetImportContext ctx)
         {
-            var converter = new ONNXModelConverter(ctx.assetPath);
-            converter.MetadataLoaded += metadata => InvokeMetadataHandlers(ctx, metadata);
+            m_ModelConverter = new ONNXModelConverter(ctx.assetPath);
 
-            var model = converter.Convert();
-            foreach (var warning in converter.Warnings)
+            if (m_ModelConverter is ONNXModelConverter converter)
             {
-                switch (warning.MessageSeverity)
+                converter.MetadataLoaded += metadata => InvokeMetadataHandlers(ctx, metadata);
+
+#if SENTIS_ANALYTICS_ENABLED
+                converter.OnOnnxDataType += dataType => m_ImportReport.sourceModel.AddDataType(dataType);
+                converter.OnOnnxDataTypeUnsupported += dataType => m_ImportReport.sourceModel.AddUnsupportedDataType(dataType);
+                converter.OnOnnxOperator += op =>
                 {
-                    case ModelConverterBase.WarningType.Warning:
-                        ctx.LogImportWarning(warning.Message);
-                        break;
-                    case ModelConverterBase.WarningType.Error:
-                        ctx.LogImportError(warning.Message);
-                        break;
-                    default:
-                    case ModelConverterBase.WarningType.None:
-                    case ModelConverterBase.WarningType.Info:
-                        break;
-                }
+                    m_ImportReport.sourceModel.layerCount++;
+                    m_ImportReport.sourceModel.AddOperator(op);
+                };
+                converter.OnOnnxOperatorUnsupported += op => m_ImportReport.sourceModel.AddUnsupportedOperator(op);
+                converter.OnOnnxModelProtoLoaded += modelProto => OnnxModelImportAnalyticsHelper.CaptureSourceModel(modelProto, m_ImportReport);
+#endif
             }
+
+            var model = m_ModelConverter.Convert();
 
             this.InitializeDynamicDimsConfig(model);
             this.ApplyDynamicDimConfigs(model);

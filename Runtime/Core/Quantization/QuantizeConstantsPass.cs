@@ -16,7 +16,7 @@ namespace Unity.InferenceEngine
             m_QuantizationType = quantizationType;
         }
 
-        static HashSet<string> layersToQuantize = new() { "Conv", "ConvTranspose", "Gather", "Dense", "MatMul", "MatMul2D" };
+        static readonly HashSet<string> layersToQuantize = new() { "Conv", "ConvTranspose", "Gather", "Dense", "MatMul", "MatMul2D" };
 
         public void Run(ref Model model)
         {

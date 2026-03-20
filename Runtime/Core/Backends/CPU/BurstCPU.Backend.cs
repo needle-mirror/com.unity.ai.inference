@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using Unity.Collections;
-using Unity.InferenceEngine.Layers;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -11,15 +10,22 @@ namespace Unity.InferenceEngine
 {
     partial class CPUBackend
     {
-        internal static FencedMemoryAlloc s_tmpMemBlock0 = new FencedMemoryAlloc();
-        internal static FencedMemoryAlloc s_tmpMemBlock1 = new FencedMemoryAlloc();
-
+        static FencedMemoryAlloc s_tmpMemBlock0 = new ();
         static BLASPlugin s_BLAS = BLASPluginFactory.CreateNativeBLASPlugin();
 
         // Do we need this class or operate on CPUTensorData instead?
-        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
-        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
-        TensorDataPool<CPUTensorData> m_MemoryPool = new TensorDataPool<CPUTensorData>();
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new ();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new ();
+        TensorDataPool<CPUTensorData> m_MemoryPool = new ();
+
+#if UNITY_EDITOR
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStaticsOnLoad()
+        {
+            s_tmpMemBlock0 = new ();
+            s_BLAS = BLASPluginFactory.CreateNativeBLASPlugin();
+        }
+#endif
 
         /// <summary>
         /// Initializes and returns an instance of `CPUBackend`.
@@ -1114,6 +1120,14 @@ namespace Unity.InferenceEngine
         public void Celu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new CeluJob();
+            job.alpha = alpha;
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
+        }
+
+        /// <inheritdoc/>
+        public void Swish(Tensor<float> X, Tensor<float> O, float alpha)
+        {
+            var job = new SwishJob();
             job.alpha = alpha;
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }

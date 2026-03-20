@@ -1,3 +1,6 @@
+---
+uid: sentis-export-convert-litert
+---
 # Export and convert a file to LiteRT
 
 The following sections describe how to export models in LiteRT format and convert models from other formats to LiteRT.
@@ -8,7 +11,7 @@ You can export a model from most machine learning frameworks in LiteRT format.
 
 To export a PyTorch model to LiteRT, refer to [Convert PyTorch models to LiteRT](https://ai.google.dev/edge/litert/models/convert_pytorch) on the LiteRT website.
 
-For more information about LiteRT compatibility, refer to [Import a model file](import-a-model-file.md).
+For more information about LiteRT compatibility, refer to [Import a model file](xref:sentis-import-a-model-file).
 
 ## Export TensorFlow files to LiteRT
 
@@ -55,5 +58,5 @@ To convert a checkpoint file to LiteRT, you must find the Python code that const
 
 ## Additional resources
 
-- [Supported LiteRT operators](supported-litert-operators.md)
-- [Profile a model](profile-a-model.md)
+- [Supported LiteRT operators](xref:sentis-supported-litert-operators)
+- [Profile a model](xref:sentis-profile-a-model)

@@ -13,13 +13,56 @@ namespace Unity.InferenceEngine
     /// <summary>
     /// Represents the shape of a tensor.
     /// </summary>
+    /// <remarks>
+    /// A `TensorShape` describes the shape of a <see cref="Tensor"/> or <see cref="FunctionalTensor"/>.
+    ///
+    /// `TensorShape` supports rank up to <see cref="maxRank"/> (`8`).
+    ///
+    /// Create a `TensorShape` using one of the constructors, or by
+    /// passing an array of integers.
+    ///
+    /// `TensorShape` provides methods for common shape transformations such as <see cref="Squeeze()"/> and <see cref="Squeeze(int)"/>,
+    /// <see cref="Unsqueeze"/>, <see cref="Flatten()"/>, <see cref="Broadcast"/>, and <see cref="Reduce"/>. These methods return new
+    /// `TensorShapes` without modifying the original.
+    ///
+    /// The <see cref="rank"/> property returns the number of dimensions, and the <see cref="length"/>
+    /// property returns the total number of elements (the product of all dimensions).
+    ///
+    /// **Additional resources:**
+    ///
+    /// - <see cref="Tensor"/>
+    /// - <see cref="FunctionalTensor"/>
+    /// - <see cref="DynamicTensorShape"/>
+    /// </remarks>
+    /// <example>
+    /// <para>Create `TensorShapes` and get their properties</para>
+    /// <code lang="cs"><![CDATA[
+    /// using Unity.InferenceEngine;
+    ///
+    /// // Create TensorShape
+    /// var shape = new TensorShape(3, 4);       // Shape: (3, 4), rank: 2
+    ///
+    /// // Create shape from an array
+    /// var shape2 = new TensorShape(new[] { 2, 3, 4, 5 });
+    /// // Shape: (2, 3, 4, 5), rank: 4
+    ///
+    /// // Shape properties
+    /// shape.rank;    // Returns 2
+    /// shape.length;  // Returns 12 (3 * 4)
+    /// shape[0];      // Returns 3
+    /// shape[-1];     // Returns 4 (last dimension)
+    /// ]]></code>
+    /// </example>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     [Serializable]
     public unsafe struct TensorShape
     {
         /// <summary>
-        /// The maximum rank a `TensorShape` can have.
+        /// The maximum rank (number of dimensions) a `TensorShape` can have.
         /// </summary>
+        /// <remarks>
+        /// This constant defines the upper limit for `rank` in Unity Inference Engine.
+        /// </remarks>
         public const int maxRank = 8;
 
 #pragma warning disable CS0649
@@ -46,30 +89,63 @@ namespace Unity.InferenceEngine
         int m_Rank;
 
         /// <summary>
-        /// The rank of a `TensorShape`. For example, a tensor of shape (5) has a rank of 1. A tensor of shape (7, 3, 5) has a rank of 3.
+        /// Gets the number of dimensions in the `TensorShape`.
         /// </summary>
+        /// <remarks>
+        /// The rank indicates how many dimensions the shape has. For example:
+        /// - A scalar has rank `0`
+        /// - A 1D tensor (vector) has rank `1`
+        /// - A 2D tensor (matrix) has rank `2`
+        /// - A 3D tensor has rank `3`, and so on
+        ///
+        /// The maximum rank is <see cref="maxRank"/>, which is `8`.
+        /// </remarks>
+        /// <example>
+        /// <para>Get the rank of a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(4, 3, 2, 4);
+        /// shape.rank;  // Returns 4
+        /// ]]></code>
+        /// </example>
         public int rank => m_Rank;
 
         int m_Length;
 
         /// <summary>
-        /// The number of elements represented by the `TensorShape`. For example a shape of (1, 2, 3, 4) represents 24 elements: `1 * 2 * 3 * 4`.
+        /// Gets the total number of elements in a tensor with this shape.
         /// </summary>
+        /// <remarks>
+        /// The length is the product of all dimensions.
+        /// A scalar tensor (rank `0`) has a length of `1`. A shape with any dimension `0`
+        /// has a length of `0`.
+        /// </remarks>
+        /// <example>
+        /// <para>Get the total number of elements in a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(4, 3, 2);
+        /// shape.length;  // Returns 24
+        /// ]]></code>
+        /// </example>
         public int length => rank == 0 ? 1 : m_Length;
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 8: (d0, d1, d2, d3, d4, d5, d6, d7).
-        ///
-        /// For example (2, 3, 4, 5, 6, 7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `8`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d5">Length of axis 5.</param>
-        /// <param name="d6">Length of axis 6.</param>
-        /// <param name="d7">Length of axis 7.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <param name="d3">Length of axis `3`.</param>
+        /// <param name="d4">Length of axis `4`.</param>
+        /// <param name="d5">Length of axis `5`.</param>
+        /// <param name="d6">Length of axis `6`.</param>
+        /// <param name="d7">Length of axis `7`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `8`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4, 5, 6, 7, 8, 9);
+        /// // Result: shape of rank 8
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5, int d6, int d7)
         {
             m_D7 = d0 >= 0 ? d0 : 0;
@@ -86,17 +162,22 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 7: (d0, d1, d2, d3, d4, d5, d6).
-        ///
-        /// For example (3, 4, 5, 6, 7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `7`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d5">Length of axis 5.</param>
-        /// <param name="d6">Length of axis 6.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <param name="d3">Length of axis `3`.</param>
+        /// <param name="d4">Length of axis `4`.</param>
+        /// <param name="d5">Length of axis `5`.</param>
+        /// <param name="d6">Length of axis `6`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `7`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(3, 3, 4, 4, 5, 5, 6);
+        /// // Result: shape of rank 7
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5, int d6)
         {
             m_D7 = 0;
@@ -113,16 +194,21 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 6: (d0, d1, d2, d3, d4, d5).
-        ///
-        /// For example (4, 5, 6, 7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `6`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d5">Length of axis 5.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <param name="d3">Length of axis `3`.</param>
+        /// <param name="d4">Length of axis `4`.</param>
+        /// <param name="d5">Length of axis `5`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `6`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(4, 5, 6, 7, 8, 9);
+        /// // Result: shape of rank 6
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5)
         {
             m_D7 = 0;
@@ -139,15 +225,20 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 5: (d0, d1, d2, d3, d4).
-        ///
-        /// For example (5, 6, 7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `5`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d4">Length of axis 4.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <param name="d3">Length of axis `3`.</param>
+        /// <param name="d4">Length of axis `4`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `5`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(5, 6, 7, 8, 9);
+        /// // Result: shape of rank 5
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2, int d3, int d4)
         {
             m_D7 = 0;
@@ -164,14 +255,19 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 4: (d0, d1, d2, d3).
-        ///
-        /// For example (6, 7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `4`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d3">Length of axis 3.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <param name="d3">Length of axis `3`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `4`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(6, 7, 8, 9);
+        /// // Result: shape of rank 4
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2, int d3)
         {
             m_D7 = 0;
@@ -188,13 +284,18 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 3: (d0, d1, d2).
-        ///
-        /// For example (7, 8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `3`.
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
-        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <param name="d2">Length of axis `2`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `3`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// // Result: shape of rank 3
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1, int d2)
         {
             m_D7 = 0;
@@ -211,12 +312,17 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 2: (d0, d1).
-        ///
-        /// For example (8, 9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `2` (matrix).
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
-        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <param name="d1">Length of axis `1`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `2` (matrix)</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(8, 2);
+        /// // Result: shape of rank 2
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0, int d1)
         {
             m_D7 = 0;
@@ -233,11 +339,16 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 1: (d0).
-        ///
-        /// For example (9).
+        /// Initializes and returns an instance of `TensorShape` with a rank of `1` (vector).
         /// </summary>
-        /// <param name="d0">Length of axis 0.</param>
+        /// <param name="d0">Length of axis `0`.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` of rank `1` (vector)</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(42);
+        /// // Result: shape of rank 1
+        /// ]]></code>
+        /// </example>
         public TensorShape(int d0)
         {
             m_D7 = 0;
@@ -254,13 +365,26 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a given shape. For example: `TensorShape(new [] {3, 4, 5, 6})` returns a tensor with a shape of (3, 4, 5, 6).
+        /// Initializes a `TensorShape` from a span of integers.
         /// </summary>
-        /// <param name="shape">The shape as a span.</param>
+        /// <remarks>
+        /// This constructor creates a `TensorShape` from a span of integers, where each
+        /// element specifies a dimension.
+        /// The maximum rank is <see cref="maxRank"/> (`8` dimensions).
+        /// </remarks>
+        /// <param name="shape">A span of integers representing each dimension.</param>
+        /// <example>
+        /// <para>Create a `TensorShape` from an array of integers</para>
+        /// <code lang="cs"><![CDATA[
+        /// // Create shape from an array
+        /// var shape = new TensorShape(new[] { 3, 4, 5, 6 });
+        /// // Result: (3, 4, 5, 6)
+        /// ]]></code>
+        /// </example>
         public TensorShape(ReadOnlySpan<int> shape)
             : this()
         {
-            Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
+            Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create TensorShape of rank {0}", shape.Length);
 
             m_Rank = shape.Length;
 
@@ -347,9 +471,26 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Gets or sets the tensor shape at a given axis. A negative axis counts backwards from the inner dimension.
+        /// Gets or sets the dimension of the `TensorShape` at a given `axis`.
         /// </summary>
-        /// <param name="axis">The axis to get or set.</param>
+        /// <remarks>
+        /// This indexer provides access to individual dimensions. Axes are indexed from `0` to
+        /// `rank-1`. Negative indices count backwards from the last dimension.
+        /// </remarks>
+        /// <param name="axis">The axis to get or set. Must be in the range `[-rank, rank-1]`.</param>
+        /// <example>
+        /// <para>Access and modify dimensions of a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// // Access a dimension
+        /// shape[1];   // Returns 3
+        /// shape[-1];  // Returns 4
+        ///
+        /// // Modify a dimension
+        /// shape[1] = 5;
+        /// // shape is now (2, 5, 4)
+        /// ]]></code>
+        /// </example>
         public int this[int axis]
         {
             get
@@ -376,18 +517,42 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Calculates whether any axes are length 0. In this case the length is also 0.
+        /// Checks whether the shape has any dimension equal to `0`.
         /// </summary>
-        /// <returns>Whether the shape has any axes that are length 0.</returns>
+        /// <remarks>
+        /// A shape with any dimension equal to `0` has a <see cref="length"/> of `0`, even if other
+        /// dimensions are non-zero.
+        /// This method returns `false` for scalar tensors (rank `0`).
+        /// </remarks>
+        /// <returns>`true` if the shape has rank greater than `0` and at least one dimension is `0`; otherwise, `false`.</returns>
+        /// <example>
+        /// <para>Check if a `TensorShape` has any dimension equal to `0`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new TensorShape(3, 4, 5);
+        /// shape1.HasZeroDims();  // Returns false
+        /// var shape2 = new TensorShape(3, 0, 5);
+        /// shape2.HasZeroDims();  // Returns true
+        /// ]]></code>
+        /// </example>
         public bool HasZeroDims()
         {
             return length == 0 && rank > 0;
         }
 
         /// <summary>
-        /// Returns a string that represents the `TensorShape`.
+        /// Returns a string representation of the `TensorShape`.
         /// </summary>
-        /// <returns>String representation of shape.</returns>
+        /// <remarks>
+        /// The string format displays all dimensions in parentheses, separated by commas.
+        /// </remarks>
+        /// <returns>A string showing all dimensions in the format `"(d0, d1, ..., dn)"`.</returns>
+        /// <example>
+        /// <para>Get a string representation of a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// shape.ToString();  // Returns "(2, 3, 4)"
+        /// ]]></code>
+        /// </example>
         public override string ToString()
         {
             var sb = new StringBuilder();
@@ -404,10 +569,23 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns the number of elements represented by the `TensorShape`, starting from a given axis. A negative axis counts backwards from the inner dimension.
+        /// Returns the number of elements from a given `start` axis to the end.
         /// </summary>
-        /// <param name="start">The first axis to count length from.</param>
-        /// <returns>The number of elements in the shape.</returns>
+        /// <remarks>
+        /// This method calculates the product of dimensions from the `start` axis through
+        /// the last axis. Negative `start` values count backwards from the innermost dimension.
+        /// If `start` is beyond the shape's rank, returns `1`.
+        /// </remarks>
+        /// <param name="start">The first axis to count from. Negative values count from the end.</param>
+        /// <returns>The product of dimensions from `start` to the last axis.</returns>
+        /// <example>
+        /// <para>Calculate the number of elements from a given axis to the end</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4, 5);
+        /// shape.Length(1);   // Returns 60 (3 * 4 * 5)
+        /// shape.Length(-2);  // Returns 20 (4 * 5)
+        /// ]]></code>
+        /// </example>
         public int Length(int start)
         {
             if (start >= rank)
@@ -429,11 +607,25 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns the number of elements represented by the `TensorShape`, between the start and end axes. Negative axes counts backwards from the inner dimension.
+        /// Returns the number of elements within a range of axes.
         /// </summary>
-        /// <param name="start">The first axis to count length from.</param>
-        /// <param name="end">The exclusive final axis to count length to.</param>
-        /// <returns>The number of elements in the shape.</returns>
+        /// <remarks>
+        /// This method calculates the product of the dimensions from the `start` axis up to,
+        /// but not including, the `end` axis. Negative axis values count backwards from the
+        /// innermost dimension. If the range is out of bounds or empty, returns `1`.
+        /// </remarks>
+        /// <param name="start">The first axis to count from (inclusive). Negative values count from the end.</param>
+        /// <param name="end">The final axis to count to (exclusive). Negative values count from the end.</param>
+        /// <returns>The product of dimensions in the range [start, end).</returns>
+        /// <example>
+        /// <para>Calculate the number of elements within a range of axes</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4, 5);
+        /// shape.Length(1, 3);   // Returns 12 (3 * 4)
+        /// shape.Length(-2, -1); // Returns 4
+        /// shape.Length(1, 1);   // Returns 1
+        /// ]]></code>
+        /// </example>
         public int Length(int start, int end)
         {
             if (start >= rank || end < -rank)
@@ -494,9 +686,20 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns the `TensorShape` as an array of integers. For example if the `TensorShape` is (5, 2, 3, 4), the method returns new[] {5, 2, 3, 4}.
+        /// Returns the `TensorShape` as an array of integers.
         /// </summary>
-        /// <returns>An integer array representation of the shape.</returns>
+        /// <remarks>
+        /// This method creates a new integer array representing the `TensorShape`.
+        /// </remarks>
+        /// <returns>An integer array where each element is the corresponding dimension.</returns>
+        /// <example>
+        /// <para>Get a representation of a `TensorShape` as an array of integers</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// int[] array = shape.ToArray();
+        /// // array is [2, 3, 4]
+        /// ]]></code>
+        /// </example>
         public int[] ToArray()
         {
             var shape = new int[rank];
@@ -512,9 +715,23 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates a `TensorShape` by duplicating `this` and removing the dimensions of size 1. For example, if `this` is (5, 1, 3, 1), the method returns (5, 3).
+        /// Removes all dimensions equal to `1` from a `TensorShape`.
         /// </summary>
-        /// <returns>The squeezed tensor shape.</returns>
+        /// <remarks>
+        /// This method returns a new `TensorShape` with all dimensions `1` removed.
+        /// The original shape is not modified.
+        ///
+        /// This method cannot be called on scalar tensors (rank `0`).
+        /// </remarks>
+        /// <returns>A new `TensorShape` with all dimensions `1` removed.</returns>
+        /// <example>
+        /// <para>Remove all dimensions equal to `1` from a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(5, 1, 3, 1);
+        /// var squeezed = shape.Squeeze();
+        /// // Result: (5, 3)
+        /// ]]></code>
+        /// </example>
         public TensorShape Squeeze()
         {
             Logger.AssertIsTrue(rank != 0, "ValueError: cannot squeeze scalar tensor {0}", this);
@@ -543,10 +760,28 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates a `TensorShape` by duplicating `this` and removing the given axis of size 1. For example, if `this` is (5, 1, 3, 1), and `axis` is 1, the method returns (5, 3, 1).
+        /// Removes a specific dimension, equal to `1`, from a `TensorShape`.
         /// </summary>
-        /// <param name="axis">The axis to squeeze.</param>
-        /// <returns>The squeezed tensor shape.</returns>
+        /// <remarks>
+        /// This method returns a new `TensorShape` with the specified `axis` removed. The `axis` must
+        /// have size `1`. Negative `axis` values count backwards from the
+        /// last dimension. The original shape is not modified.
+        ///
+        /// This method cannot be called on scalar tensors (rank `0`).
+        /// </remarks>
+        /// <param name="axis">The axis to remove. Must be a dimension equal to `1` Negative values count from the end.</param>
+        /// <returns>A new `TensorShape` with the specified dimension removed.</returns>
+        /// <example>
+        /// <para>Remove a dimension equal to `1` from a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(5, 1, 3, 1);
+        ///
+        /// var squeezed1 = shape.Squeeze(1);
+        /// // Result: (5, 3, 1)
+        /// var squeezed2 = shape.Squeeze(-1);
+        /// // Result: (5, 1, 3)
+        /// ]]></code>
+        /// </example>
         public TensorShape Squeeze(int axis)
         {
             Logger.AssertIsTrue(rank != 0, "ValueError: cannot squeeze scalar tensor {0}", this);
@@ -627,16 +862,33 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates a `TensorShape` by duplicating `this` and inserting a dimension of size one at a given axis. For example if `this` is (2), and the value of `axis` is 0, the method returns (1, 2).
+        /// Inserts a dimension `1` in a `TensorShape` at a specified `axis`.
         /// </summary>
-        /// <param name="axis">The axis at which to unsqueeze.</param>
-        /// <returns>The unsqueezed tensor shape.</returns>
+        /// <remarks>
+        /// This method returns a new `TensorShape` with a dimension `1` inserted at the
+        /// specified `axis`.
+        /// Negative `axis` values are interpreted in the context of the new, expanded rank.
+        ///
+        /// The maximum rank is `8`, so this method cannot be called on a tensor of rank `8`.
+        /// </remarks>
+        /// <param name="axis">The position to insert the new dimension. Negative values count from the end in the new rank.</param>
+        /// <returns>A new `TensorShape` with an additional dimension `1`.</returns>
+        /// <example>
+        /// <para>Insert a dimension of `1` at a specified axis</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(3, 4);
+        /// var unsqueezed0 = shape.Unsqueeze(0);
+        /// // Result: (1, 3, 4)
+        /// var unsqueezed1 = shape.Unsqueeze(-1);
+        /// // Result: (3, 4, 1)
+        /// ]]></code>
+        /// </example>
         public TensorShape Unsqueeze(int axis)
         {
             if (rank == 0)
                 return new TensorShape(1);
 
-            Logger.AssertIsTrue(rank != maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze rank 8 tensorshape {0}", this);
+            Logger.AssertIsTrue(rank != maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze rank 8 TensorShape {0}", this);
 
             int unsqueezedRank = rank + 1;
             var unsqueezed = new TensorShape();
@@ -674,7 +926,7 @@ namespace Unity.InferenceEngine
         /// <returns>The unsqueezed tensor shape.</returns>
         internal TensorShape Unsqueeze(ReadOnlySpan<int> axes)
         {
-            Logger.AssertIsTrue(rank + axes.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze tensorshape {0} to rank greater than 8", this);
+            Logger.AssertIsTrue(rank + axes.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze TensorShape {0} to rank greater than 8", this);
 
             int unsqueezedRank = rank + axes.Length;
             var unsqueezed = new TensorShape();
@@ -717,7 +969,7 @@ namespace Unity.InferenceEngine
         /// <returns>The reshape tensor shape.</returns>
         internal TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
         {
-            Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
+            Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create TensorShape of rank {0}", shape.Length);
 
             var reshapedRank = shape.Length;
             var reshaped = new TensorShape();
@@ -815,23 +1067,52 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates a `TensorShape` by duplicating `this` and flattening to a 1D shape of the same length.
-        ///
-        /// For example, if `this` is (2, 3, 4), the method returns (2 * 3 * 4).
+        /// Gets a 1D `TensorShape` (vector) representation of this `TensorShape`.
         /// </summary>
-        /// <returns>The flattened tensor shape.</returns>
+        /// <remarks>
+        /// This method returns a new `TensorShape` of rank `1` (vector).
+        /// The flattened shape has a single dimension equal to the original <see cref="length"/>.
+        /// </remarks>
+        /// <returns>A new `TensorShape` of rank `1` with <see cref="length"/> equal to the original length.</returns>
+        /// <example>
+        /// <para>Flatten a `TensorShape` to a vector shape</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// var flattened = shape.Flatten();
+        /// // Result: (24)
+        /// ]]></code>
+        /// </example>
         public TensorShape Flatten()
         {
             return new TensorShape(length);
         }
 
         /// <summary>
-        /// Creates a `TensorShape` by applying numpy-style broadcasting between `this` and `other`.
-        ///
-        /// Sentis broadcasts shapes from innermost to outermost dimensions. Two dimensions are compatible when they're equal, or one of the dimensions is 1.
+        /// Broadcasts this `TensorShape` with another `TensorShape`.
         /// </summary>
-        /// <param name="other">The other tensor shape which which to broadcast.</param>
-        /// <returns>The broadcast tensor shape.</returns>
+        /// <remarks>
+        /// This method computes the broadcasted shape following NumPy broadcasting rules:
+        /// - Shapes are aligned from the innermost (rightmost) dimension
+        /// - Dimensions are compatible if they're equal, or one of them is `1`
+        /// - The result shape has the maximum of compatible dimensions
+        /// - The result rank is the maximum of the two input ranks
+        ///
+        /// An error occurs if dimensions are incompatible (neither equal nor `1`).
+        /// </remarks>
+        /// <param name="other">The other `TensorShape` to broadcast with.</param>
+        /// <returns>A new `TensorShape` representing the broadcasted result.</returns>
+        /// <example>
+        /// <para>Broadcast two `TensorShapes` together</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new TensorShape(1, 3, 4);
+        /// var shape2 = new TensorShape(2, 1, 4);
+        /// var broadcast = shape1.Broadcast(shape2);
+        /// // Result: (2, 3, 4)
+        /// var shape3 = new TensorShape(3, 4);
+        /// var broadcast2 = shape2.Broadcast(shape3);
+        /// // Result: (2, 3, 4)
+        /// ]]></code>
+        /// </example>
         public TensorShape Broadcast(TensorShape other)
         {
             TensorShape broadcast = new TensorShape();
@@ -866,10 +1147,22 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates a `TensorShape` with a given rank where all of the dimensions are 1. For example if `rank` is 3, the method returns (1, 1, 1).
+        /// Creates a `TensorShape` with all dimensions equal to `1`.
         /// </summary>
-        /// <param name="rank">The rank of the tensor shape.</param>
-        /// <returns>The created tensor shape.</returns>
+        /// <remarks>
+        /// This static method creates a new `TensorShape` with the specified `rank` where every
+        /// dimension is `1`. The resulting shape has a <see cref="length"/> of `1`.
+        /// The maximum rank is `8`.
+        /// </remarks>
+        /// <param name="rank">The number of dimensions in the shape. Must be between `0` and `8`.</param>
+        /// <returns>A new `TensorShape` with all dimensions equal to `1`.</returns>
+        /// <example>
+        /// <para>Create a `TensorShape` with all dimensions equal to `1`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var ones = TensorShape.Ones(3);
+        /// // Result: (1, 1, 1)
+        /// ]]></code>
+        /// </example>
         public static TensorShape Ones(int rank)
         {
             Logger.AssertIsTrue(rank <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create empty shape of rank {0}", rank);
@@ -949,7 +1242,7 @@ namespace Unity.InferenceEngine
         ///
         /// For example if `this` is (2, 3, 4, 5), `other` is (2, 2, 4, 5), and the value of `axis` is 1, the method returns (2, 5, 4, 5).
         /// </summary>
-        /// <param name="other">The other tensor shape which which to concatenate.</param>
+        /// <param name="other">The other tensor shape with which to concatenate.</param>
         /// <param name="axis">The axis along which to concatenate.</param>
         /// <returns>The concatenated tensor shape.</returns>
         internal TensorShape Concat(TensorShape other, int axis)
@@ -978,13 +1271,35 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Removes a dimension at `axis`. For example, if `this` is (2, 3, 4, 5), the value of `axis` is 1, and the value of `keepDim` is `true`, the method returns (2, 1, 4, 5).
-        ///
-        /// This version of the op does not allow reducing over length 0 dims.
+        /// Reduces a `TensorShape`'s dimension along `axis`.
         /// </summary>
-        /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepDim">When the value is `true`, Sentis replaces the dimension with 1.</param>
-        /// <returns>The reduced tensor shape.</returns>
+        /// <remarks>
+        /// This method returns a new `TensorShape` that represents the result of a reduction
+        /// operation along the specified `axis`. If `keepDim` is `true`, the dimension is
+        /// replaced with `1`. If `keepDim` is `false`, the dimension is removed entirely.
+        ///
+        /// For scalar tensors (rank `0`), returns the same shape if `keepDim` is `true`.
+        ///
+        /// This method does not allow reducing over dimensions equal to `0` when `keepDim` is `false`.
+        /// </remarks>
+        /// <param name="axis">The axis along which to reduce. Negative values count from the end.</param>
+        /// <param name="keepDim">When `true`, the reduced dimension becomes `1`. When `false`, the dimension is removed.</param>
+        /// <returns>A new `TensorShape` with the dimension `axis` reduced.</returns>
+        /// <example>
+        /// <para>Reduce a dimension along a specified axis</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4, 5);
+        ///
+        /// var reduced1 = shape.Reduce(1, keepDim: true);
+        /// // Result: (2, 1, 4, 5)
+        ///
+        /// var reduced2 = shape.Reduce(1, keepDim: false);
+        /// // Result: (2, 4, 5)
+        ///
+        /// var reduced3 = shape.Reduce(-1, keepDim: true);
+        /// // Result: (2, 3, 4, 1) - reduced last dimension
+        /// ]]></code>
+        /// </example>
         public TensorShape Reduce(int axis, bool keepDim = true)
         {
             TensorShape reducedShape = new TensorShape(this);
@@ -1283,8 +1598,8 @@ namespace Unity.InferenceEngine
         /// </summary>
         /// <param name="a">The first shape to compare.</param>
         /// <param name="b">The second shape to compare.</param>
-        /// <param name="tailLength">The number of outermost dimensions to compare.</param>
-        /// <param name="outermostNonMatchingDimension">Output the outermost dimension number that didn't matchheadLength (headLength if all match).</param>
+        /// <param name="headLength">The number of outermost dimensions to compare.</param>
+        /// <param name="outermostNonMatchingDimension">Output the outermost dimension number that didn't match headLength (headLength if all match).</param>
         /// <returns>
         /// True if headLength == 0.
         /// Otherwise true if the two shapes are equal along the headLength outermost dimensions.
@@ -1312,11 +1627,26 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Compares two `TensorShape` objects. Returns `true` if the two objects have the same rank, and all their dimensions are equal.
+        /// Compares two `TensorShapes` for equality.
         /// </summary>
-        /// <param name="a">The first shape to compare.</param>
-        /// <param name="b">The second shape to compare.</param>
-        /// <returns>Whether the two shapes are equal.</returns>
+        /// <remarks>
+        /// Two `TensorShapes` are equal if they have the same <see cref="rank"/> and all
+        /// corresponding dimensions are equal. The comparison checks both rank and length first
+        /// for efficiency before comparing individual dimensions.
+        /// </remarks>
+        /// <param name="a">The first `TensorShape`.</param>
+        /// <param name="b">The second `TensorShape`.</param>
+        /// <returns>`true` if both shapes have the same rank and all dimensions are equal; otherwise, `false`.</returns>
+        /// <example>
+        /// <para>Compare two `TensorShapes`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new TensorShape(2, 3, 4);
+        /// var shape2 = new TensorShape(2, 3, 5);
+        ///
+        /// shape1 == shape1;  // Returns true
+        /// shape1 == shape2;  // Returns false
+        /// ]]></code>
+        /// </example>
         public static bool operator ==(TensorShape a, TensorShape b)
         {
             if (a.rank != b.rank)
@@ -1335,21 +1665,52 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Compares two `TensorShape` objects.
+        /// Compares two `TensorShapes` for inequality.
         /// </summary>
-        /// <param name="a">The first shape to compare.</param>
-        /// <param name="b">The second shape to compare.</param>
-        /// <returns>Whether the two shapes are not equal.</returns>
+        /// <remarks>
+        /// Two `TensorShapes` are not equal if they have different ranks or any
+        /// corresponding dimensions differ.
+        /// </remarks>
+        /// <param name="a">The first `TensorShape`.</param>
+        /// <param name="b">The second `TensorShape`.</param>
+        /// <returns>`true` if the shapes differ in rank or any dimension; otherwise, `false`.</returns>
+        /// <example>
+        /// <para>Compare two `TensorShapes` for inequality</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new TensorShape(2, 3, 4);
+        /// var shape2 = new TensorShape(2, 3, 5);
+        ///
+        /// shape1 != shape2;  // Returns true
+        /// shape1 != shape1;  // Returns false
+        /// ]]></code>
+        /// </example>
         public static bool operator !=(TensorShape a, TensorShape b)
         {
             return !(a == b);
         }
 
         /// <summary>
-        /// Determines whether the specified object is equal to the current `TensorShape`.
+        /// Determines whether this `TensorShape` is equal to the specified object.
         /// </summary>
-        /// <param name="obj">The object to compare to the shape.</param>
-        /// <returns>Whether the object is equal to the shape.</returns>
+        /// <remarks>
+        /// This method checks if `obj` is a `TensorShape` with the same rank and dimensions.
+        /// Returns `false` if `obj` is null or not a `TensorShape`.
+        /// </remarks>
+        /// <param name="obj">The <see cref="object"/> to compare.</param>
+        /// <returns>`true` if `obj` is a `TensorShape` equal to this shape; otherwise, `false`.</returns>
+        /// <example>
+        /// <para>Check if a `TensorShape` equals another object</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new TensorShape(2, 3, 4);
+        /// var shape2 = new TensorShape(2, 3, 4);
+        /// var shape3 = new TensorShape(2, 3, 5);
+        /// var notShape = "not a shape";
+        ///
+        /// shape1.Equals(shape2);    // Returns true
+        /// shape1.Equals(shape3);    // Returns false
+        /// shape1.Equals(notShape);  // Returns false
+        /// ]]></code>
+        /// </example>
         public override bool Equals(object obj)
         {
             // Check for null values and compare run-time types.
@@ -1360,9 +1721,20 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Serves as the default hash function.
+        /// Returns a hash code for this `TensorShape`.
         /// </summary>
-        /// <returns>The hash code of the tensor shape.</returns>
+        /// <remarks>
+        /// The hash code is computed from the rank and all dimension values. TensorShapes
+        /// that are <see cref="Equals"/> produce the same hash code.
+        /// </remarks>
+        /// <returns>A hash code value for this `TensorShape`.</returns>
+        /// <example>
+        /// <para>Get the hash code for a `TensorShape`</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new TensorShape(2, 3, 4);
+        /// shape.GetHashCode();  // Hash code specific to shape (2, 3, 4)
+        /// ]]></code>
+        /// </example>
         public override int GetHashCode()
         {
             return HashCode.Combine(m_Rank, HashCode.Combine(m_D7, m_D6, m_D5, m_D4, m_D3, m_D2, m_D1, m_D0));

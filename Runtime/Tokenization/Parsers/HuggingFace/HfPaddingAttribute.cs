@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace Unity.InferenceEngine.Tokenization.Parsers.HuggingFace
 {
     /// <summary>
-    /// Identifies the parser for an implementation of <see cref="IPadding"/>
+    /// Identifies the parser for an implementation of <see cref="Unity.InferenceEngine.Tokenization.Padding.IPadding"/>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public class HfPaddingAttribute : HfAttribute

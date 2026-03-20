@@ -1,3 +1,6 @@
+---
+uid: sentis-inspect-a-model
+---
 # Inspect a model
 
 You can inspect a runtime model to view its inputs, outputs, and layers. This helps debug, understand the model structure, or verify model data after import.
@@ -36,7 +39,7 @@ public class GetModelInputs : MonoBehaviour
 }
 ```
 
-Input dimensions can be fixed or dynamic. For more information, refer to [Model inputs](models-concept.md#model-inputs).
+Input dimensions can be fixed or dynamic. For more information, refer to [Model inputs](xref:sentis-models-concept#model-inputs).
 
 ## Get model outputs
 
@@ -61,12 +64,12 @@ Use the [`layers`](xref:Unity.InferenceEngine.Model.layers) property of the runt
 
 ## Open a model as a graph
 
-To view a runtime model as a graph, refer to the [Model Visualizer](visualizer.md). This tool provides a graphical representation of the model, so you can inspect its structure, inputs, outputs, and layers.
+To view a runtime model as a graph, refer to the [Model Visualizer](xref:sentis-visualizer). This tool provides a graphical representation of the model, so you can inspect its structure, inputs, outputs, and layers.
 
 ## Additional resources
 
-- [Profile a model](profile-a-model.md)
-- [Tensor fundamentals](tensor-fundamentals.md)
-- [Supported ONNX operators](supported-operators.md)
-- [Supported LiteRT operators](supported-litert-operators.md)
-- [Supported PyTorch operators](supported-torch-export-operators.md)
+- [Profile a model](xref:sentis-profile-a-model)
+- [Tensor fundamentals](xref:sentis-tensor-fundamentals)
+- [Supported ONNX operators](xref:sentis-supported-operators)
+- [Supported LiteRT operators](xref:sentis-supported-litert-operators)
+- [Supported PyTorch operators](xref:sentis-supported-torch-export-operators)

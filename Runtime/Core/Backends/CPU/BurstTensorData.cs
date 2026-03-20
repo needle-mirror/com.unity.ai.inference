@@ -8,6 +8,35 @@ using UnityEngine;
 
 namespace Unity.InferenceEngine
 {
+    internal class TensorDataHelper
+    {
+        internal static bool OnMainThread => (System.Threading.Thread.CurrentThread.ManagedThreadId == s_MainThreadId);
+
+        static int s_MainThreadId = 1;
+
+        /// <summary>
+        /// Capture the correct main thread ID for Unity Runtime
+        /// RuntimeInitializeOnLoadMethod is guaranteed to run on the main thread during Unity runtime initialization
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetMainThread()
+        {
+            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Capture the correct main thread ID for Unity Editor
+        /// is guaranteed to run on the main thread during Unity Editor initialization
+        /// </summary>
+        [UnityEditor.InitializeOnLoadMethod]
+        static void SetMainThread()
+        {
+            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
+        }
+#endif
+    }
+
     /// <summary>
     /// An interface that provides methods for converting custom tensor data to `CPUTensorData`.
     /// </summary>
@@ -46,8 +75,6 @@ namespace Unity.InferenceEngine
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     public class CPUTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData
     {
-        static int s_MainThreadId;
-
         bool m_IsDisposed;
         JobHandle m_ReadFence;
         JobHandle m_WriteFence;
@@ -71,28 +98,6 @@ namespace Unity.InferenceEngine
 
         /// <inheritdoc/>
         public unsafe void* rawPtr => m_Array.AddressAt<float>(0);
-
-#if UNITY_EDITOR
-        /// <summary>
-        /// Capture the correct main thread ID for Unity Editor
-        /// is guaranteed to run on the main thread during Unity Editor initialization
-        /// </summary>
-        [UnityEditor.InitializeOnLoadMethod]
-        static void SetMainThread()
-        {
-            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
-        }
-#endif
-
-        /// <summary>
-        /// Capture the correct main thread ID for Unity Runtime
-        /// RuntimeInitializeOnLoadMethod is guaranteed to run on the main thread during Unity runtime initialization
-        /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetMainThread()
-        {
-            s_MainThreadId = Thread.CurrentThread.ManagedThreadId;
-        }
 
         /// <summary>
         /// Initializes and returns an instance of `CPUTensorData`, and allocates storage for a tensor with the shape of `shape`.
@@ -147,16 +152,15 @@ namespace Unity.InferenceEngine
             if (!m_SafeToDispose)
             {
                 // Only complete operations if the job system is available (must be on main thread)
-                if (Thread.CurrentThread.ManagedThreadId == s_MainThreadId)
+                if (TensorDataHelper.OnMainThread)
                 {
                     CompleteAllPendingOperations();
                 }
-                else if (m_ReadFence.IsCompleted && m_WriteFence.IsCompleted)
-                {
-                    m_SafeToDispose = true;
-                }
                 else
                 {
+                    // Note: if not on main thread, it is not even safe to check the jobhandle object itself,
+                    // will crash the editor on closing it / teardown, so can't do
+                    //      else if (m_ReadFence.IsCompleted && m_WriteFence.IsCompleted)
                     D.LogWarning("CPUTensorData.Dispose() called from a non-main thread while operations are pending");
                     return;
                 }
@@ -169,6 +173,7 @@ namespace Unity.InferenceEngine
             }
 
             m_IsDisposed = true;
+            System.GC.SuppressFinalize(this);
         }
 
         /// <inheritdoc/>

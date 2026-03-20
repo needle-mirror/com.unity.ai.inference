@@ -1,5 +1,7 @@
-
-# Upgrade to Sentis 2.5
+---
+uid: sentis-upgrade-guide
+---
+# Upgrade to Sentis 2.5 or 2.6
 
 You do not need to take any actions to upgrade your project when upgrading from Sentis 2.4. If you are upgrading from an earlier version please follow the instructions below.
 
@@ -26,7 +28,7 @@ To upgrade from Sentis 2.1 to Inference Engine 2.2, follow these steps:
 
 ## Additional resources
 
-* [Get started](get-started.md)
-* [Create a model](create-a-model.md)
-* [Run an imported model](run-an-imported-model.md)
-* [Use Tensors](use-tensors.md)
+* [Get started](xref:sentis-get-started)
+* [Create a model](xref:sentis-create-a-model)
+* [Run an imported model](xref:sentis-run-an-imported-model)
+* [Use Tensors](xref:sentis-use-tensors)

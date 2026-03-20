@@ -552,8 +552,8 @@ cbuffer TestBuffer
 #define MIN_WHEN_NON_D3D(val, maxidx) (val)
 #endif
 
-//#if defined(SHADER_API_METAL) || defined(UNITY_PLATFORM_OSX) || defined(UNITY_PLATFORM_IOS)
-#if defined(UNITY_PLATFORM_IOS)
+//On some platforms somewhere in the compilation chain incorrect systematic loads can be done even with (and replacing) the if clause guarding the load. This is a bug.
+#if !defined(SHADER_API_D3D11)
 #define MIN_PATCHBUG(val, maxidx) (min((val), (maxidx)))
 #else
 #define MIN_PATCHBUG(val, maxidx) (val)

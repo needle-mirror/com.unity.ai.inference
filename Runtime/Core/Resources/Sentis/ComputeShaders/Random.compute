@@ -104,7 +104,11 @@ void TopP(uint3 dispatchThreadID : SV_DispatchThreadID)
     if (threadIdx >= outerLength)
         return;
 
+    // Count: number of output samples per batch, 1 batch == 1 particular multinomial distribution
+    // for each batch, innerLength is the number of categories
+
     int n = threadIdx / count;
+    // n is the batch number
 
     float prob = Bptr[threadIdx];
     float accum = 0.0f;

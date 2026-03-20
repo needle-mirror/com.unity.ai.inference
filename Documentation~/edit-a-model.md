@@ -1,3 +1,6 @@
+---
+uid: sentis-edit-a-model
+---
 # Edit a model
 
 Use the Sentis [`Functional`](xref:Unity.InferenceEngine.Functional) API to edit a model after you create or load it.
@@ -50,12 +53,12 @@ public class AddOutput : MonoBehaviour
 
 ```
 
-Sentis runs [model optimization](models-concept.md#how-sentis-optimizes-a-model) on models you create with the [`Functional`](xref:Unity.InferenceEngine.Functional) API. Consequently, the operations used during inference might differ from what you expect.
+Sentis runs [model optimization](xref:sentis-models-concept#how-sentis-optimizes-a-model) on models you create with the [`Functional`](xref:Unity.InferenceEngine.Functional) API. Consequently, the operations used during inference might differ from what you expect.
 
 > [!NOTE]
-> [`Compile`](xref:Unity.InferenceEngine.FunctionalGraph.Compile*) is a slow operation that requires significant memory. It's recommended to run this offline and serialize the computed model. For more information, refer to [Serialize A Model](serialize-a-model.md).
+> [`Compile`](xref:Unity.InferenceEngine.FunctionalGraph.Compile*) is a slow operation that requires significant memory. It's recommended to run this offline and serialize the computed model. For more information, refer to [Serialize A Model](xref:sentis-serialize-a-model).
 
 ## Additional resources
 
-- [Supported functional methods](supported-functional-methods.md)
-- [Encrypt a model](encrypt-a-model.md)
+- [Supported functional methods](xref:sentis-supported-functional-methods)
+- [Encrypt a model](xref:sentis-encrypt-a-model)

@@ -1,30 +1,30 @@
 {
   "name": "com.unity.ai.inference",
   "displayName": "Sentis",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "unity": "6000.0",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
   "dependencies": {
     "com.unity.burst": "1.8.17",
     "com.unity.collections": "2.4.3",
     "com.unity.modules.imageconversion": "1.0.0",
-    "com.unity.dt.app-ui": "1.3.3",
+    "com.unity.dt.app-ui": "1.3.6",
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   },
   "relatedPackages": {
     "com.unity.ai.inference.tests": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- `PyTorch` model import\n- `LRN (Local Response Normalization)` operator implemented on all backends\n- `3D MaxPool` and `AveragePool` operators implemented on all backends\n- Sentis Importer: Allow users to specify dynamic dimensions as static on Sentis model import, same as we do for ONNX\n- Tokenizer Additions\n    - `Hugging Face` parser\n\t- Sequence decoder\n\t- Regex replace decoder\n\t- String split pre-tokenizer\n\t- Unigram Mapper\n\t- Byte-based substring feature to SubString\n\t- Padding: support \"pad multiple of\" option\n\t- Split pre-tokenizers: support \"invert\"\n\t- StripAccents normalizer\n\t- Rune split pre-tokenizer\n\t- Strip normalizer\n\t- WordLevel model\n\t- WhitespaceSplit pre-tokenizer\n\t- Metaspace pre-tokenizer and decoder\n\t- Whitespace pre-tokenizer\n\t- NMT normalizer\n\t- Punctuation pre-tokenizer\n\t- Digits pre-tokenizer\n\t- CharDelimiterSplit pre-tokenizer\n\t- BPE decoder\n\n### Changed\n- Model Visualizer: Async loading of model\n- Model Visualizer: updating com.unity.dt.app-ui to 1.3.3\n- Resize operator on CPU no longer uses main (mono) thread path\n- All model converters use switch-case instead of if-else cascade\n- Migrate Mono APIs to CoreCLR-compatible APIs\n\n### Fixed\n- Editor crash when quitting in play mode\n- Memory Leak in FuseConstantPass\n- `Clip` operator improvement: no longer need CPU fallback for min/max parameters\n- `Mod` operator fix: on some platform with float operands, could return incorrect value when one of them was 0\n- Faulty optimization pass\n- Fix in existing burst code for 2D pooling vectorization calculations\n- `TopK` issue on `GPUCompute` when dimension is specified\n- Fix source generator empty array\n- Tokenizer Fixes\n\t- Special added token decoding condition\n\t- Fix added token whole word handling\n\t- Gpt2Splitter subtring length computation\n\t- Added vocabulary pre-tokenization.\n\t- ByteLevelDecoder empty-byte guard in string generation\n\t- DefaultDecoder: joining tokens with whitespace\n\t- BPE: fix merging, applying on each word instead of the whole string\n\t- DefaultPostProcessor: apply the proper type id\n\t- RobertaPostProcessor: fix attention and type id assignment\n\t- TemplatePostProcessor: fix type id assignment\n\t- Assign default type id to sequences\n\t- Better surrogate characters support\n\t- Fix ByteFallback: inserting the right amount of \\ufffd char\n\t- Fix BertPreTokenizer\n\t- Default model determination based of chain of responsibility"
+    "changelog": "### Added\n- Officially support ONNX opset up to version 25\n- Functional methods for `Swish` and `RMSNorm`\n- Support for the `alpha` argument for the `Swish` operator\n- Improved analytics and error reporting when importing models with unsupported operators\n- Now supporting Fast Enter Play Mode for CoreCLR compatibility\n- Added support for `Buffer` in PyTorch import\n- Tokenizer: Generic truncation with support for `longestfirst`, `onlyfirst` and `onlysecond`\n\n### Changed\n- Now using Unity's `Mathematics.Random` instead of `System.Random`\n- Improved documentation for the `Tensor` and `Functional` APIs\n- Maintenance of documentation links\n- Updated documentation for Cubic interpolation mode support limitations\n\n### Fixed\n- Updated behavior of `ReduceL1`, `ReduceL2`, `ReduceSumSquare` and `ReduceLogSum` operators when argument `noop_with_empty_axes` is `true` and `axes` are empty\n- `Interpolate` issue with argument `scaleFactor`\n- Fix when GPU allocations (`ComputeTensorData`) are used for tensors without a corresponding backend.\n- Prevent crashes when closing the editor while in Play mode\n- Fixed memory leak in PyTorch Import\n- Fix GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute\n- Fixed issue with `Split` operator when importing `.sentis` file"
   },
   "upmCi": {
-    "footprint": "a8a68c3d4293eaac9438787f8411c95b3c141b63"
+    "footprint": "52dfaadfc86a8d0bdd56877678efe3572844c551"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.5/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.6/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "8a515a5b5a683a50f20eaa334c184fe087fb59f5"
+    "revision": "f2ef1f90887483a6e5134c1330925c4f13be899f"
   },
   "samples": [
     {

@@ -1,10 +1,13 @@
+---
+uid: sentis-supported-litert-operators
+---
 # Supported LiteRT operators
 
-When you import a model, each [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) operator in the model graph becomes one or more Sentis layers. For more information, refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model).
+When you import a model, each [LiteRT (formerly TensorFlow Lite)](https://ai.google.dev/edge/litert) operator in the model graph becomes one or more Sentis layers. For more information, refer to [How Sentis optimizes a model](xref:sentis-models-concept#how-sentis-optimizes-a-model).
 
 ## Supported LiteRT operators
 
-The following table shows the LiteRT operators that Sentis supports. It also outlines the data types that Sentis supports for each [backend type](create-an-engine.md#backend-types).
+The following table shows the LiteRT operators that Sentis supports. It also outlines the data types that Sentis supports for each [backend type](xref:sentis-create-an-engine#backend-types).
 
 |Name|Sentis operators|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)| Notes |
 |-|-|-|-|-|--|
@@ -124,9 +127,9 @@ The following table shows the LiteRT operators that Sentis supports. It also out
 \* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
 
 ### Additional layers
-LiteRT uses NHWC (batch size, height, width, channels) layout for image operations, such as convolution and pooling. Sentis uses [NCHW (batch size, channels, height, width)](tensor-fundamentals.md#format) internally, and might insert `Transpose` operators where needed in the model graph. The Sentis importer tries to minimize the number of transposes used for intermediate tensor operations. Consequently, intermediate tensors in the Sentis model may use a different layout than in the original LiteRT model. Input and output tensor shapes remain unchanged.
+LiteRT uses NHWC (batch size, height, width, channels) layout for image operations, such as convolution and pooling. Sentis uses [NCHW (batch size, channels, height, width)](xref:sentis-tensor-fundamentals#format) internally, and might insert `Transpose` operators where needed in the model graph. The Sentis importer tries to minimize the number of transposes used for intermediate tensor operations. Consequently, intermediate tensors in the Sentis model may use a different layout than in the original LiteRT model. Input and output tensor shapes remain unchanged.
 
-Sentis might create additional layers when it [optimizes the model](models-concept.md). A full list of Sentis-only layers is available [here](supported-operators.md#sentis-only-layers).
+Sentis might create additional layers when it [optimizes the model](xref:sentis-models-concept). A full list of Sentis-only layers is available [here](xref:sentis-supported-operators#sentis-only-layers).
 
 ## Unsupported features
 
@@ -213,6 +216,6 @@ The following LiteRT operators are not supported in the current version of Senti
 ## Additional resources
 
 - ['tfl' Dialect](https://www.tensorflow.org/mlir/tfl_ops)
-- [Profile a model](profile-a-model.md)
-- [Supported functional methods](supported-functional-methods.md)
-- [Supported ONNX operators](supported-operators.md)
+- [Profile a model](xref:sentis-profile-a-model)
+- [Supported functional methods](xref:sentis-supported-functional-methods)
+- [Supported ONNX operators](xref:sentis-supported-operators)

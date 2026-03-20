@@ -114,6 +114,17 @@ namespace Unity.InferenceEngine
         /// </summary>
         ~Worker()
         {
+            // Note: no need for something like if (!m_IsDisposed) as GC.SuppressFinalize() is called in Dispose().
+            //
+            // Calling Dispose() in the worker finalizer is dangerous since we have a bunch of Dispose() cascading
+            // which might touch engine side objects and some APIs should only run on the main thread.
+            // Defensive code used here and a warning for the user:
+            if (!TensorDataHelper.OnMainThread)
+            {
+                D.LogWarning($"Undisposed worker found, finalizer called outside main thread, not disposing, this might create leaks.");
+                return;
+            }
+            D.LogWarning("Undisposed worker found, finalizer called on main thread, will dispose...");
             Dispose();
         }
 
@@ -136,6 +147,7 @@ namespace Unity.InferenceEngine
             m_FallbackBackend = null;
             m_InputShapes?.Clear();
             m_InputShapes = null;
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>

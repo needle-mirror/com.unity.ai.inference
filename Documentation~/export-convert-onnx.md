@@ -1,3 +1,6 @@
+---
+uid: sentis-export-convert-onnx
+---
 # Export and convert a file to ONNX
 
 The following sections describe how to export and convert models to the ONNX format.
@@ -12,7 +15,7 @@ To export files in ONNX format from common machine learning frameworks, refer to
 - [Convert TensorFlow, Keras, Tensorflow.js and Tflite models to ONNX](https://github.com/onnx/tensorflow-onnx) on the ONNX GitHub repository.
 
 > [!NOTE]
-> To ensure compatibility with Sentis, set the ONNX opset version to `15` during export. For more information about ONNX compatibility, refer to [import a model file](import-a-model-file.md).
+> To ensure compatibility with Sentis, set the ONNX opset version to `25` during export. For more information about ONNX compatibility, refer to [import a model file](xref:sentis-import-a-model-file).
 
 ## Convert TensorFlow files to ONNX
 
@@ -62,6 +65,6 @@ To convert a checkpoint file to ONNX, find the Python code which constructs the 
 ## Additional resources
 
 - [Open Neural Network Exchange](https://onnx.ai/)
-- [Supported ONNX operators](supported-operators.md)
-- [Profile a model](profile-a-model.md)
+- [Supported ONNX operators](xref:sentis-supported-operators)
+- [Profile a model](xref:sentis-profile-a-model)
 - [Convert TensorFlow, Keras, Tensorflow.js and Tflite models to ONNX](https://github.com/onnx/tensorflow-onnx)

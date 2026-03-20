@@ -1,8 +1,11 @@
+---
+uid: sentis-how-sentis-runs-a-model
+---
 # How Sentis runs a model
 
 Sentis runs optimized tensor operations across multiple threads on the central processing unit (CPU). It also runs operations in parallel on the graphics processing unit (GPU) through compute or pixel shaders.
 
-When the [worker](create-an-engine.md) schedules a model, it processes each layer sequentially. For each layer, it schedules the corresponding operation on the input tensors to compute one or more output tensors.
+When the [worker](xref:sentis-create-an-engine) schedules a model, it processes each layer sequentially. For each layer, it schedules the corresponding operation on the input tensors to compute one or more output tensors.
 
 The [`BackendType`](xref:Unity.InferenceEngine.BackendType) you choose determines how and when the worker performs each operation.
 
@@ -35,7 +38,7 @@ To move the tensor data to the CPU with a non-blocking, non-destructive download
 
 ## CPU fallback
 
-Sentis doesn't support all operators on every backend type. For more information, refer to [Supported ONNX operators](supported-operators.md).
+Sentis doesn't support all operators on every backend type. For more information, refer to [Supported ONNX operators](xref:sentis-supported-operators).
 
 If Sentis supports an operator on the CPU but not the GPU, Sentis might automatically fall back to running on the CPU. This requires Sentis to sync with the GPU and read back the input tensors to the CPU. If a GPU operation uses the output tensor, Sentis completes the operation and uploads the tensor to the GPU.
 
@@ -50,5 +53,5 @@ These input tensors might be outputs from other operations. During model input h
 
 ## Additional resources
 
-- [Use output data](use-model-output.md)
-- [Read output from a model asynchronously](read-output-async.md)
+- [Use output data](xref:sentis-use-model-output)
+- [Read output from a model asynchronously](xref:sentis-read-output-async)

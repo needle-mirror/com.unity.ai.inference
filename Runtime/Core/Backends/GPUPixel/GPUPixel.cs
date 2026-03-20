@@ -805,9 +805,9 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Swish(Tensor<float> X, Tensor<float> O)
+        public void Swish(Tensor<float> X, Tensor<float> O, float alpha)
         {
-            Activation(X, O, "Swish");
+            Activation(X, O, "Swish", alpha);
         }
 
         /// <inheritdoc/>

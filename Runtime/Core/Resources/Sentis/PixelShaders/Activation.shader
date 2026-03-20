@@ -108,7 +108,7 @@ Shader "Hidden/Sentis/Activation"
                     v.w = 1.0 / v.w;
                 #endif
                 #ifdef Swish
-                    v = v / (1.0 + exp(-v));
+                    v = v / (1.0 + exp(-(Alpha * v)));
                 #endif
                 #ifdef Tanh
                     v = tanh(clamp(v,-16.0f,16.0f)); // clamp to avoid NaNs for large values.

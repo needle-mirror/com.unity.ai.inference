@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace Unity.InferenceEngine.Tokenization.Parsers.HuggingFace
 {
     /// <summary>
-    /// Identifies the parser for an implementation of <see cref="IPreTokenizer"/>
+    /// Identifies the parser for an implementation of <see cref="Unity.InferenceEngine.Tokenization.PreTokenizers.IPreTokenizer"/>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public class HfPreTokenizerAttribute : HfAttribute

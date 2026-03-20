@@ -43,6 +43,7 @@ partial class CPUBackend
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public float alpha;
 
         public void Execute(int startIndex, int count)
         {
@@ -54,7 +55,7 @@ partial class CPUBackend
 
         public float Operation(float v)
         {
-            return v / (1.0f + exp(-v));
+            return v / (1.0f + exp(- (alpha * v)));
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]

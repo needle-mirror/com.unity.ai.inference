@@ -21,13 +21,10 @@ namespace Unity.InferenceEngine.Layers
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
-            if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
-            {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
-                ctx.backend.MemCopy(X, copyX);
-                return;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
+            var reduceOverEmptySet = noopWithEmptyAxes && (axes == null || axes.Length == 0);
+            var shape = reduceOverEmptySet ? X.shape : X.shape.Reduce(axes, keepdims);
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (X.shape.HasZeroDims())
@@ -35,10 +32,21 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.MemClear(O);
                 return;
             }
-            if (X is Tensor<int>)
-                ctx.backend.ReduceL1(X as Tensor<int>, O as Tensor<int>, axes);
+
+            if (reduceOverEmptySet)
+            {
+                if (X is Tensor<int>)
+                    ctx.backend.Abs(X as Tensor<int>, O as Tensor<int>);
+                else
+                    ctx.backend.Abs(X as Tensor<float>, O as Tensor<float>);
+            }
             else
-                ctx.backend.ReduceL1(X as Tensor<float>, O as Tensor<float>, axes);
+            {
+                if (X is Tensor<int>)
+                    ctx.backend.ReduceL1(X as Tensor<int>, O as Tensor<int>, axes);
+                else
+                    ctx.backend.ReduceL1(X as Tensor<float>, O as Tensor<float>, axes);
+            }
         }
     }
 
@@ -61,17 +69,20 @@ namespace Unity.InferenceEngine.Layers
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
-            if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
-            {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
-                ctx.backend.MemCopy(X, copyX);
-                return;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var reduceOverEmptySet = noopWithEmptyAxes && (axes == null || axes.Length == 0);
+            var shape = reduceOverEmptySet ? X.shape : X.shape.Reduce(axes, keepdims);
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             if (X.shape.HasZeroDims())
+            {
                 ctx.backend.MemClear(O);
+                return;
+            }
+
+            if (reduceOverEmptySet)
+                ctx.backend.Abs(X, O);
             else
                 ctx.backend.ReduceL2(X, O, axes);
         }
@@ -96,17 +107,20 @@ namespace Unity.InferenceEngine.Layers
         {
             var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
-            if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
-            {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
-                ctx.backend.MemCopy(X, copyX);
-                return;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var reduceOverEmptySet = noopWithEmptyAxes && (axes == null || axes.Length == 0);
+            var shape = reduceOverEmptySet ? X.shape : X.shape.Reduce(axes, keepdims);
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             if (X.shape.HasZeroDims())
+            {
                 ctx.backend.MemSet(O, float.NegativeInfinity);
+                return;
+            }
+
+            if (reduceOverEmptySet)
+                ctx.backend.Log(X, O);
             else
                 ctx.backend.ReduceLogSum(X, O, axes);
         }
@@ -376,13 +390,10 @@ namespace Unity.InferenceEngine.Layers
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
-            if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
-            {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
-                ctx.backend.MemCopy(X, copyX);
-                return;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
+            var reduceOverEmptySet = noopWithEmptyAxes && (axes == null || axes.Length == 0);
+            var shape = reduceOverEmptySet ? X.shape : X.shape.Reduce(axes, keepdims);
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (X.shape.HasZeroDims())
@@ -390,10 +401,21 @@ namespace Unity.InferenceEngine.Layers
                 ctx.backend.MemClear(O);
                 return;
             }
-            if (X is Tensor<int>)
-                ctx.backend.ReduceSumSquare(X as Tensor<int>, O as Tensor<int>, axes);
+
+            if (reduceOverEmptySet)
+            {
+                if (X is Tensor<int>)
+                    ctx.backend.Square(X as Tensor<int>, O as Tensor<int>);
+                else
+                    ctx.backend.Square(X as Tensor<float>, O as Tensor<float>);
+            }
             else
-                ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
+            {
+                if (X is Tensor<int>)
+                    ctx.backend.ReduceSumSquare(X as Tensor<int>, O as Tensor<int>, axes);
+                else
+                    ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
+            }
         }
     }
 

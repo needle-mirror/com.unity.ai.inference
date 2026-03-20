@@ -1,3 +1,6 @@
+---
+uid: sentis-export-convert-torch
+---
 # Export and convert a file to PyTorch
 
 Use this information to export models in PyTorch ExportedProgram format.
@@ -16,7 +19,7 @@ Sentis supports the [Core ATen IR](https://docs.pytorch.org/docs/stable/torch.co
 To export a PyTorch model file, refer to the links in the following instructions:
 
 1. [Load the model](https://pytorch.org/tutorials/beginner/saving_loading_models.html#saving-an-exported-program) in Python. Alternatively, [create your own model](https://docs.pytorch.org/tutorials/beginner/introyt/modelsyt_tutorial.html) in PyTorch.
-2.[Declare dynamic shapes](https://docs.pytorch.org/tutorials/intermediate/torch_export_tutorial.html#basic-concepts-symbols-and-guards) if needed. If the input batch size is variable, mark the batch dimension as dynamic.
+2. [Declare dynamic shapes](https://docs.pytorch.org/tutorials/intermediate/torch_export_tutorial.html#basic-concepts-symbols-and-guards) if needed. If the input batch size is variable, mark the batch dimension as dynamic.
 3. [Decompose the model](https://docs.pytorch.org/tutorials/intermediate/torch_export_tutorial.html#ir-decompositions) to Core ATen IR operators.
 4. Clamp large integer values to `int32` min and max values.
 5. [Save the model](https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html#saving-an-exported-program) as a PyTorch ExportedProgram file.
@@ -87,5 +90,5 @@ To convert a checkpoint file to PyTorch, find the Python code that constructs th
 
 ## Additional resources
 
-- [Supported PyTorch operators](supported-torch-export-operators.md)
-- [Profile a model](profile-a-model.md)
+- [Supported PyTorch operators](xref:sentis-supported-torch-export-operators)
+- [Profile a model](xref:sentis-profile-a-model)

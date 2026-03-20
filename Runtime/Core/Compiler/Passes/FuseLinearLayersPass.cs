@@ -11,8 +11,8 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
     /// </summary>
     class FuseLinearLayersPass : GraphPass
     {
-        static HashSet<string> s_LinearTargets = new() { "Dense", "Conv", "ScaleBias", "ScalarMad" };
-        static HashSet<string> s_LinearTargetsEitherInput = new() { "Add", "Sub", "Mul", "Div" };
+        static readonly HashSet<string> s_LinearTargets = new() { "Dense", "Conv", "ScaleBias", "ScalarMad" };
+        static readonly HashSet<string> s_LinearTargetsEitherInput = new() { "Add", "Sub", "Mul", "Div" };
 
         public override void Run(GraphModule gm)
         {

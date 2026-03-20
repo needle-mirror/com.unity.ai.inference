@@ -1,3 +1,6 @@
+---
+uid: sentis-convert-texture-to-tensor
+---
 # Convert a texture to a tensor
 
 Use [`TextureConverter.ToTensor`](xref:Unity.InferenceEngine.TextureConverter.ToTensor*) to convert a [`Texture2D`](xref:UnityEngine.Texture2D) or a [`RenderTexture`](xref:UnityEngine.RenderTexture) to a tensor.
@@ -25,9 +28,9 @@ By default, the tensor must have the following properties:
 
 Ensure the texture format matches the requirements of your model. To change the format of the texture, such as adjusting the number of channels, use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
 
-Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from `0 - 255` instead of from `0 - 1`. You can edit the model using the functional API to scale a tensor input. For more information, refer to [Edit a model](edit-a-model.md).
+Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from `0 - 255` instead of from `0 - 1`. You can edit the model using the functional API to scale a tensor input. For more information, refer to [Edit a model](xref:sentis-edit-a-model).
 
-For an example, refer to the `Convert textures to tensors` example in the [sample scripts](package-samples.md).
+For an example, refer to the `Convert textures to tensors` example in the [sample scripts](xref:sentis-package-samples).
 
 ### Override texture layout
 
@@ -63,7 +66,7 @@ When you convert a texture to a tensor, Sentis defaults to the NCHW layout.
 
 If your model needs a different layout, use [`SetTensorLayout`](xref:Unity.InferenceEngine.TextureTransform.SetTensorLayout*) to set the layout of the converted tensor.
 
-For more information about tensor formats, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md).
+For more information about tensor formats, refer to [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals).
 
 ### Avoid tensor and texture creation
 
@@ -91,6 +94,6 @@ void Update()
 
 ## Additional resources
 
-- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
-- [Edit a model](edit-a-model.md)
-- [Use output data](use-model-output.md)
+- [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals)
+- [Edit a model](xref:sentis-edit-a-model)
+- [Use output data](xref:sentis-use-model-output)

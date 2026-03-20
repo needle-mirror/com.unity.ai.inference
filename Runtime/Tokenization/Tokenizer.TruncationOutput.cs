@@ -5,7 +5,7 @@ namespace Unity.InferenceEngine.Tokenization
 {
     public partial class Tokenizer
     {
-        class TruncationOutput : IReadOnlyList<IReadOnlyList<Token>>
+        internal class TruncationOutput : IReadOnlyList<IReadOnlyList<Token>>
         {
             readonly Pool<List<Token>> m_TokensPool;
             readonly List<List<Token>> m_Target;

@@ -21,7 +21,7 @@ namespace Unity.InferenceEngine
         const int k_WeightsFlatBufferOverhead = 32;
         // The maximum size of a FlatBuffer is int.MaxValue bytes, subtract the overhead to get the maximum size for a single constant
         const long k_MaxConstantSize = int.MaxValue - k_WeightsFlatBufferOverhead;
-        internal const int version = 7;
+        internal const int version = 8;
 
         /// <summary>
         /// Serializes and saves the model description and weights to a file.

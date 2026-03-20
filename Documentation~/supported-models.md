@@ -1,3 +1,6 @@
+---
+uid: sentis-supported-models
+---
 # Supported models
 
 You can import open-source models into your Sentis project. Explore the following sections to understand the models Sentis supports and find an appropriate model for your project.
@@ -16,7 +19,7 @@ Each model page includes a **How to Use** section with instructions for importin
 
 ### ONNX models
 
-You can also import models in the [ONNX format](https://github.com/onnx/models). Sentis supports most ONNX models with [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) 7 to 15. Models with opset versions outside this range (for example, <7 or >15) might still import, but results can be unpredictable.
+You can also import models in the [ONNX format](https://github.com/onnx/models). Sentis supports most ONNX models with [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) 7 to 25. Models with opset versions outside this range (for example, <7 or >25) might still import, but results can be unpredictable.
 
 ## Unsupported models
 
@@ -33,8 +36,8 @@ Sentis also converts some tensor data types like booleans to floats or integers.
 
 - [Unity Hugging Face](https://huggingface.co/unity)
 - [ONNX model zoo](https://github.com/onnx/models)
-- [Sentis models](models-concept.md)
-- [Import a model file](import-a-model-file.md)
-- [Supported ONNX operators](supported-operators.md)
-- [Supported LiteRT operators](supported-litert-operators.md)
-- [Supported PyTorch operators](supported-torch-export-operators.md)
+- [Sentis models](xref:sentis-models-concept)
+- [Import a model file](xref:sentis-import-a-model-file)
+- [Supported ONNX operators](xref:sentis-supported-operators)
+- [Supported LiteRT operators](xref:sentis-supported-litert-operators)
+- [Supported PyTorch operators](xref:sentis-supported-torch-export-operators)

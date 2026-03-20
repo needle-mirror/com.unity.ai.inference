@@ -1,12 +1,15 @@
+---
+uid: sentis-supported-operators
+---
 # Supported ONNX operators
 
 When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer.
 
-For more information, refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model).
+For more information, refer to [How Sentis optimizes a model](xref:sentis-models-concept#how-sentis-optimizes-a-model).
 
 ## Supported ONNX operators
 
-The following table lists the ONNX operators that Sentis supports and the data types supported for each [backend type](create-an-engine.md#backend-types).
+The following table lists the ONNX operators that Sentis supports and the data types supported for each [backend type](xref:sentis-create-an-engine#backend-types).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)|Notes|
 |-|-|-|-|-|
@@ -119,6 +122,7 @@ The following table lists the ONNX operators that Sentis supports and the data t
 |[Relu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Relu) | float | float | float | |
 |[Reshape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Reshape) | float, int | float, int | float, int | |
 |[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float | float | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. The `half_pixel_symmetric` option for `coordinate_transform_mode` is not supported.  |
+|[RMSNormalization](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RmsNormalization) | float | float | float |
 |[RoiAlign](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RoiAlign) | float | float | float | |
 |[Round](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Round) | float | float | float | |
 |[Scatter (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Scatter) | float, int | float, int | float, int | The operator maps to the Sentis layer `ScatterElements`. |
@@ -143,6 +147,7 @@ The following table lists the ONNX operators that Sentis supports and the data t
 |[STFT](https://github.com/onnx/onnx/blob/main/docs/Operators.md#STFT) | float | float | float | |
 |[Sub](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sub) | float, int | float, int | float, int | |
 |[Sum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sum) | float, int | float, int | float, int | The operator maps to the Sentis layer `Add`. |
+|[Swish](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Swish) | float | float | float |
 |[Tan](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tan) | float | float | float | |
 |[Tanh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tanh) | float | float | float | |
 |[ThresholdedRelu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ThresholdedRelu) | float | float | float | |
@@ -159,7 +164,7 @@ The following table lists the ONNX operators that Sentis supports and the data t
 
 ### Sentis-only layers
 
-Sentis might create the following layers when it [optimizes the model](models-concept.md).
+Sentis might create the following layers when it [optimizes the model](xref:sentis-models-concept).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)|
 |-|-|-|-|
@@ -176,13 +181,11 @@ Sentis might create the following layers when it [optimizes the model](models-co
 |NotEqual | float, int | float, int | float, int |
 |RandomChoice | float, int | float, int | float, int |
 |Relu6 | float | float | float |
-|RMSNormalization | float | float | float |
 |ScalarMad | float, int | float, int | float, int |
 |Select | float, int | float, int | float, int |
 |SliceSet | float, int | float, int | float, int |
 |Square | float, int | float, int | float, int |
 |TrueDiv | float, int | float, int | float, int |
-|Swish | float | float | float |
 |ScaleBias | float | float | float |
 
 \* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
@@ -192,6 +195,7 @@ Sentis might create the following layers when it [optimizes the model](models-co
 The following ONNX operators aren't supported in the current version of Sentis.
 
 - AffineGrid
+- Attention
 - BitShift
 - CenterCropPad
 - Col2Im
@@ -224,6 +228,7 @@ The following ONNX operators aren't supported in the current version of Sentis.
 - RegexFullMatch
 - ReverseSequence
 - RNN
+- RotaryEmbedding
 - Scan
 - SequenceAt
 - SequenceConstruct
@@ -237,12 +242,13 @@ The following ONNX operators aren't supported in the current version of Sentis.
 - StringConcat
 - StringNormalizer
 - StringSplit
+- TensorScatter
 - TfIdfVectorizer
 - Unique
 
 ## Additional resources
 
 - [ONNX operator schemas](https://github.com/onnx/onnx/blob/main/docs/Operators.md)
-- [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
-- [Profile a model](profile-a-model.md)
-- [Supported functional methods](supported-functional-methods.md)
+- [Export an ONNX file from a machine learning framework](xref:sentis-export-convert-onnx)
+- [Profile a model](xref:sentis-profile-a-model)
+- [Supported functional methods](xref:sentis-supported-functional-methods)

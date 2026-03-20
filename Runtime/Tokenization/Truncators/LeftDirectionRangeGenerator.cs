@@ -8,6 +8,11 @@ namespace Unity.InferenceEngine.Tokenization.Truncators
     /// </summary>
     public class LeftDirectionRangeGenerator : RangeGeneratorBase
     {
+        /// <summary>
+        /// Singleton.
+        /// </summary>
+        public static IRangeGenerator Instance { get; } = new LeftDirectionRangeGenerator();
+
         /// <inheritdoc />
         protected override int GetRangesInternal(int length, int rangeMaxLength,
             int stride, Output<Range> output)

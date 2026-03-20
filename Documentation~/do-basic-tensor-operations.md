@@ -1,3 +1,6 @@
+---
+uid: sentis-do-basic-tensor-operations
+---
 ## Create and modify tensors
 
 Tensor methods in Sentis are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch.
@@ -6,7 +9,7 @@ Tensor methods in Sentis are similar to methods found in frameworks like NumPy, 
 
 You can create a basic tensor with the methods in the [`Tensor`](xref:Unity.InferenceEngine.Tensor) API.
 
-For more information, refer to [Create input for a model](create-an-input-tensor.md).
+For more information, refer to [Create input for a model](xref:sentis-create-an-input-tensor).
 
 ## Get and set values of a tensor
 
@@ -64,9 +67,9 @@ var array = tensor.DownloadToArray();
 > [!NOTE]
 > These methods return copies of your tensor data. Any changes to the downloaded arrays don't affect the original tensor.
 
-This download is a blocking call and will force a wait if [`ReadbackRequest`](xref:Unity.InferenceEngine.Tensor.ReadbackRequest*) hasn't been called or [`IsReadbackRequestDone`](xref:Unity.InferenceEngine.Tensor.IsReadbackRequestDone*) is false. For more information, refer to [Read Outputs Asynchronously](read-output-async.md).
+This download is a blocking call and will force a wait if [`ReadbackRequest`](xref:Unity.InferenceEngine.Tensor.ReadbackRequest*) hasn't been called or [`IsReadbackRequestDone`](xref:Unity.InferenceEngine.Tensor.IsReadbackRequestDone*) is false. For more information, refer to [Read Outputs Asynchronously](xref:sentis-read-output-async).
 
 ## Additional resources
 
-- [Tensor fundamentals](tensor-fundamentals.md)
-- [Model inputs](models-concept.md#model-inputs)
+- [Tensor fundamentals](xref:sentis-tensor-fundamentals)
+- [Model inputs](xref:sentis-models-concept#model-inputs)

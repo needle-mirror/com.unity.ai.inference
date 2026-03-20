@@ -8,6 +8,7 @@ namespace Unity.InferenceEngine.Tokenization.Truncators
     /// Base implementation for builtin <see cref="ITruncator" /> types using
     /// <see cref="IRangeGenerator" /> to truncate the sequences of tokens.
     /// </summary>
+    [Obsolete("Use GenericTruncator instead", false)]
     public abstract class StrategicTruncator : ITruncator
     {
         readonly Pool<List<Token>> m_ListOfTokenPool = new(() => new(), list => list.Clear());

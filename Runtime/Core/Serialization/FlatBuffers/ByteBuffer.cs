@@ -43,6 +43,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using UnityEngine;
 
 #if ENABLE_SPAN_T && UNSAFE_BYTEBUFFER
 using System.Buffers.Binary;
@@ -180,7 +181,7 @@ namespace Unity.InferenceEngine.Google.FlatBuffers
         /// A lookup of type sizes. Used instead of Marshal.SizeOf() which has additional
         /// overhead, but also is compatible with generic functions for simplified code.
         /// </summary>
-        private static Dictionary<Type, int> genericSizes = new Dictionary<Type, int>()
+        static readonly Dictionary<Type, int> genericSizes = new ()
         {
             { typeof(bool),     sizeof(bool) },
             { typeof(float),    sizeof(float) },

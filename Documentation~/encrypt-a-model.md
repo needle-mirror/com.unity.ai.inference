@@ -1,3 +1,6 @@
+---
+uid: sentis-encrypt-a-model
+---
 # Encrypt a model
 
 Encrypt a model so that only a user with the correct key can read the model description and weights from disk. You can encrypt a Sentis model to disk with the [`ModelWriter`](xref:Unity.InferenceEngine.ModelWriter) and [`ModelLoader`](xref:Unity.InferenceEngine.ModelLoader) APIs.
@@ -85,9 +88,9 @@ Model LoadModelAesEncrypted(string path, byte[] key)
 }
 ```
 
-For an example, refer to the `Encrypt a model` example in the [sample scripts](package-samples.md) for an example.
+For an example, refer to the `Encrypt a model` example in the [sample scripts](xref:sentis-package-samples) for an example.
 
 ## Additional resources
 
-* [Supported functional methods](supported-functional-methods.md)
-* [Supported ONNX operators](supported-operators.md)
+* [Supported functional methods](xref:sentis-supported-functional-methods)
+* [Supported ONNX operators](xref:sentis-supported-operators)

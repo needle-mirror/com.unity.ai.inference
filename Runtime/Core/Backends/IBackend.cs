@@ -258,7 +258,15 @@ namespace Unity.InferenceEngine
         void LocalResponseNormalization(Tensor<float> X, Tensor<float> O, int supportLength, float bias, float alpha, float beta);
 
         /// <summary>
-        /// Computes the index of the element which cumulative sum until said element is >= than a random value
+        /// Given two 2D tensors, X and random, having equal shape except maybe on the innermost axis:
+        /// For each outermost index (the batch), and each innermost index (each sample of a distribution that a particular batch represents) of the "random" tensor,
+        /// computes the index of the first element on the innermost axis of tensor X that makes it so that the running sum of the same elements from 0 up to that
+        /// point reach a threshold value >= than the value in the "random" tensor.
+        /// Each batch in X is thus considered as a category distribution and "random" specifies for each batch a series of
+        /// wanted total cumulative values for which we want for each the number of categories (minus 1 or the index) required for the sum of the category weights in X
+        /// to reach that cumulative value.
+        /// This is typically used to implement "nucleus" sampling or simulate random variables from a uniform sample (in "random")
+        /// using the inverse cumulative distribution function theorem.
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="random">The probability values used for the exit criteria.</param>
@@ -475,7 +483,7 @@ namespace Unity.InferenceEngine
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="alpha">The alpha value to use for the `Selu` activation function.</param>
-        /// <param name="gamma">The alpha value to use for the `Selu` activation function.</param>
+        /// <param name="gamma">The gamma value to use for the `Selu` activation function.</param>
         void Selu(Tensor<float> X, Tensor<float> O, float alpha, float gamma);
 
         /// <summary>
@@ -505,11 +513,12 @@ namespace Unity.InferenceEngine
         void PRelu(Tensor<float> X, Tensor<float> slope, Tensor<float> O);
 
         /// <summary>
-        /// Computes an output tensor by applying the element-wise `Swish` activation function: f(x) = sigmoid(x) * x = x / (1 + e^{-x}).
+        /// Computes an output tensor by applying the element-wise `Swish` activation function: f(x) = sigmoid(alpha * x) * x = x / (1 + e^{-alpha * x}).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Swish(Tensor<float> X, Tensor<float> O);
+        /// <param name="alpha">The alpha value to use for the `Swish` activation function.</param>
+        void Swish(Tensor<float> X, Tensor<float> O, float alpha);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Abs` math function: f(x) = f(x) = |x|.

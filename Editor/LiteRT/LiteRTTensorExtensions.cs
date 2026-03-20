@@ -38,6 +38,149 @@ namespace Unity.InferenceEngine.Editor.LiteRT
             };
         }
 
+        /// <summary>
+        /// Checks if a LiteRT tensor type is supported by Sentis.
+        /// </summary>
+        public static bool IsDataTypeSupported(this TensorType tensorType)
+        {
+            try
+            {
+                _ = tensorType.ToDataType();
+                return true;
+            }
+            catch (LiteRTImportException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a LiteRT operator is supported by Sentis.
+        /// </summary>
+        /// <param name="builtinCode">The LiteRT builtin operator code.</param>
+        /// <returns>True if the operator is supported, false otherwise.</returns>
+        public static bool IsOperatorSupported(this BuiltinOperator builtinCode)
+        {
+            return builtinCode switch
+            {
+                // Supported operators (those with implementations in LiteRTModelConverter)
+                BuiltinOperator.ADD => true,
+                BuiltinOperator.AVERAGE_POOL_2D => true,
+                BuiltinOperator.CONCATENATION => true,
+                BuiltinOperator.CONV_2D => true,
+                BuiltinOperator.DEPTHWISE_CONV_2D => true,
+                BuiltinOperator.DEPTH_TO_SPACE => true,
+                BuiltinOperator.DEQUANTIZE => true,
+                BuiltinOperator.EMBEDDING_LOOKUP => true,
+                BuiltinOperator.FLOOR => true,
+                BuiltinOperator.FULLY_CONNECTED => true,
+                BuiltinOperator.L2_NORMALIZATION => true,
+                BuiltinOperator.L2_POOL_2D => true,
+                BuiltinOperator.LOCAL_RESPONSE_NORMALIZATION => true,
+                BuiltinOperator.LOGISTIC => true,
+                BuiltinOperator.MAX_POOL_2D => true,
+                BuiltinOperator.MUL => true,
+                BuiltinOperator.RELU => true,
+                BuiltinOperator.RELU_N1_TO_1 => true,
+                BuiltinOperator.RELU6 => true,
+                BuiltinOperator.RESHAPE => true,
+                BuiltinOperator.RESIZE_BILINEAR => true,
+                BuiltinOperator.SOFTMAX => true,
+                BuiltinOperator.SPACE_TO_DEPTH => true,
+                BuiltinOperator.TANH => true,
+                BuiltinOperator.PAD => true,
+                BuiltinOperator.GATHER => true,
+                BuiltinOperator.TRANSPOSE => true,
+                BuiltinOperator.MEAN => true,
+                BuiltinOperator.SUB => true,
+                BuiltinOperator.DIV => true,
+                BuiltinOperator.SQUEEZE => true,
+                BuiltinOperator.STRIDED_SLICE => true,
+                BuiltinOperator.EXP => true,
+                BuiltinOperator.TOPK_V2 => true,
+                BuiltinOperator.SPLIT => true,
+                BuiltinOperator.LOG_SOFTMAX => true,
+                BuiltinOperator.CAST => true,
+                BuiltinOperator.PRELU => true,
+                BuiltinOperator.MAXIMUM => true,
+                BuiltinOperator.MINIMUM => true,
+                BuiltinOperator.LESS => true,
+                BuiltinOperator.NEG => true,
+                BuiltinOperator.PADV2 => true,
+                BuiltinOperator.GREATER => true,
+                BuiltinOperator.GREATER_EQUAL => true,
+                BuiltinOperator.LESS_EQUAL => true,
+                BuiltinOperator.SELECT => true,
+                BuiltinOperator.SLICE => true,
+                BuiltinOperator.SIN => true,
+                BuiltinOperator.TRANSPOSE_CONV => true,
+                BuiltinOperator.SPARSE_TO_DENSE => true,
+                BuiltinOperator.TILE => true,
+                BuiltinOperator.EXPAND_DIMS => true,
+                BuiltinOperator.EQUAL => true,
+                BuiltinOperator.NOT_EQUAL => true,
+                BuiltinOperator.LOG => true,
+                BuiltinOperator.SUM => true,
+                BuiltinOperator.SQRT => true,
+                BuiltinOperator.RSQRT => true,
+                BuiltinOperator.SHAPE => true,
+                BuiltinOperator.POW => true,
+                BuiltinOperator.ARG_MIN => true,
+                BuiltinOperator.ARG_MAX => true,
+                BuiltinOperator.REDUCE_PROD => true,
+                BuiltinOperator.REDUCE_MAX => true,
+                BuiltinOperator.PACK => true,
+                BuiltinOperator.LOGICAL_OR => true,
+                BuiltinOperator.ONE_HOT => true,
+                BuiltinOperator.LOGICAL_AND => true,
+                BuiltinOperator.LOGICAL_NOT => true,
+                BuiltinOperator.UNPACK => true,
+                BuiltinOperator.REDUCE_MIN => true,
+                BuiltinOperator.FLOOR_DIV => true,
+                BuiltinOperator.REDUCE_ANY => true,
+                BuiltinOperator.SQUARE => true,
+                BuiltinOperator.ZEROS_LIKE => true,
+                BuiltinOperator.FILL => true,
+                BuiltinOperator.FLOOR_MOD => true,
+                BuiltinOperator.RANGE => true,
+                BuiltinOperator.RESIZE_NEAREST_NEIGHBOR => true,
+                BuiltinOperator.LEAKY_RELU => true,
+                BuiltinOperator.SQUARED_DIFFERENCE => true,
+                BuiltinOperator.MIRROR_PAD => true,
+                BuiltinOperator.ABS => true,
+                BuiltinOperator.SPLIT_V => true,
+                BuiltinOperator.CEIL => true,
+                BuiltinOperator.REVERSE_V2 => true,
+                BuiltinOperator.ADD_N => true,
+                BuiltinOperator.GATHER_ND => true,
+                BuiltinOperator.COS => true,
+                BuiltinOperator.WHERE => true,
+                BuiltinOperator.RANK => true,
+                BuiltinOperator.ELU => true,
+                BuiltinOperator.ROUND => true,
+                BuiltinOperator.HARD_SWISH => true,
+                BuiltinOperator.SCATTER_ND => true,
+                BuiltinOperator.SELECT_V2 => true,
+                BuiltinOperator.BATCH_MATMUL => true,
+                BuiltinOperator.CUMSUM => true,
+                BuiltinOperator.BROADCAST_TO => true,
+                BuiltinOperator.CONV_3D => true,
+                BuiltinOperator.REDUCE_ALL => true,
+                BuiltinOperator.CONV_3D_TRANSPOSE => true,
+                BuiltinOperator.BROADCAST_ARGS => true,
+                BuiltinOperator.RANDOM_STANDARD_NORMAL => true,
+                BuiltinOperator.RANDOM_UNIFORM => true,
+                BuiltinOperator.MULTINOMIAL => true,
+                BuiltinOperator.GELU => true,
+                BuiltinOperator.RELU_0_TO_1 => true,
+                BuiltinOperator.ATAN2 => true,
+                BuiltinOperator.SIGN => true,
+                BuiltinOperator.BITWISE_XOR => true,
+                // All other operators are unsupported
+                _ => false
+            };
+        }
+
         public static ConstantTensor GetConstant(this Tensor tensor, Buffer buffer)
         {
             if (tensor.Sparsity.HasValue)

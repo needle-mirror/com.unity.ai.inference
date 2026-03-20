@@ -1,3 +1,6 @@
+---
+uid: sentis-use-command-buffer
+---
 ## Use a command buffer
 
 You can use a [command buffer](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html) to create a queue of Sentis commands, which can then be run on the graphics processing unit (GPU) at a later time.
@@ -5,7 +8,7 @@ You can use a [command buffer](https://docs.unity3d.com/ScriptReference/Renderin
 To use a command buffer, follow these steps:
 
 1. Create or get an empty command buffer.
-2. [Create a worker](create-an-engine.md) with the [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute) backend type.
+2. [Create a worker](xref:sentis-create-an-engine) with the [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute) backend type.
 3. In a Unity event function, for example [`OnRenderImage`](xref:MonoBehaviour.OnRenderImage), add Sentis methods to the command buffer.
 4. Use [`Graphics.ExecuteCommandBuffer`](xref:UnityEngine.Rendering.ScriptableRenderContext.ExecuteCommandBuffer(UnityEngine.Rendering.CommandBuffer)) to run the command buffer.
 
@@ -59,5 +62,5 @@ For more information, refer to the following:
 
 ## Additional resources
 
-* [Get output from a model](get-the-output.md)
-* [Read output asynchronously](read-output-async.md)
+* [Get output from a model](xref:sentis-get-the-output)
+* [Read output asynchronously](xref:sentis-read-output-async)

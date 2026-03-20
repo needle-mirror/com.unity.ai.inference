@@ -1,3 +1,6 @@
+---
+uid: sentis-visualizer
+---
 # Inspect models with the Model Visualizer
 
 Use the Model Visualizer to explore the internal structure of your machine learning (ML) model as a node-based graph inside the Unity Editor. It inspects how the model was optimized after import and helps you understand the flow of data and operations throughout the graph.
@@ -110,6 +113,6 @@ If you change the control scheme, it updates all the current and future Model Vi
 
 ## Additional resources
 
-- [Get output from a model](get-the-output.md)
-- [Create and modify tensors](do-basic-tensor-operations.md)
+- [Get output from a model](xref:sentis-get-the-output)
+- [Create and modify tensors](xref:sentis-do-basic-tensor-operations)
 - [Importing models into Unity](https://docs.unity3d.com/6000.2/Documentation/Manual/models-importing.html)

@@ -1,7 +1,10 @@
 using System;
-using UnityEngine;
-using UnityEditor.AssetImporters;
 using System.Runtime.CompilerServices;
+using UnityEditor.AssetImporters;
+using UnityEngine;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Analytics.Import;
+#endif
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
@@ -22,24 +25,24 @@ namespace Unity.InferenceEngine.Editor.LiteRT
 
         protected override InferenceEngine.Model LoadModel(AssetImportContext ctx)
         {
-            var converter = new LiteRTModelConverter(ctx.assetPath, signatureKey);
-            var model = converter.Convert();
-            foreach (var warning in converter.Warnings)
+            m_ModelConverter = new LiteRTModelConverter(ctx.assetPath, signatureKey);
+            var converter = m_ModelConverter as LiteRTModelConverter;
+
+#if SENTIS_ANALYTICS_ENABLED
+
+            // Subscribe to converter events for real-time analytics capture
+            converter.OnLiteRTDataType += dataType => m_ImportReport.sourceModel.AddDataType(dataType);
+            converter.OnLiteRTDataTypeUnsupported += dataType => m_ImportReport.sourceModel.AddUnsupportedDataType(dataType);
+            converter.OnLiteRTOperator += op =>
             {
-                switch (warning.MessageSeverity)
-                {
-                    case ModelConverterBase.WarningType.Warning:
-                        ctx.LogImportWarning(warning.Message);
-                        break;
-                    case ModelConverterBase.WarningType.Error:
-                        ctx.LogImportError(warning.Message);
-                        break;
-                    default:
-                    case ModelConverterBase.WarningType.None:
-                    case ModelConverterBase.WarningType.Info:
-                        break;
-                }
-            }
+                m_ImportReport.sourceModel.layerCount++;
+                m_ImportReport.sourceModel.AddOperator(op);
+            };
+            converter.OnLiteRTOperatorUnsupported += op => m_ImportReport.sourceModel.AddUnsupportedOperator(op);
+            converter.OnLiteRTModelLoaded += liteModel => LiteRTModelImportAnalyticsHelper.CaptureSourceModel(liteModel, m_ImportReport);
+#endif
+
+            var model = converter.Convert();
 
             signatureKeys = converter.signatureKeys;
             signatureKey = converter.signatureKey;

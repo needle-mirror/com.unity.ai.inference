@@ -11,7 +11,7 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
     class ContractToSimplerLayerPass : GraphPass
     {
         // All the reduction ops, by name.
-        static string[] s_ReductionTargets = { "ReduceMax", "ReduceMin", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceMean", "ReduceProd", "ReduceSum", "ReduceSumSquare", "ReduceVariance" };
+        static readonly string[] s_ReductionTargets = { "ReduceMax", "ReduceMin", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceMean", "ReduceProd", "ReduceSum", "ReduceSumSquare", "ReduceVariance" };
 
         public override void Run(GraphModule gm)
         {
@@ -180,8 +180,22 @@ namespace Unity.InferenceEngine.Compiler.Passes.Optimization
                 var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
                 if (noopWithEmptyAxes && isEmptyAxes)
                 {
-                    GraphPassUtil.ReplaceNode(reduceNode, "Identity", new[] { reduceNode.args[0] });
-                    continue;
+                    switch (reduceNode.target)
+                    {
+                        case "ReduceL1":
+                        case "ReduceL2":
+                            GraphPassUtil.ReplaceNode(reduceNode, "Abs", new[] { reduceNode.args[0] });
+                            continue;
+                        case "ReduceSumSquare":
+                            GraphPassUtil.ReplaceNode(reduceNode, "Square", new[] { reduceNode.args[0] });
+                            continue;
+                        case "ReduceLogSum":
+                            GraphPassUtil.ReplaceNode(reduceNode, "Log", new[] { reduceNode.args[0] });
+                            continue;
+                        default:
+                            GraphPassUtil.ReplaceNode(reduceNode, "Identity", new[] { reduceNode.args[0] });
+                            continue;
+                    }
                 }
 
                 if (isEmptyAxes || !axes.IsStatic())

@@ -1,3 +1,6 @@
+---
+uid: sentis-understand-sentis-workflow
+---
 # Understand the Sentis workflow
 
 To use Sentis to run a neural network in Unity, follow these steps:
@@ -10,7 +13,7 @@ To use Sentis to run a neural network in Unity, follow these steps:
 6. Get the result.
 
 > [!TIP]
-> Use the [Workflow example](workflow-example.md) to understand the workflow applied to a simple example.
+> Use the [Workflow example](xref:sentis-workflow-example) to understand the workflow applied to a simple example.
 
 ## Use the `Unity.InferenceEngine` namespace
 
@@ -29,7 +32,7 @@ Sentis can import model files in the following formats:
 
 To load a model, follow these steps:
 
-1. Export a model to [ONNX format](export-convert-onnx.md), [LiteRT format](export-convert-litert.md), or [PyTorch format](export-convert-torch.md) from a machine learning framework, or download an ONNX, LiteRT, or PyTorch model from the Internet.
+1. Export a model to [ONNX format](xref:sentis-export-convert-onnx), [LiteRT format](xref:sentis-export-convert-litert), or [PyTorch format](xref:sentis-export-convert-torch) from a machine learning framework, or download an ONNX, LiteRT, or PyTorch model from the Internet.
 2. Add the model file to the `Assets` folder of the **Project** window.
 3. Create a runtime model in your script as follows:
 
@@ -39,7 +42,7 @@ var runtimeModel = ModelLoader.Load(modelAsset);
 ```
 You can also add `public ModelAsset modelAsset` as a public variable in GameObjects. In this case, specify the model manually.
 
-For more information, refer to [Import a model file](import-a-model-file.md).
+For more information, refer to [Import a model file](xref:sentis-import-a-model-file).
 
 ## Create input for the model
 
@@ -55,7 +58,7 @@ int[] array = new int[] {1,2,3,4};
 Tensor<int> inputTensor = new Tensor<int>(new TensorShape(4), array);
 ```
 
-For more information, refer to [Create input for a model](create-an-input-tensor.md).
+For more information, refer to [Create input for a model](xref:sentis-create-an-input-tensor).
 
 ## Create a worker
 
@@ -67,7 +70,7 @@ For example, the following creates a worker that runs on the GPU using Sentis co
 Worker worker = new Worker(runtimeModel, BackendType.GPUCompute);
 ```
 
-For more information, refer to [Create an engine](create-an-engine.md).
+For more information, refer to [Create an engine](xref:sentis-create-an-engine).
 
 ## Schedule the model
 
@@ -78,7 +81,7 @@ worker.Schedule(inputTensor);
 ```
 Sentis schedules the model layers on the given backend. Because processing is asynchronous, some tensor operations might still be running after this call.
 
-For more information, refer to [Run a model](run-a-model.md).
+For more information, refer to [Run a model](xref:sentis-run-a-model).
 
 ## Get the output
 
@@ -88,12 +91,12 @@ You can use methods, such as [`PeekOutput`](xref:Unity.InferenceEngine.Worker.Pe
 Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 ```
 
-For more information, refer to [Get output from a model](get-the-output.md).
+For more information, refer to [Get output from a model](xref:sentis-get-the-output).
 
 ## Additional resources
 
-- [Workflow example](workflow-example.md)
-- [Samples](package-samples.md)
+- [Workflow example](xref:sentis-workflow-example)
+- [Samples](xref:sentis-package-samples)
 - [Unity Discussions group for Sentis](https://discussions.unity.com/tag/sentis)
-- [Sentis models](models-concept.md)
-- [Tensor fundamentals in Sentis](tensor-fundamentals.md)
+- [Sentis models](xref:sentis-models-concept)
+- [Tensor fundamentals in Sentis](xref:sentis-tensor-fundamentals)

@@ -313,6 +313,7 @@ namespace Unity.InferenceEngine
             }
 
             m_IsDisposed = true;
+            System.GC.SuppressFinalize(this);
         }
 
         /// <inheritdoc/>

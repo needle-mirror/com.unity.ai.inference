@@ -41,6 +41,12 @@ public class RunModelOnFullScreen : MonoBehaviour
             RenderPipelineManager.endContextRendering -= OnEndContextRendering;
     }
 
+    void OnDestroy()
+    {
+        if (GraphicsSettings.currentRenderPipeline != null)
+            RenderPipelineManager.endContextRendering -= OnEndContextRendering;
+    }
+
     void Update()
     {
         // readback tensor from GPU to CPU to use tensor indexing

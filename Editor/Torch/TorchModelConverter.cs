@@ -7,6 +7,9 @@ using Newtonsoft.Json;
 using TorchPt2;
 using Unity.InferenceEngine.Graph;
 using GraphModule = Unity.InferenceEngine.Graph.GraphModule;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Analytics.Import;
+#endif
 
 namespace Unity.InferenceEngine.Editor.Torch
 {
@@ -16,6 +19,229 @@ namespace Unity.InferenceEngine.Editor.Torch
     class TorchModelConverter : ModelConverterBase
     {
         readonly System.Version m_SupportedTorchVersion = new("2.9.1");
+
+        // Analytics events
+        internal event Action<ExportedProgram> OnTorchModelLoaded;
+        internal event Action<string> OnTorchOperator;
+        internal event Action<string> OnTorchOperatorUnsupported;
+        internal event Action<string> OnTorchDataType;
+        internal event Action<string> OnTorchDataTypeUnsupported;
+
+        // Supported operators set for validation
+        static readonly HashSet<string> k_SupportedOperators = new()
+        {
+            "torch.ops.aten._adaptive_avg_pool2d.default",
+            "torch.ops.aten._adaptive_avg_pool3d.default",
+            "torch.ops.aten._local_scalar_dense.default",
+            "torch.ops.aten._log_softmax.default",
+            "torch.ops.aten._native_batch_norm_legit.default",
+            "torch.ops.aten._native_batch_norm_legit_functional.default",
+            "torch.ops.aten._native_batch_norm_legit_no_training.default",
+            "torch.ops.aten._softmax.default",
+            "torch.ops.aten._to_copy.default",
+            "torch.ops.aten.abs.default",
+            "torch.ops.aten.acos.default",
+            "torch.ops.aten.acosh.default",
+            "torch.ops.aten.adaptive_avg_pool1d.default",
+            "torch.ops.aten.add.Scalar",
+            "torch.ops.aten.add.Tensor",
+            "torch.ops.aten.addmm.default",
+            "torch.ops.aten.alias.default",
+            "torch.ops.aten.amax.default",
+            "torch.ops.aten.amin.default",
+            "torch.ops.aten.any.default",
+            "torch.ops.aten.any.dim",
+            "torch.ops.aten.any.dims",
+            "torch.ops.aten.arange.start_step",
+            "torch.ops.aten.argmax.default",
+            "torch.ops.aten.argmin.default",
+            "torch.ops.aten.as_strided.default",
+            "torch.ops.aten.asin.default",
+            "torch.ops.aten.asinh.default",
+            "torch.ops.aten.atan.default",
+            "torch.ops.aten.atan2.default",
+            "torch.ops.aten.atan2.out",
+            "torch.ops.aten.atanh.default",
+            "torch.ops.aten.avg_pool1d.default",
+            "torch.ops.aten.avg_pool2d.default",
+            "torch.ops.aten.avg_pool3d.default",
+            "torch.ops.aten.bitwise_and.Scalar",
+            "torch.ops.aten.bitwise_and.Tensor",
+            "torch.ops.aten.bitwise_not.default",
+            "torch.ops.aten.bitwise_or.Scalar",
+            "torch.ops.aten.bitwise_or.Tensor",
+            "torch.ops.aten.bitwise_xor.Scalar",
+            "torch.ops.aten.bitwise_xor.Tensor",
+            "torch.ops.aten.bmm.default",
+            "torch.ops.aten.cat.default",
+            "torch.ops.aten.ceil.default",
+            "torch.ops.aten.clamp.default",
+            "torch.ops.aten.clamp.Tensor",
+            "torch.ops.aten.clone.default",
+            "torch.ops.aten.constant_pad_nd.default",
+            "torch.ops.aten.convolution.default",
+            "torch.ops.aten.copy.default",
+            "torch.ops.aten.cos.default",
+            "torch.ops.aten.cosh.default",
+            "torch.ops.aten.cumsum.default",
+            "torch.ops.aten.diagonal.default",
+            "torch.ops.aten.div.Scalar",
+            "torch.ops.aten.div.Scalar_mode",
+            "torch.ops.aten.div.Tensor",
+            "torch.ops.aten.div.Tensor_mode",
+            "torch.ops.aten.elu.default",
+            "torch.ops.aten.embedding.default",
+            "torch.ops.aten.empty.memory_format",
+            "torch.ops.aten.empty_strided.default",
+            "torch.ops.aten.eq.Scalar",
+            "torch.ops.aten.eq.Tensor",
+            "torch.ops.aten.erf.default",
+            "torch.ops.aten.exp.default",
+            "torch.ops.aten.expand.default",
+            "torch.ops.aten.expm1.default",
+            "torch.ops.aten.fill.Scalar",
+            "torch.ops.aten.flip.default",
+            "torch.ops.aten.floor.default",
+            "torch.ops.aten.floor_divide.default",
+            "torch.ops.aten.fmod.Scalar",
+            "torch.ops.aten.fmod.Tensor",
+            "torch.ops.aten.full.default",
+            "torch.ops.aten.full_like.default",
+            "torch.ops.aten.gather.default",
+            "torch.ops.aten.ge.Scalar",
+            "torch.ops.aten.ge.Tensor",
+            "torch.ops.aten.gelu.default",
+            "torch.ops.aten.grid_sampler_2d.default",
+            "torch.ops.aten.gt.Scalar",
+            "torch.ops.aten.gt.Tensor",
+            "torch.ops.aten.hardtanh.default",
+            "torch.ops.aten.index.Tensor",
+            "torch.ops.aten.index_put.default",
+            "torch.ops.aten.index_select.default",
+            "torch.ops.aten.isinf.default",
+            "torch.ops.aten.isnan.default",
+            "torch.ops.aten.le.Scalar",
+            "torch.ops.aten.le.Tensor",
+            "torch.ops.aten.leaky_relu.default",
+            "torch.ops.aten.log.default",
+            "torch.ops.aten.log10.default",
+            "torch.ops.aten.log1p.default",
+            "torch.ops.aten.log2.default",
+            "torch.ops.aten.logical_and.default",
+            "torch.ops.aten.logical_not.default",
+            "torch.ops.aten.logical_or.default",
+            "torch.ops.aten.logical_xor.default",
+            "torch.ops.aten.lt.Scalar",
+            "torch.ops.aten.lt.Tensor",
+            "torch.ops.aten.max.dim",
+            "torch.ops.aten.max_pool2d_with_indices.default",
+            "torch.ops.aten.max_pool3d_with_indices.default",
+            "torch.ops.aten.maximum.default",
+            "torch.ops.aten.mean.default",
+            "torch.ops.aten.mean.dim",
+            "torch.ops.aten.min.dim",
+            "torch.ops.aten.minimum.default",
+            "torch.ops.aten.mm.default",
+            "torch.ops.aten.mul.Scalar",
+            "torch.ops.aten.mul.Tensor",
+            "torch.ops.aten.native_dropout.default",
+            "torch.ops.aten.native_group_norm.default",
+            "torch.ops.aten.native_layer_norm.default",
+            "torch.ops.aten.ne.Scalar",
+            "torch.ops.aten.ne.Tensor",
+            "torch.ops.aten.neg.default",
+            "torch.ops.aten.nonzero.default",
+            "torch.ops.aten.permute.default",
+            "torch.ops.aten.pow.Scalar",
+            "torch.ops.aten.pow.Tensor_Scalar",
+            "torch.ops.aten.pow.Tensor_Tensor",
+            "torch.ops.aten.prod.default",
+            "torch.ops.aten.prod.dim_int",
+            "torch.ops.aten.rand.default",
+            "torch.ops.aten.randn.default",
+            "torch.ops.aten.randperm.default",
+            "torch.ops.aten.reciprocal.default",
+            "torch.ops.aten.reflection_pad1d.default",
+            "torch.ops.aten.reflection_pad2d.default",
+            "torch.ops.aten.reflection_pad3d.default",
+            "torch.ops.aten.relu.default",
+            "torch.ops.aten.remainder.Scalar",
+            "torch.ops.aten.remainder.Tensor",
+            "torch.ops.aten.repeat.default",
+            "torch.ops.aten.replication_pad2d.default",
+            "torch.ops.aten.replication_pad3d.default",
+            "torch.ops.aten.resize_.default",
+            "torch.ops.aten.round.default",
+            "torch.ops.aten.rsqrt.default",
+            "torch.ops.aten.scalar_tensor.default",
+            "torch.ops.aten.scatter.src",
+            "torch.ops.aten.scatter.value",
+            "torch.ops.aten.scatter_add.default",
+            "torch.ops.aten.scatter_reduce.two",
+            "torch.ops.aten.select.int",
+            "torch.ops.aten.select_scatter.default",
+            "torch.ops.aten.sigmoid.default",
+            "torch.ops.aten.sign.default",
+            "torch.ops.aten.sin.default",
+            "torch.ops.aten.sinh.default",
+            "torch.ops.aten.slice.Tensor",
+            "torch.ops.aten.slice_scatter.default",
+            "torch.ops.aten.sort.default",
+            "torch.ops.aten.split_with_sizes.default",
+            "torch.ops.aten.sqrt.default",
+            "torch.ops.aten.squeeze.dim",
+            "torch.ops.aten.squeeze.dims",
+            "torch.ops.aten.sub.Scalar",
+            "torch.ops.aten.sub.Tensor",
+            "torch.ops.aten.sum.dim_IntList",
+            "torch.ops.aten.sym_numel.default",
+            "torch.ops.aten.sym_size.int",
+            "torch.ops.aten.sym_storage_offset.default",
+            "torch.ops.aten.sym_stride.int",
+            "torch.ops.aten.tan.default",
+            "torch.ops.aten.tanh.default",
+            "torch.ops.aten.topk.default",
+            "torch.ops.aten.trunc.default",
+            "torch.ops.aten.unsqueeze.default",
+            "torch.ops.aten.upsample_bilinear2d.vec",
+            "torch.ops.aten.upsample_nearest2d.vec",
+            "torch.ops.aten.var.correction",
+            "torch.ops.aten.var.dim",
+            "torch.ops.aten.view.default",
+            "torch.ops.aten.where.self",
+        };
+
+        /// <summary>
+        /// Checks if an operator is supported by the converter.
+        /// </summary>
+        public static bool IsOperatorSupported(string opType)
+        {
+            return k_SupportedOperators.Contains(opType);
+        }
+
+        /// <summary>
+        /// Checks if a scalar type is supported by the converter.
+        /// </summary>
+        public static bool IsDataTypeSupported(ScalarType scalarType)
+        {
+            return scalarType switch
+            {
+                ScalarType.BYTE => true,
+                ScalarType.CHAR => true,
+                ScalarType.SHORT => true,
+                ScalarType.INT => true,
+                ScalarType.LONG => true,
+                ScalarType.HALF => true,
+                ScalarType.FLOAT => true,
+                ScalarType.DOUBLE => true,
+                ScalarType.BOOL => true,
+                ScalarType.BFLOAT16 => true,
+                ScalarType.UINT16 => true,
+                ScalarType.FLOAT8E4M3FN => true,
+                ScalarType.FLOAT8E5M2 => true,
+                _ => false
+            };
+        }
 
         /// <summary>
         /// Initializes and returns an instance of `TorchModelConverter`.
@@ -1184,7 +1410,7 @@ namespace Unity.InferenceEngine.Editor.Torch
                     {
                         0 => Layers.InterpolationMode.Linear,
                         1 => Layers.InterpolationMode.Nearest,
-                        2 => Layers.InterpolationMode.Cubic,
+                        2 => Warn(WarningType.Warning, $"{target} `bicubic` interpolation_mode is not supported, using `linear`.", Layers.InterpolationMode.Linear),
                         _ => throw new ArgumentOutOfRangeException()
                     };
                     var paddingMode = paddingModeInt switch
@@ -2606,6 +2832,12 @@ namespace Unity.InferenceEngine.Editor.Torch
             var jsonString = streamReader.ReadToEnd();
             var exportedProgram = JsonConvert.DeserializeObject<ExportedProgram>(jsonString);
 
+            // Fire model loaded event for analytics
+            OnTorchModelLoaded?.Invoke(exportedProgram);
+
+            // Validate operators and data types before conversion
+            ValidateTorchGraph(exportedProgram);
+
             var ctx = new TorchContext();
 
             var torchVersion = ParseTorchVersion(exportedProgram.torch_version);
@@ -2615,57 +2847,69 @@ namespace Unity.InferenceEngine.Editor.Torch
             // unsupported input kinds
             foreach (var inputSpec in exportedProgram.graph_module.signature.input_specs)
             {
-                if (inputSpec.kind == "buffer" || inputSpec.kind == "custom_obj" || inputSpec.kind == "token")
-                    Warn(WarningType.Warning, $"Input of kind \"{inputSpec.kind}\" is not supported");
-            }
-
-            // inputs
-            foreach (var inputSpec in exportedProgram.graph_module.signature.input_specs)
-            {
-                if (inputSpec.kind != "user_input")
-                    continue;
-                var userInputSpec = inputSpec.value as UserInputSpec;
-                var tensorArgument = userInputSpec.arg.value as TensorArgument;
-                GetTensorMeta(ctx, exportedProgram, tensorArgument.name, out var dtype, out var shape);
-                var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
-                var node = ctx.gm.Input(tensorArgument.name, dataType, shape);
-                ctx.AddTensor(tensorArgument.name, node, dtype);
-            }
-
-            // constant parameters
-            foreach (var inputSpec in exportedProgram.graph_module.signature.input_specs)
-            {
-                if (inputSpec.kind != "parameter")
-                    continue;
-
-                var parameter = inputSpec.value as InputToParameterSpec;
-                GetTensorMeta(ctx, exportedProgram, parameter.arg.name, out var dtype, out var shape);
-                var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
-                var tensor = constantTensors[parameter.parameter_name];
-                Logger.AssertIsTrue(dataType == tensor.dataType, "");
-                Logger.AssertIsTrue(shape.ToTensorShape() == tensor.shape, "");
-                ctx.gm.attributes[parameter.parameter_name] = new ConstantTensor(tensor);
-                var node = ctx.gm.graph.GetAttr(parameter.parameter_name, parameter.arg.name);
-                node.partialTensor = PartialTensor.FromTensor(tensor);
-                ctx.AddTensor(parameter.arg.name, node, dtype);
-            }
-
-            // tensor constants
-            foreach (var inputSpec in exportedProgram.graph_module.signature.input_specs)
-            {
-                if (inputSpec.kind != "tensor_constant")
-                    continue;
-
-                var tensorConstant = inputSpec.value as InputToTensorConstantSpec;
-                GetTensorMeta(ctx, exportedProgram, tensorConstant.arg.name, out var dtype, out var shape);
-                var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
-                var tensor = constantTensors[tensorConstant.tensor_constant_name];
-                Logger.AssertIsTrue(dataType == tensor.dataType, "");
-                Logger.AssertIsTrue(shape.ToTensorShape() == tensor.shape, "");
-                ctx.gm.attributes[tensorConstant.tensor_constant_name] = new ConstantTensor(tensor);
-                var node = ctx.gm.graph.GetAttr(tensorConstant.tensor_constant_name, tensorConstant.arg.name);
-                node.partialTensor = PartialTensor.FromTensor(tensor);
-                ctx.AddTensor(tensorConstant.arg.name, node, dtype);
+                switch (inputSpec.kind)
+                {
+                    case "custom_obj":
+                    case "token":
+                        Warn(WarningType.Warning, $"Input of kind \"{inputSpec.kind}\" is not supported");
+                        break;
+                    case "user_input":
+                    {
+                        // inputs
+                        var userInputSpec = inputSpec.value as UserInputSpec;
+                        var tensorArgument = userInputSpec.arg.value as TensorArgument;
+                        GetTensorMeta(ctx, exportedProgram, tensorArgument.name, out var dtype, out var shape);
+                        var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
+                        var node = ctx.gm.Input(tensorArgument.name, dataType, shape);
+                        ctx.AddTensor(tensorArgument.name, node, dtype);
+                        break;
+                    }
+                    case "parameter":
+                    {
+                        // constant parameters
+                        var parameter = inputSpec.value as InputToParameterSpec;
+                        GetTensorMeta(ctx, exportedProgram, parameter.arg.name, out var dtype, out var shape);
+                        var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
+                        var tensor = constantTensors[parameter.parameter_name];
+                        Logger.AssertIsTrue(dataType == tensor.dataType, $"Parameter {parameter.parameter_name} expected type {dataType} but is {tensor.dataType}");
+                        Logger.AssertIsTrue(shape.ToTensorShape() == tensor.shape, $"Parameter {parameter.parameter_name} expected shape {shape.ToTensorShape()} but is {tensor.shape}");
+                        ctx.gm.attributes[parameter.parameter_name] = new ConstantTensor(tensor);
+                        var node = ctx.gm.graph.GetAttr(parameter.parameter_name, parameter.arg.name);
+                        node.partialTensor = PartialTensor.FromTensor(tensor);
+                        ctx.AddTensor(parameter.arg.name, node, dtype);
+                        break;
+                    }
+                    case "buffer":
+                    {
+                        // buffers
+                        var buffer = inputSpec.value as InputToBufferSpec;
+                        GetTensorMeta(ctx, exportedProgram, buffer.arg.name, out var dtype, out var shape);
+                        var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
+                        var tensor = constantTensors[buffer.buffer_name];
+                        Logger.AssertIsTrue(dataType == tensor.dataType, $"Buffer {buffer.buffer_name} expected type {dataType} but is {tensor.dataType}");
+                        Logger.AssertIsTrue(shape.ToTensorShape() == tensor.shape, $"Buffer {buffer.buffer_name} expected shape {shape.ToTensorShape()} but is {tensor.shape}");
+                        ctx.gm.attributes[buffer.buffer_name] = new ConstantTensor(tensor);
+                        var node = ctx.gm.graph.GetAttr(buffer.buffer_name, buffer.arg.name);
+                        node.partialTensor = PartialTensor.FromTensor(tensor);
+                        ctx.AddTensor(buffer.arg.name, node, dtype);
+                        break;
+                    }
+                    case "tensor_constant":
+                    {
+                        // tensor constants
+                        var tensorConstant = inputSpec.value as InputToTensorConstantSpec;
+                        GetTensorMeta(ctx, exportedProgram, tensorConstant.arg.name, out var dtype, out var shape);
+                        var dataType = TorchUtilities.ScalarTypeToDataType(dtype);
+                        var tensor = constantTensors[tensorConstant.tensor_constant_name];
+                        Logger.AssertIsTrue(dataType == tensor.dataType, $"Tensor constant {tensorConstant.tensor_constant_name} expected type {dataType} but is {tensor.dataType}");
+                        Logger.AssertIsTrue(shape.ToTensorShape() == tensor.shape, $"Tensor constant {tensorConstant.tensor_constant_name} expected shape {shape.ToTensorShape()} but is {tensor.shape}");
+                        ctx.gm.attributes[tensorConstant.tensor_constant_name] = new ConstantTensor(tensor);
+                        var node = ctx.gm.graph.GetAttr(tensorConstant.tensor_constant_name, tensorConstant.arg.name);
+                        node.partialTensor = PartialTensor.FromTensor(tensor);
+                        ctx.AddTensor(tensorConstant.arg.name, node, dtype);
+                        break;
+                    }
+                }
             }
 
             // nodes
@@ -2707,56 +2951,119 @@ namespace Unity.InferenceEngine.Editor.Torch
             using var zipToOpen = new FileStream(m_FilePath, FileMode.Open);
             using var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Read);
 
-            foreach (var entry in archive.Entries)
+            try
             {
-                if (!entry.FullName.EndsWith("data/constants/model_constants_config.json"))
-                    continue;
+                foreach (var entry in archive.Entries)
+                {
+                    if (!entry.FullName.EndsWith("data/constants/model_constants_config.json"))
+                        continue;
 
-                var basePath = entry.FullName.Substring(0, entry.FullName.IndexOf("data/constants/")) + "data/constants";
+                    var basePath = entry.FullName.Substring(0, entry.FullName.IndexOf("data/constants/")) + "data/constants";
 
-                using var entryStream = entry.Open();
-                TorchModelConstants.LoadConstantsFromConfig(entryStream, archive, basePath, tensors);
+                    using var entryStream = entry.Open();
+                    TorchModelConstants.LoadConstantsFromConfig(entryStream, archive, basePath, tensors);
+                }
+
+                if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
+                {
+                    throw new TorchImportException($"Could not import model due to errors when loading constants: {ImportWarnings.Last(w => w.messageSeverity == WarningType.Error).message}");
+                }
+
+                foreach (var entry in archive.Entries)
+                {
+                    if (!entry.FullName.EndsWith("data/weights/model_weights_config.json"))
+                        continue;
+
+                    var basePath = entry.FullName.Substring(0, entry.FullName.IndexOf("data/weights/")) + "data/weights";
+
+                    using var entryStream = entry.Open();
+                    TorchModelConstants.LoadWeightsFromConfig(entryStream, archive, basePath, tensors);
+                }
+
+                if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
+                {
+                    throw new TorchImportException($"Could not import model due to errors when loading weights: {ImportWarnings.Last(w => w.messageSeverity == WarningType.Error).message}");
+                }
+
+                foreach (var entry in archive.Entries)
+                {
+                    if (!entry.FullName.EndsWith("models/model.json"))
+                        continue;
+                    using var entryStream = entry.Open();
+                    gm = ConvertFromJson(entryStream, tensors);
+                }
+
+                AssertNotNull(gm, $"Error importing model. Make sure file {m_FilePath} is a valid Torch .pt2 model exported with Torch version {m_SupportedTorchVersion}.");
+
+                if (ImportWarnings.Any(w => w.messageSeverity == WarningType.Error))
+                {
+                    throw new TorchImportException($"Error importing model: {ImportWarnings.Last(w => w.messageSeverity == WarningType.Error).message}");
+                }
+
+                ModelOptimizer.OptimizeGraph(gm);
+
+                return GraphConverter.GraphToModel(gm);
+            }
+            finally
+            {
+                foreach (var tensor in tensors.Values)
+                    tensor?.Dispose();
+            }
+        }
+
+        void ValidateTorchGraph(ExportedProgram exportedProgram)
+        {
+            // Track unsupported operators and datatypes for error handling
+            var unsupportedOperators = new HashSet<string>();
+            var unsupportedDataTypes = new HashSet<string>();
+
+            var graph = exportedProgram.graph_module.graph;
+
+            // Validate tensor data types
+            foreach (var kvp in graph.tensor_values)
+            {
+                var tensorMeta = kvp.Value;
+                var dtype = tensorMeta.dtype;
+                var dataTypeStr = dtype.ToString();
+
+                if (!IsDataTypeSupported(dtype))
+                {
+                    unsupportedDataTypes.Add(dataTypeStr);
+                    OnTorchDataTypeUnsupported?.Invoke(dataTypeStr);
+                }
+
+                OnTorchDataType?.Invoke(dataTypeStr);
             }
 
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
+            // Validate operators
+            foreach (var node in graph.nodes)
             {
-                throw new TorchImportException($"Could not import model due to errors when loading constants: {Warnings.Last(w => w.MessageSeverity == WarningType.Error).Message}");
+                var target = node.target;
+                var nodeHasOutputs = node.outputs is { Count: > 0 }; //During conversion, we ignore nodes with no outputs, but we still want to track it
+
+                if (!IsOperatorSupported(target) && nodeHasOutputs)
+                {
+                    unsupportedOperators.Add(target);
+                    OnTorchOperatorUnsupported?.Invoke(target);
+                }
+
+                OnTorchOperator?.Invoke(target);
             }
 
-            foreach (var entry in archive.Entries)
+            if (unsupportedOperators.Count > 0)
             {
-                if (!entry.FullName.EndsWith("data/weights/model_weights_config.json"))
-                    continue;
-
-                var basePath = entry.FullName.Substring(0, entry.FullName.IndexOf("data/weights/")) + "data/weights";
-
-                using var entryStream = entry.Open();
-                TorchModelConstants.LoadWeightsFromConfig(entryStream, archive, basePath, tensors);
+                Warn(WarningType.Error, $"Model contains unsupported operator(s): {string.Join(", ", unsupportedOperators)}");
             }
 
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
+            if (unsupportedDataTypes.Count > 0)
             {
-                throw new TorchImportException($"Could not import model due to errors when loading weights: {Warnings.Last(w => w.MessageSeverity == WarningType.Error).Message}");
+                Warn(WarningType.Error, $"Model contains unsupported data type(s): {string.Join(", ", unsupportedDataTypes)}");
             }
 
-            foreach (var entry in archive.Entries)
+            if (unsupportedDataTypes.Count > 0 || unsupportedOperators.Count > 0)
             {
-                if (!entry.FullName.EndsWith("models/model.json"))
-                    continue;
-                using var entryStream = entry.Open();
-                gm = ConvertFromJson(entryStream, tensors);
+                throw new TorchImportException("Model contains unsupported operators or data types. See errors for details.");
             }
-
-            AssertNotNull(gm, $"Error importing model. Make sure file {m_FilePath} is a valid Torch .pt2 model exported with Torch version {m_SupportedTorchVersion}.");
-
-            if (Warnings.Any(w => w.MessageSeverity == WarningType.Error))
-            {
-                throw new TorchImportException($"Error importing model: {Warnings.Last(w => w.MessageSeverity == WarningType.Error).Message}");
-            }
-
-            ModelOptimizer.OptimizeGraph(gm);
-
-            return GraphConverter.GraphToModel(gm);
         }
 
         void AssertNotNull(object obj, string msg)

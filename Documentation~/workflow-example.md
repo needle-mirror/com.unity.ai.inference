@@ -1,8 +1,11 @@
+---
+uid: sentis-workflow-example
+---
 # Workflow example
 
 This example demonstrates the basic Sentis workflow. It includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit.
 
-Use this example to [Understand the Sentis workflow](understand-sentis-workflow.md).
+Use this example to [Understand the Sentis workflow](xref:sentis-understand-sentis-workflow).
 
 ## Use the example
 
@@ -53,6 +56,9 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
         // outputTensor is still pending
         // Either read back the results asynchronously or do a blocking download call
         results = outputTensor.DownloadToArray();
+
+        // Release outputTensor memory
+        outputTensor.Dispose();
     }
 
     void OnDisable()
@@ -79,6 +85,6 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
 In the **Inspector** window of the GameObject, each item of the **Results** array shows how highly the model predicts the image to be a digit. For example, item `0` of the array represents how highly the model predicts the image being a handwritten zero.
 
 ## Additional resources
-- [Samples](package-samples.md)
-- [Understand the Sentis workflow](understand-sentis-workflow.md)
-- [Create a model](create-a-model.md)
+- [Samples](xref:sentis-package-samples)
+- [Understand the Sentis workflow](xref:sentis-understand-sentis-workflow)
+- [Create a model](xref:sentis-create-a-model)

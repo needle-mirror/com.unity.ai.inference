@@ -1,3 +1,35 @@
+---
+uid: sentis-whats-new
+---
+# What's new in Sentis 2.6
+
+This is a summary of the changes from Sentis 2.5 to Sentis 2.6.
+
+## Added
+
+- Official support for ONNX opset versions up to version `25`.
+- Functional methods for the `Swish` and `RMSNorm` operators, including support for the `alpha` argument on the `Swish` operator.
+- Support for `Buffer` in PyTorch model import.
+- Generic truncation in the Tokenizer, with support for `longestfirst`, `onlyfirst`, and `onlysecond` strategies.
+- Compatibility with Fast Enter Play Mode for CoreCLR.
+- Improved analytics and error reporting when importing models with unsupported operators.
+
+## Updated
+
+- The random number generator now uses Unity's `Mathematics.Random` instead of `System.Random`.
+- Improved documentation for the `Tensor` and `Functional` APIs.
+- Updated documentation for Cubic interpolation mode support limitations.
+
+## Fixed
+
+- Corrected behavior of `ReduceL1`, `ReduceL2`, `ReduceSumSquare`, and `ReduceLogSum` operators when `noop_with_empty_axes` is `true` and `axes` are empty.
+- Resolved an issue with the `Interpolate` operator when using the `scaleFactor` argument.
+- Fixed a case where GPU allocations (`ComputeTensorData`) were used for tensors without a corresponding backend.
+- Prevented crashes when closing the editor while in Play mode.
+- Fixed a memory leak in PyTorch model import.
+- Resolved a GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute.
+- Fixed an issue with the `Split` operator when importing `.sentis` files.
+
 # What's new in Sentis 2.5
 
 This is a summary of the changes from Sentis 2.4 to Sentis 2.5.
@@ -67,7 +99,7 @@ Inference Engine is the new name for the [Sentis package](https://docs.unity3d.c
 
 This is a summary of the changes from Sentis 2.1 to Inference Engine 2.2.
 
-For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md).
+For information on how to upgrade, refer to the [Upgrade Guide](xref:sentis-upgrade-guide).
 
 ## Added
 

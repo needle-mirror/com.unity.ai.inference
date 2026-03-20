@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Unity.AppUI.Redux;
 using Unity.InferenceEngine.Editor.Visualizer.Views;
 
@@ -8,7 +7,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
     sealed class GraphStoreManager : IDisposable
     {
         public IStore<PartitionedState> Store { get; }
-        public static ActionCreator<object> SetFocusedObject = new(GraphSlice.SetFocusedObject);
+        public static ActionCreator<FocusData> SetFocusedObject = new(GraphSlice.SetFocusedObject);
         public static ActionCreator<object> SetSelectedObject = new(GraphSlice.SetSelectedObject);
         public static ActionCreator MoveStackIndexUp = new(GraphSlice.MoveStackIndexUp);
         public static ActionCreator MoveStackIndexDown = new(GraphSlice.MoveStackIndexDown);

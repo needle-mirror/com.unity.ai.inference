@@ -1,10 +1,13 @@
+---
+uid: sentis-supported-torch-export-operators
+---
 # Supported PyTorch Export operators
 
-When you import a model, each [Core ATen](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html#core-aten-ir) operator in the model graph becomes one or more Sentis layers. For more information, refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model).
+When you import a model, each [Core ATen](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html#core-aten-ir) operator in the model graph becomes one or more Sentis layers. For more information, refer to [How Sentis optimizes a model](xref:sentis-models-concept#how-sentis-optimizes-a-model).
 
 ## Supported Core ATen operators
 
-The following table shows the Core ATen operators that Sentis supports. It also outlines the data types that Sentis supports for each [backend type](create-an-engine.md#backend-types).
+The following table shows the Core ATen operators that Sentis supports. It also outlines the data types that Sentis supports for each [backend type](xref:sentis-create-an-engine#backend-types).
 
 |Name|Sentis operators|Supported data types with [`BackendType.CPU`](xref:Unity.InferenceEngine.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.InferenceEngine.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.InferenceEngine.BackendType.GPUPixel)| Notes |
 |-|-|-|-|-|--|
@@ -89,7 +92,7 @@ The following table shows the Core ATen operators that Sentis supports. It also 
 | aten.ge.Scalar | `GreaterOrEqual` | float, int | float, int | float, int | |
 | aten.ge.Tensor | `GreaterOrEqual` | float, int | float, int | float, int | |
 | aten.gelu | `Gelu`, `GeluFast` | float | float | float | `approximate` must be `none` or `tanh` |
-| aten.grid_sampler_2d | `GridSample` | float | float | float | Supported interpolation modes: `Linear`, `Nearest`, `Cubic`. Supported padding modes: `Zeros`, `Border`, `Reflection` |
+| aten.grid_sampler_2d | `GridSample` | float | float | float | Supported interpolation modes: `Linear`, `Nearest`. Supported padding modes: `Zeros`, `Border`, `Reflection` |
 | aten.gt.Scalar | `Greater` | float, int | float, int | float, int | |
 | aten.gt.Tensor | `Greater` | float, int | float, int | float, int | |
 | aten.hardtanh | `HardTanh` | float | float | float | |
@@ -192,7 +195,7 @@ The following table shows the Core ATen operators that Sentis supports. It also 
 
 ### Additional layers
 
-Sentis might create additional layers when it [optimizes the model](models-concept.md). A full list of Sentis-only layers is available [here](supported-operators.md#sentis-only-layers).
+Sentis might create additional layers when it [optimizes the model](xref:sentis-models-concept). A full list of Sentis-only layers is available [here](xref:sentis-supported-operators#sentis-only-layers).
 
 ## Unsupported operators
 
@@ -239,6 +242,6 @@ Sentis currently does not support the following PyTorch Export features:
 ## Additional resources
 
 - [Core ATen IR](https://docs.pytorch.org/docs/stable/torch.compiler_ir.html#core-aten-ir)
-- [Profile a model](profile-a-model.md)
-- [Supported functional methods](supported-functional-methods.md)
-- [Supported ONNX operators](supported-operators.md)
+- [Profile a model](xref:sentis-profile-a-model)
+- [Supported functional methods](xref:sentis-supported-functional-methods)
+- [Supported ONNX operators](xref:sentis-supported-operators)

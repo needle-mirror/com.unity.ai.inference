@@ -1633,9 +1633,10 @@ namespace Unity.InferenceEngine
         }
 
         /// <inheritdoc/>
-        public void Swish(Tensor<float> X, Tensor<float> O)
+        public void Swish(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var fn = ComputeFunctions.k_Swish;
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
             cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
             cb.UnrolledDispatchFast(fn, O.shape.length);

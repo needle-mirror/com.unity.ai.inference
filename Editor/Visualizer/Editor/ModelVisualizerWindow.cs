@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Unity.AppUI.UI;
-using Unity.InferenceEngine.Editor.Visualizer.Editor;
 using Unity.InferenceEngine.Editor.Visualizer.StateManagement;
 using Unity.InferenceEngine.Editor.Visualizer.Views;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Visualizer.Editor.Analytics;
+#endif
 
 namespace Unity.InferenceEngine.Editor.Visualizer.Editor
 {
@@ -93,6 +95,16 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Editor
             m_LoadingView.Initialize(m_StoreManager);
 
             titleContent = new GUIContent(modelAsset == null ? k_WindowTitle : modelAsset.name);
+
+#if SENTIS_ANALYTICS_ENABLED
+            // Send analytics event when a model is opened
+            if (modelAsset != null)
+            {
+                var assetPath = AssetDatabase.GetAssetPath(modelAsset);
+                var assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                ModelVisualizerAnalytics.SendOpenEvent(assetGuid);
+            }
+#endif
         }
 
         internal static ModelVisualizerWindow VisualizeModel(ModelAsset modelAsset)

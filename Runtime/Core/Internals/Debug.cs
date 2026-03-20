@@ -41,6 +41,19 @@ namespace Unity.InferenceEngine
         /// </summary>
         static bool logEnabled = true;
 
+#if UNITY_EDITOR
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStaticsOnLoad()
+        {
+            warningStackTraceEnabled = Application.isEditor;
+            errorStackTraceEnabled = true;
+            logStackTraceEnabled = false;
+            warningEnabled = true;
+            errorEnabled = true;
+            logEnabled = true;
+        }
+#endif
+
 #if SENTIS_LOG_ENABLED
 
         /// <summary>

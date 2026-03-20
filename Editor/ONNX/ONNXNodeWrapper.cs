@@ -194,6 +194,31 @@ namespace Unity.InferenceEngine.Editor.Onnx
             return attribute.Strings.Select(s => s.ToStringUtf8()).ToArray();
         }
 
+        /// <summary>
+        /// Checks if an ONNX data type is supported by Sentis.
+        /// </summary>
+        public static bool IsDataTypeSupported(TensorProto.Types.DataType dataType)
+        {
+            return dataType switch
+            {
+                TensorProto.Types.DataType.Undefined => true,
+                TensorProto.Types.DataType.Float => true,
+                TensorProto.Types.DataType.Float16 => true,
+                TensorProto.Types.DataType.Double => true,
+                TensorProto.Types.DataType.Bfloat16 => true,
+                TensorProto.Types.DataType.Uint8 => true,
+                TensorProto.Types.DataType.Int8 => true,
+                TensorProto.Types.DataType.Uint16 => true,
+                TensorProto.Types.DataType.Int16 => true,
+                TensorProto.Types.DataType.Int32 => true,
+                TensorProto.Types.DataType.Int64 => true,
+                TensorProto.Types.DataType.Bool => true,
+                TensorProto.Types.DataType.Uint32 => true,
+                TensorProto.Types.DataType.Uint64 => true,
+                _ => false
+            };
+        }
+
         public static DataType DataTypeFromOnnxDataType(TensorProto.Types.DataType dataType, DataType defaultValue = DataType.Float, Action OnUnsupported = null)
         {
             switch (dataType)
@@ -215,9 +240,6 @@ namespace Unity.InferenceEngine.Editor.Onnx
                 case TensorProto.Types.DataType.Uint32:
                 case TensorProto.Types.DataType.Uint64:
                     return DataType.Int;
-                case TensorProto.Types.DataType.String:
-                case TensorProto.Types.DataType.Complex64:
-                case TensorProto.Types.DataType.Complex128:
                 default:
                     OnUnsupported?.Invoke();
                     return defaultValue;

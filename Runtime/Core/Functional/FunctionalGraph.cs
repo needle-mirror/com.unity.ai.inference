@@ -6,9 +6,9 @@ using UnityEngine.Assertions;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents a model graph using the functional API.
+    /// Represents a model graph using the `Functional` API.
     ///
-    /// Input functional tensors can be added to the graph, then manipulated using the functional API methods.
+    /// Input functional tensors can be added to the graph, then manipulated using the `Functional` API methods.
     ///
     /// The functional graph can be compiled to return an optimized Sentis runtime model.
     /// </summary>
@@ -46,7 +46,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Append an input to the graph with a type T and dynamic tensor shape.
+        /// Append an input to the graph with a type `T` and dynamic tensor shape.
         /// </summary>
         /// <param name="shape">The shape of the input.</param>
         /// <param name="name">The name of the input.</param>
@@ -58,7 +58,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Append an input to the graph with a type T and static tensor shape.
+        /// Append an input to the graph with a type `T` and static tensor shape.
         /// </summary>
         /// <param name="shape">The shape of the input.</param>
         /// <param name="name">The name of the input.</param>

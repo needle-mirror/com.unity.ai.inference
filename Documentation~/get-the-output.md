@@ -1,3 +1,6 @@
+---
+uid: sentis-get-the-output
+---
 # Get output from a model
 
 Use this information to get the output from a model.
@@ -30,7 +33,7 @@ Sentis worker memory allocator owns the reference returned by [`PeekOutput`](xre
 If you call `Schedule` again, the tensor is overwritten.
 
 > [!NOTE]
-> Be careful when you read data from an output tensor. In many instances, you might unintentionally trigger a blocking wait until the model finishes to run before it downloads the data from the graphics processing unit (GPU) or Burst to the central processing unit (CPU). To mitigate this overhead, consider [reading output from a model asynchronously](read-output-async.md). Additionally, [profiling a model](profile-a-model.md) can provide valuable insight into its performance.
+> Be careful when you read data from an output tensor. In many instances, you might unintentionally trigger a blocking wait until the model finishes to run before it downloads the data from the graphics processing unit (GPU) or Burst to the central processing unit (CPU). To mitigate this overhead, consider [reading output from a model asynchronously](xref:sentis-read-output-async). Additionally, [profiling a model](xref:sentis-profile-a-model) can provide valuable insight into its performance.
 
 ### Download the data of the original tensor
 
@@ -56,7 +59,7 @@ outputTensor.ReadbackRequest();
 outputTensor.ReadbackAndClone(); // not blocking
 ```
 
-For more information, refer to [Read Outputs Asynchronously](read-output-async.md).
+For more information, refer to [Read Outputs Asynchronously](xref:sentis-read-output-async).
 
 ### Use CopyOutput
 
@@ -100,7 +103,7 @@ If the model has multiple outputs, you can use each output name as a parameter i
 
 ## Additional resources
 
-- [Manage memory](manage-memory.md)
-- [Tensor fundamentals](tensor-fundamentals.md)
-- [Use output data](use-model-output.md)
-- [Read output from a model asynchronously](read-output-async.md)
+- [Manage memory](xref:sentis-manage-memory)
+- [Tensor fundamentals](xref:sentis-tensor-fundamentals)
+- [Use output data](xref:sentis-use-model-output)
+- [Read output from a model asynchronously](xref:sentis-read-output-async)

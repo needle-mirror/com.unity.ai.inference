@@ -1,7 +1,11 @@
 using System;
+using System.IO;
 using Unity.InferenceEngine.Editor.DynamicDims;
 using UnityEditor.AssetImporters;
 using UnityEngine;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Analytics.Import;
+#endif
 
 namespace Unity.InferenceEngine.Editor.Sentis
 {
@@ -23,15 +27,24 @@ namespace Unity.InferenceEngine.Editor.Sentis
 
         protected override Model LoadModel(AssetImportContext ctx)
         {
-            var model = ModelLoader.Load(ctx.assetPath);
+            using var fileStream = File.OpenRead(ctx.assetPath);
+
+            var model = ModelLoader.Load(fileStream);
             if (model == null)
                 return null;
+
+#if SENTIS_ANALYTICS_ENABLED
+
+            // Capture SOURCE model metrics from loaded .sentis file (before transformations)
+            SentisModelImportAnalyticsHelper.CaptureSourceModel(model, m_ImportReport);
+            SentisModelImportAnalyticsHelper.CaptureSourceModelStructure(model, m_ImportReport);
+#endif
 
             this.InitializeDynamicDimsConfig(model);
             this.ApplyDynamicDimConfigs(model);
             this.CleanModelDynamicDims(model);
-            return model;
 
+            return model;
         }
     }
 }

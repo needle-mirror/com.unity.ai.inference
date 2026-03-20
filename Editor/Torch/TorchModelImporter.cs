@@ -1,48 +1,45 @@
-using UnityEngine;
+using System;
 using UnityEditor.AssetImporters;
+using UnityEngine;
+#if SENTIS_ANALYTICS_ENABLED
+using Unity.InferenceEngine.Editor.Analytics.Import;
+#endif
 
 namespace Unity.InferenceEngine.Editor.Torch
 {
     /// <summary>
-    /// Represents an importer for serialized Inference Engine model files.
+    /// Represents an importer for serialized PyTorch (.pt2) model files.
     /// </summary>
     [ScriptedImporter(1, new[] { "pt2" })]
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.ai.inference@latest/index.html")]
-    class TorchModelImporter : ScriptedImporter
+    class TorchModelImporter : ModelImporterBase
     {
-        /// <summary>
-        /// Callback that Inference Engine calls when the model has finished importing.
-        /// </summary>
-        /// <param name="ctx">Asset import context</param>
-        public override void OnImportAsset(AssetImportContext ctx)
+        protected override Model LoadModel(AssetImportContext ctx)
         {
-            var converter = new TorchModelConverter(ctx.assetPath);
-            var model = converter.Convert();
+            m_ModelConverter = new TorchModelConverter(ctx.assetPath);
 
-            ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
-            ModelWriter.SaveModel(model, out var modelDescriptionBytes, out var modelWeightsBytes);
+#if SENTIS_ANALYTICS_ENABLED
 
-            ModelAssetData modelAssetData = ScriptableObject.CreateInstance<ModelAssetData>();
-            modelAssetData.value = modelDescriptionBytes;
-            modelAssetData.name = "Data";
-            modelAssetData.hideFlags = HideFlags.HideInHierarchy;
-            asset.modelAssetData = modelAssetData;
-
-            asset.modelWeightsChunks = new ModelAssetWeightsData[modelWeightsBytes.Length];
-            for (var i = 0; i < modelWeightsBytes.Length; i++)
+            // Subscribe to converter events for real-time analytics capture
+            if (m_ModelConverter is TorchModelConverter converter)
             {
-                asset.modelWeightsChunks[i] = ScriptableObject.CreateInstance<ModelAssetWeightsData>();
-                asset.modelWeightsChunks[i].value = modelWeightsBytes[i];
-                asset.modelWeightsChunks[i].name = "Data";
-                asset.modelWeightsChunks[i].hideFlags = HideFlags.HideInHierarchy;
-
-                ctx.AddObjectToAsset($"model data weights {i}", asset.modelWeightsChunks[i]);
+                converter.OnTorchDataType += dataType => m_ImportReport.sourceModel.AddDataType(dataType);
+                converter.OnTorchDataTypeUnsupported += dataType => m_ImportReport.sourceModel.AddUnsupportedDataType(dataType);
+                converter.OnTorchOperator += op =>
+                {
+                    m_ImportReport.sourceModel.layerCount++;
+                    m_ImportReport.sourceModel.AddOperator(op);
+                };
+                converter.OnTorchOperatorUnsupported += op => m_ImportReport.sourceModel.AddUnsupportedOperator(op);
+                converter.OnTorchModelLoaded += exportedProgram =>
+                    TorchModelImportAnalyticsHelper.CaptureSourceModel(exportedProgram, m_ImportReport);
             }
 
-            ctx.AddObjectToAsset("main obj", asset);
-            ctx.AddObjectToAsset("model data", modelAssetData);
+#endif
 
-            ctx.SetMainObject(asset);
+            var model = m_ModelConverter.Convert();
+
+            return model;
         }
     }
 }

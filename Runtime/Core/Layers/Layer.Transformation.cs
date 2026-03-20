@@ -47,7 +47,7 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
-    /// Options for the interpolation mode to use for `Resize`.
+    /// Options for the interpolation mode to use for `Resize` and `GridSample`
     /// </summary>
     enum InterpolationMode
     {
@@ -62,7 +62,7 @@ namespace Unity.InferenceEngine.Layers
         /// <summary>
         /// Use a cubic sampling of the surrounding elements to the calculated coordinate.
         /// </summary>
-        Cubic
+        Cubic // Not actually implemented. Currently maps to Linear. See SENTIS-556, SENTIS-1352
     }
 
     /// <summary>
@@ -918,10 +918,23 @@ namespace Unity.InferenceEngine.Layers
             else
             {
                 var scales = ctx.storage.GetFloats(inputs[1]);
-                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, scales), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+                if (axes != null)
+                {
+                    for (var i = 0; i < axes.Length; i++)
+                    {
+                        var axis = X.shape.Axis(axes[i]);
+                        s[axis] = scales[i];
+                    }
+                }
+                else
+                {
+                    for (var i = 0; i < X.shape.rank; i++)
+                        s[i] = scales[i];
+                }
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, s), DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 if (O.shape.HasZeroDims())
                     return;
-                ctx.backend.Resize(X, O, scales, mode, nearestMode, coordTransformMode);
+                ctx.backend.Resize(X, O, s, mode, nearestMode, coordTransformMode);
             }
         }
     }
@@ -1186,6 +1199,11 @@ namespace Unity.InferenceEngine.Layers
                     Logger.AssertIsTrue(lastSplitLength >= 0, "Split.InputError: split axis too small for numOutputs");
                     partialSplit[numOutputs - 1] = PartialTensorElement<int>.Value(lastSplitLength);
                 }
+            }
+            else
+            {
+                if (numOutputs == 0)
+                    numOutputs = partialSplit.length;
             }
 
             var outputTensors = new PartialTensor[numOutputs];

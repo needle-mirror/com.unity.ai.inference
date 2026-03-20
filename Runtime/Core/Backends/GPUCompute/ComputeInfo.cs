@@ -38,6 +38,19 @@ namespace Unity.InferenceEngine
         /// </summary>
         public static string graphicsDeviceVendor = "";
 
+#if UNITY_EDITOR
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStaticsOnLoad()
+        {
+            supportsComputeSharedMemory = true;
+            supportsDense32x32 = true;
+            supportsDense64x64 = true;
+            supportsCompute = true;
+            maxComputeWorkGroupSize = 1024;
+            graphicsDeviceVendor = "";
+            m_UsingDirect3DAPI =  false;
+        }
+#endif
         /// <summary>
         /// Determines whether the GPU is a mobile GPU, for example Android, iPhone or Intel.
         /// </summary>

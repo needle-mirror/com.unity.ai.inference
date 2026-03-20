@@ -8,6 +8,7 @@ namespace Unity.InferenceEngine.Tokenization.Truncators
     /// This truncation strategy truncates the longest sequence of tokens first.
     /// In case a secondary sequence of tokens is not provided, it doesn't remove any token.
     /// </summary>
+    [Obsolete("Use GenericTruncator instead", false)]
     public class LongestFirstTruncator : StrategicTruncator
     {
         readonly Pool<List<Range>> m_ListOfRangesPool = new(() => new(), list => list.Clear());

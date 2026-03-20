@@ -9,6 +9,11 @@ namespace Unity.InferenceEngine.Tokenization.Truncators
     /// </summary>
     public class DefaultTruncator : ITruncator
     {
+        /// <summary>
+        /// Gets a singleton instance of the default truncator.
+        /// </summary>
+        public static ITruncator Instance { get; } = new DefaultTruncator();
+
         /// <inheritdoc />
         public void Truncate(
             IReadOnlyList<Token> inputA,

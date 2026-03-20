@@ -1,3 +1,6 @@
+---
+uid: sentis-serialize-a-model
+---
 # Serialize a Model
 
 For larger models, it's advisable to use a serialized asset, which typically comes with the file extension `.sentis`.
@@ -56,5 +59,5 @@ For more information, refer to `com.unity.ai.inference/Runtime/Core/Serializatio
 
 ## Additional resources
 
-- [Quantize a model](quantize-a-model.md)
-- [Inspect a model](inspect-a-model.md)
+- [Quantize a model](xref:sentis-quantize-a-model)
+- [Inspect a model](xref:sentis-inspect-a-model)

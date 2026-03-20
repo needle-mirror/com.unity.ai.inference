@@ -13,6 +13,9 @@ namespace Unity.InferenceEngine.Editor
         protected string m_DirectoryPath;
         protected string m_FilePath;
 
+        // Warnings list - always available for logging
+        internal List<ImporterWarning> ImportWarnings { get; } = new();
+
         /// <summary>
         /// Initializes and returns a `ModelConverter` for this file.
         /// </summary>
@@ -32,20 +35,7 @@ namespace Unity.InferenceEngine.Editor
         // Logging helpers
         protected void Warn(WarningType severity, string message)
         {
-            Warnings.Add(new ImporterWarning(message, severity));
-
-            switch (severity)
-            {
-                case WarningType.Info:
-                    Debug.Log(message);
-                    break;
-                case WarningType.Warning:
-                    Debug.LogWarning(message);
-                    break;
-                case WarningType.Error:
-                    Debug.LogError(message);
-                    break;
-            }
+            ImportWarnings.Add(new ImporterWarning(message, severity));
         }
 
         protected T Warn<T>(WarningType severity, string message, T defaultValue)
@@ -55,13 +45,9 @@ namespace Unity.InferenceEngine.Editor
         }
 
         /// <summary>
-        /// The warnings from the model importer.
-        /// </summary>
-        protected internal List<ImporterWarning> Warnings { get; } = new();
-
-        /// <summary>
         /// Represents types of warning from the model importer.
         /// </summary>
+        [Serializable]
         public enum WarningType
         {
             /// <summary>
@@ -88,17 +74,18 @@ namespace Unity.InferenceEngine.Editor
         /// <summary>
         /// Represents the data structure for a warning from the model importer.
         /// </summary>
-        public class ImporterWarning
+        [Serializable]
+        public struct ImporterWarning
         {
             /// <summary>
             /// A message.
             /// </summary>
-            public string Message { get; }
+            public string message;
 
             /// <summary>
             /// The severity of a warning.
             /// </summary>
-            public WarningType MessageSeverity { get; }
+            public WarningType messageSeverity;
 
             /// <summary>
             /// Initializes and returns an instance of `ImporterWarning`.
@@ -107,8 +94,8 @@ namespace Unity.InferenceEngine.Editor
             /// <param name="msg">The message text of the warning</param>
             public ImporterWarning(string msg, WarningType severity)
             {
-                Message = msg;
-                MessageSeverity = severity;
+                message = msg;
+                messageSeverity = severity;
             }
         }
     }

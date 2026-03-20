@@ -2,9 +2,19 @@ using System;
 using System.Collections.Generic;
 using Unity.InferenceEngine.Editor.Visualizer.GraphData;
 using Unity.InferenceEngine.Editor.Visualizer.Views;
+using UnityEngine;
 
 namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
+    /// <summary>
+    /// Request to focus an object in the graph view.
+    /// </summary>
+    /// <param name="Target">The object to focus (NodeData or tensor index)</param>
+    /// <param name="Alignment">Normalized Vector2 for positioning (zero=center, up=top, etc.)</param>
+    /// <param name="ZoomLevel">The zoom level for framing</param>
+    /// <param name="SkipAnimation">Whether to skip the framing animation</param>
+    record FocusData(object Target, Vector2 Alignment, float ZoomLevel, bool SkipAnimation);
+
     record GraphState: IDisposable
     {
 
@@ -23,7 +33,7 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
         public List<EdgeData> Edges = new();
 
         // UI State
-        public object FocusedObject = null;
+        public FocusData FocusedData = null;
         public List<object> SelectionHistory = new();
         public int CurrentSelectionIndex = -1;
         public List<object> HoveredObjects = new();

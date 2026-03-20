@@ -1,3 +1,6 @@
+---
+uid: sentis-split-inference-over-multiple-frames
+---
 # Split inference over multiple frames
 
 To run a model, one layer at a time, use the [`ScheduleIterable`](xref:Unity.InferenceEngine.Worker.ScheduleIterable) method of the worker. This method creates an `IEnumerator` object.
@@ -40,11 +43,11 @@ void Update()
 }
 ```
 
-For an example, refer to the `Run a model a layer at a time` example in the [sample scripts](package-samples.md).
+For an example, refer to the `Run a model a layer at a time` example in the [sample scripts](xref:sentis-package-samples).
 
 ## Additional resources
 
-- [Run a model](run-a-model.md)
-- [Sentis models](models-concept.md)
-- [Create an engine to run a model](create-an-engine.md)
-- [Profile a model](profile-a-model.md)
+- [Run a model](xref:sentis-run-a-model)
+- [Sentis models](xref:sentis-models-concept)
+- [Create an engine to run a model](xref:sentis-create-an-engine)
+- [Profile a model](xref:sentis-profile-a-model)

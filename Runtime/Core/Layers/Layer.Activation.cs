@@ -418,12 +418,14 @@ namespace Unity.InferenceEngine.Layers
     }
 
     /// <summary>
-    /// Represents an element-wise `Swish` activation layer. f(x) = sigmoid(x) * x = x / (1 + e^{-x}).
+    /// Represents an element-wise `Swish` activation layer. f(x) = sigmoid(alpha * x) * x = x / (1 + e^{-alpha * x}).
     /// </summary>
     [Operator(category = "Activation")]
     partial class Swish : Layer
     {
-        internal static PartialTensor InferPartial(PartialTensor input)
+        public float alpha;
+
+        internal static PartialTensor InferPartial(PartialTensor input, float alpha)
         {
             return PartialTensor.Activation(input);
         }
@@ -434,7 +436,7 @@ namespace Unity.InferenceEngine.Layers
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Swish(X as Tensor<float>, O);
+            ctx.backend.Swish(X as Tensor<float>, O, alpha);
         }
     }
 

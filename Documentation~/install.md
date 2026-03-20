@@ -1,4 +1,9 @@
+---
+uid: sentis-install
+---
 # Install Sentis
+
+[!include[](snippets/name-change.md)]
 
 The Sentis package is available from the Unity Package Manager.
 
@@ -18,4 +23,4 @@ To add the Sentis package to a Unity project:
 ## Additional resources
 
 - [Unity Package Manager](https://docs.unity3d.com/2023.3/Documentation/Manual/upm-ui.html)
-- [Understand the Sentis workflow](understand-sentis-workflow.md)
+- [Understand the Sentis workflow](xref:sentis-understand-sentis-workflow)

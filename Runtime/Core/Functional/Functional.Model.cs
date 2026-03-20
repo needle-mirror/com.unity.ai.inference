@@ -12,6 +12,46 @@ namespace Unity.InferenceEngine
         ///
         /// Sentis will make destructive edits of the source model.
         /// </summary>
+        /// <remarks>
+        /// This operation integrates an existing model into a functional graph.
+        /// Passes the provided tensors as inputs to the model,
+        /// and the model's outputs are tensors that can be used in further computations.
+        ///
+        /// This method allows you to chain or compose models, enabling workflows such as:
+        /// - Adding preprocessing operations before a model's inputs
+        /// - Adding postprocessing operations after a model's outputs
+        /// - Combining multiple models into a larger computational graph
+        ///
+        /// <b>Important</b>: This method makes destructive modifications to the source model for performance optimization.
+        /// To keep the original model unchanged, use <see cref="ForwardWithCopy"/> instead.
+        ///
+        /// The number of input functional tensors must match the number of inputs expected by the model.
+        /// The returned array will contain one functional tensor for each output of the model.
+        /// </remarks>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// // Load an existing model
+        /// var model = ModelLoader.Load(modelAsset);
+        ///
+        /// // Create a functional graph with preprocessing
+        /// var graph = new FunctionalGraph();
+        /// var input = graph.AddInput(DataType.Float, new TensorShape(1, 3, 224, 224));
+        ///
+        /// // Apply preprocessing: normalize the input
+        /// var mean = Functional.Constant(new TensorShape(1, 3, 1, 1), new[] { 0.485f, 0.456f, 0.406f });
+        /// var std = Functional.Constant(new TensorShape(1, 3, 1, 1), new[] { 0.229f, 0.224f, 0.225f });
+        /// var normalized = (input - mean) / std;
+        ///
+        /// // Pass the preprocessed input through the existing model
+        /// var outputs = Functional.Forward(model, normalized);
+        ///
+        /// // Use the model outputs (apply softmax for classification)
+        /// var probabilities = Functional.Softmax(outputs[0], dim: -1);
+        ///
+        /// graph.AddOutput(probabilities);
+        /// var combinedModel = graph.Compile();
+        /// ]]></code>
+        /// </example>
         /// <param name="model">The model to use as the source.</param>
         /// <param name="inputs">The functional tensors to use as the inputs to the model.</param>
         /// <returns>The functional tensor array.</returns>
@@ -25,6 +65,48 @@ namespace Unity.InferenceEngine
         ///
         /// Sentis will copy the source model and not make edits to it.
         /// </summary>
+        /// <remarks>
+        /// This operation integrates an existing model into a functional graph.
+        /// Passes the provided tensors as inputs to the model,
+        /// and the model's outputs are tensors that can be used in further computations.
+        ///
+        /// This method allows you to chain or compose models, enabling workflows such as:
+        /// - Adding preprocessing operations before a model's inputs
+        /// - Adding postprocessing operations after a model's outputs
+        /// - Combining multiple models into a larger computational graph
+        ///
+        /// This method creates a copy of the source model before processing,
+        /// ensuring that the original model remains unmodified. This is useful when you need to reuse the same
+        /// model multiple times or preserve it for other purposes.
+        /// <b>Note</b>: Copying incurs additional memory overhead and processing time compared to
+        /// the destructive <see cref="Forward"/> method.
+        ///
+        /// The number of input functional tensors must match the number of inputs expected by the model.
+        /// The returned array will contain one functional tensor for each output of the model.
+        /// </remarks>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// // Load an existing model that you want to preserve
+        /// var baseModel = ModelLoader.Load(modelAsset);
+        ///
+        /// // Create two different functional graphs using the same base model
+        /// var graph1 = new FunctionalGraph();
+        /// var input1 = graph1.AddInput(DataType.Float, new TensorShape(1, 3, 224, 224));
+        /// var outputs1 = Functional.ForwardWithCopy(baseModel, input1);
+        /// var result1 = Functional.Relu(outputs1[0]); // Apply Relu postprocessing
+        /// graph1.AddOutput(result1);
+        /// var model1 = graph1.Compile();
+        ///
+        /// var graph2 = new FunctionalGraph();
+        /// var input2 = graph2.AddInput(DataType.Float, new TensorShape(1, 3, 224, 224));
+        /// var outputs2 = Functional.ForwardWithCopy(baseModel, input2);
+        /// var result2 = Functional.Sigmoid(outputs2[0]); // Apply Sigmoid postprocessing
+        /// graph2.AddOutput(result2);
+        /// var model2 = graph2.Compile();
+        ///
+        /// // baseModel remains unchanged and can still be used independently
+        /// ]]></code>
+        /// </example>
         /// <param name="model">The model to use as the source.</param>
         /// <param name="inputs">The functional tensors to use as the inputs to the model.</param>
         /// <returns>The functional tensor array.</returns>

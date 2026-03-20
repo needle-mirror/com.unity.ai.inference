@@ -1,8 +1,37 @@
+---
+uid: sentis-CHANGELOG
+---
 # Changelog
 All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [2.6.0] - 2026-03-20
+
+### Added
+- Officially support ONNX opset up to version 25
+- Functional methods for `Swish` and `RMSNorm`
+- Support for the `alpha` argument for the `Swish` operator
+- Improved analytics and error reporting when importing models with unsupported operators
+- Now supporting Fast Enter Play Mode for CoreCLR compatibility
+- Added support for `Buffer` in PyTorch import
+- Tokenizer: Generic truncation with support for `longestfirst`, `onlyfirst` and `onlysecond`
+
+### Changed
+- Now using Unity's `Mathematics.Random` instead of `System.Random`
+- Improved documentation for the `Tensor` and `Functional` APIs
+- Maintenance of documentation links
+- Updated documentation for Cubic interpolation mode support limitations
+
+### Fixed
+- Updated behavior of `ReduceL1`, `ReduceL2`, `ReduceSumSquare` and `ReduceLogSum` operators when argument `noop_with_empty_axes` is `true` and `axes` are empty
+- `Interpolate` issue with argument `scaleFactor`
+- Fix when GPU allocations (`ComputeTensorData`) are used for tensors without a corresponding backend.
+- Prevent crashes when closing the editor while in Play mode
+- Fixed memory leak in PyTorch Import
+- Fix GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute
+- Fixed issue with `Split` operator when importing `.sentis` file
 
 ## [2.5.0] - 2026-01-23
 
@@ -12,7 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `3D MaxPool` and `AveragePool` operators implemented on all backends
 - Sentis Importer: Allow users to specify dynamic dimensions as static on Sentis model import, same as we do for ONNX
 - Tokenizer Additions
-    - `Hugging Face` parser
+  - `Hugging Face` parser
 	- Sequence decoder
 	- Regex replace decoder
 	- String split pre-tokenizer
@@ -45,6 +74,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Memory Leak in FuseConstantPass
 - `Clip` operator improvement: no longer need CPU fallback for min/max parameters
 - `Mod` operator fix: on some platform with float operands, could return incorrect value when one of them was 0
+- ModelLoader: Exception handling now properly bubbles failures for importer integration and analytics reporting instead of silently catching exceptions
+- ModelLoader: Added robust stream reading with full buffer validation to prevent data corruption from partial reads and properly handle EOF scenarios
 - Faulty optimization pass
 - Fix in existing burst code for 2D pooling vectorization calculations
 - `TopK` issue on `GPUCompute` when dimension is specified

@@ -52,7 +52,8 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Views.Inspectors
             var frameButton = this.Q<IconButton>();
             frameButton.clickable.clicked += () =>
             {
-                m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject.Invoke(nodeData));
+                m_StoreManager.Store.Dispatch(GraphStoreManager.SetFocusedObject.Invoke(
+                    new FocusData(nodeData, Vector2.zero, GraphView.ZoomLevel.MinZoom, false)));
             };
 
             m_ScrollView = this.Q<ScrollView>("InspectorScrollView");

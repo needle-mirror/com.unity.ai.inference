@@ -1,3 +1,6 @@
+---
+uid: sentis-create-an-input-tensor
+---
 # Create input for a model
 
 A model requires input tensors with certain shapes and data types. Use this information to find model inputs and create input tensors for your model.
@@ -5,7 +8,7 @@ A model requires input tensors with certain shapes and data types. Use this info
 ## Understand the required input
 
 Before you can create input tensors for a model, inspect the model to understand the shape and data types of the model inputs.
-For more information, refer to [Model inputs](models-concept.md#model-inputs).
+For more information, refer to [Model inputs](xref:sentis-models-concept#model-inputs).
 
 The [`TensorShape`](xref:Unity.InferenceEngine.TensorShape) of the [`Tensor`](xref:Unity.InferenceEngine.Tensor) you create must be compatible with the [`DynamicTensorShape`](xref:Unity.InferenceEngine.DynamicTensorShape), which defines the shape of the model input.
 
@@ -73,11 +76,11 @@ worker.Schedule(inputs);
 
 ## Edit a model
 
-Use the functional API to add operations to your model inputs. For more information, refer to [Edit a model](edit-a-model.md).
+Use the functional API to add operations to your model inputs. For more information, refer to [Edit a model](xref:sentis-edit-a-model).
 
 ## Additional resources
 
-- [Tensor fundamentals](tensor-fundamentals.md)
-- [Edit a model](edit-a-model.md)
-- [Convert a texture to a tensor](convert-texture-to-tensor.md)
-- [Tokenize text for input](tokenizer.md)
+- [Tensor fundamentals](xref:sentis-tensor-fundamentals)
+- [Edit a model](xref:sentis-edit-a-model)
+- [Convert a texture to a tensor](xref:sentis-convert-texture-to-tensor)
+- [Tokenize text for input](xref:sentis-tokenizer)

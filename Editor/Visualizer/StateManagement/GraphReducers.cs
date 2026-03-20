@@ -6,9 +6,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer.StateManagement
 {
     static class GraphReducers
     {
-        public static GraphState SetFocusedNode(GraphState state, IAction<object> index)
+        public static GraphState SetFocusedNode(GraphState state, IAction<FocusData> action)
         {
-            return state with { FocusedObject = index.payload };
+            return state with { FocusedData = action.payload };
         }
 
         public static GraphState SetSelectedObject(GraphState state, IAction<object> @object)

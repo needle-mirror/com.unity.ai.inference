@@ -1,3 +1,6 @@
+---
+uid: sentis-tokenizer
+---
 # Tokenize text for input
 
 Use the built-in [`tokenizer`](xref:Unity.InferenceEngine.Tokenization.ITokenizer) to convert text into numerical tokens to use as input for models that process text.
@@ -331,4 +334,4 @@ class ReverseNormalizerBuilder : IComponentBuilder<INormalizer>
 ```
 ## Additional resources
 
-* [Samples](package-samples.md)
+* [Samples](xref:sentis-package-samples)

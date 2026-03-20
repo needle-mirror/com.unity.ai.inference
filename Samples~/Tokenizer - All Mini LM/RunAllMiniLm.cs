@@ -11,6 +11,7 @@ using Unity.InferenceEngine.Tokenization.PostProcessors;
 using Unity.InferenceEngine.Tokenization.PostProcessors.Templating;
 using Unity.InferenceEngine.Tokenization.PreTokenizers;
 using Unity.InferenceEngine.Tokenization.Truncators;
+using Unity.InferenceEngine.Tokenization.Truncators.Strategies;
 using UnityEngine;
 
 public class RunAllMiniLm : MonoBehaviour
@@ -80,10 +81,15 @@ public class RunAllMiniLm : MonoBehaviour
         // Those component are based on the tokenizer.json config.
         {
             var model = new WordPieceMapper(vocabulary, "[UNK]", "##", 100);
+
             var normalizer = new BertNormalizer(
                 cleanText: true, handleCjkChars: true, stripAccents: null, lowerCase: true);
+
             var preTokenizer = new BertPreTokenizer();
-            var truncator = new LongestFirstTruncator(new RightDirectionRangeGenerator(), 128, 0);
+
+            var truncator = new GenericTruncator(LongestFirstStrategy.Instance,
+                RightDirectionRangeGenerator.Instance, 128, 0);
+
             var postProcessor = new TemplatePostProcessor(
                 new(Template.Parse("[CLS]:0 $A:0 [SEP]:0")),
                 new(Template.Parse("[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1")),
@@ -91,8 +97,10 @@ public class RunAllMiniLm : MonoBehaviour
                 {
                     ("[CLS]", clsToken), ("[SEP]", sepToken)
                 });
+
             var padding =
                 new RightPadding(new FixedPaddingSizeProvider(128), new(padToken, "[PAD]"));
+
             var decoder = new WordPieceDecoder("##", true);
 
             return new(
