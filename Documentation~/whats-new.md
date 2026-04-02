@@ -27,7 +27,7 @@ This is a summary of the changes from Sentis 2.5 to Sentis 2.6.
 - Fixed a case where GPU allocations (`ComputeTensorData`) were used for tensors without a corresponding backend.
 - Prevented crashes when closing the editor while in Play mode.
 - Fixed a memory leak in PyTorch model import.
-- Resolved a GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute.
+- Resolved a GPU crash for convolution with padding on GPU compute.
 - Fixed an issue with the `Split` operator when importing `.sentis` files.
 
 # What's new in Sentis 2.5
@@ -52,7 +52,7 @@ This is a summary of the changes from Sentis 2.4 to Sentis 2.5.
 
 ## Fixed
 
-- Editor crash when quitting in play mode.
+- Editor crash when quitting in Play Mode.
 - Memory leak in FuseConstantPass was fixed.
 - `Clip` operator no longer need CPU fallback for min/max parameters.
 - `Mod` operator fix on some platform with float operands.
@@ -60,7 +60,7 @@ This is a summary of the changes from Sentis 2.4 to Sentis 2.5.
 - Fix in existing burst code for 2D pooling vectorization calculations.
 - `TopK` issue on `GPUCompute` when dimension is specified.
 - Many fixes to the Tokenizer.
-  
+
 # What's new in Sentis 2.4
 
 Sentis is the new name for this package.

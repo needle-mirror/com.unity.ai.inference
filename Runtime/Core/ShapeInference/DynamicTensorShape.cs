@@ -6,8 +6,31 @@ using UnityEngine.Assertions;
 namespace Unity.InferenceEngine
 {
     /// <summary>
-    /// Represents the shape of an input tensor, or the predicted shape of a tensor before Sentis executes.
+    /// Represents a tensor shape that can have dynamic dimensions or dynamic rank.
     /// </summary>
+    /// <remarks>
+    /// <see cref="DynamicTensorShape"/> describes tensor dimensions where some values may be unknown at compile time.
+    /// Use it for model inputs with variable batch size, sequence length, or other runtime-determined dimensions.
+    /// Non-negative dimension values are static. Use <c>-1</c> for dynamic dimensions. Use <see cref="DynamicOfRank"/> to create a shape with known rank but all dynamic dimensions.
+    /// When <see cref="isRankDynamic"/> is <see langword="true"/>, the rank is unknown and <see cref="rank"/> cannot be accessed.
+    ///
+    /// **Additional resources**
+    ///
+    /// - <see cref="TensorShape"/>
+    /// - <see cref="FunctionalGraph.AddInput"/>
+    /// </remarks>
+    /// <example>
+    /// <code lang="cs"><![CDATA[
+    /// // Static shape: (1, 3, 224, 224)
+    /// var staticShape = new DynamicTensorShape(1, 3, 224, 224);
+    ///
+    /// // Dynamic shape with unknown dimension 0
+    /// var dynamicBatch = new DynamicTensorShape(-1, 3, 224, 224);
+    ///
+    /// // All dimensions dynamic with rank 2
+    /// var shape = DynamicTensorShape.DynamicOfRank(2);
+    /// ]]></code>
+    /// </example>
     [UnityEngine.Scripting.APIUpdating.MovedFrom("Unity.Sentis")]
     [Serializable]
     public unsafe struct DynamicTensorShape
@@ -28,13 +51,20 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Whether the shape has a dynamic rank.
         /// </summary>
+        /// <remarks>
+        /// When <see langword="true"/>, the number of dimensions is unknown and <see cref="rank"/> cannot be accessed.
+        /// </remarks>
+        /// <value><see langword="true"/> if the shape has a dynamic rank. Otherwise <see langword="false"/>.</value>
         public bool isRankDynamic => m_IsRankDynamic;
 
         /// <summary>
-        /// The rank of a `DynamicTensorShape`, For example, a tensor of shape (5) has a rank of 1. A tensor of shape (7, 3, 5) has a rank of 3.
-        ///
-        /// This cannot be called if the shape has a dynamic rank. Call `isRankDynamic` first.
+        /// The rank of the shape (number of dimensions). For example, shape <c>(5)</c> has rank <c>1</c>, and shape <c>(7, 3, 5)</c> has rank <c>3</c>.
         /// </summary>
+        /// <remarks>
+        /// Cannot be accessed when <see cref="isRankDynamic"/> is <see langword="true"/>. Check <see cref="isRankDynamic"/> before accessing.
+        /// </remarks>
+        /// <value>The rank of the shape.</value>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when the shape has dynamic rank.</exception>
         public int rank
         {
             get
@@ -46,13 +76,7 @@ namespace Unity.InferenceEngine
 
         /// <summary>
         /// Gets the tensor shape at a given axis.
-        /// Ex:
-        /// shape  (3, 4, 5, 6)
-        /// index   0, 1, 2, 3
-        ///        -4,-3,-2,-1
-        /// shape  (7, 3, 2)
-        /// index   0, 1, 2
-        ///        -3,-2,-1
+        /// <para>Example: shape <c>(3, 4, 5, 6)</c> has index <c>0, 1, 2, 3</c> or <c>-4, -3, -2, -1</c>; shape <c>(7, 3, 2)</c> has index <c>0, 1, 2</c> or <c>-3, -2, -1</c>.</para>
         /// </summary>
         /// <param name="axis">The axis to get or set.</param>
         internal DynamicTensorDim this[int axis]
@@ -91,9 +115,19 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Checks if the `DynamicTensorShape` is static and can be converted to a `TensorShape`.
+        /// Checks whether the shape is fully static and can be converted to a <see cref="TensorShape"/>.
         /// </summary>
-        /// <returns>Whether the `DynamicTensorShape` has static rank all static dimensions.</returns>
+        /// <remarks>
+        /// A shape is static when it has a known rank and every dimension has a known value (no <c>-1</c> or dynamic dims). Call this before <see cref="ToTensorShape"/> to avoid assertion failures.
+        /// </remarks>
+        /// <returns><see langword="true"/> if the shape has static rank and all dimensions are static. Otherwise <see langword="false"/>.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(1, 3, 224, 224);
+        /// if (shape.IsStatic())
+        ///     var staticShape = shape.ToTensorShape();
+        /// ]]></code>
+        /// </example>
         public bool IsStatic()
         {
             if (!hasRank)
@@ -125,9 +159,20 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Converts the `DynamicTensorShape` to a `TensorShape`. You should call `IsStatic` before you call this method.
+        /// Converts the shape to a <see cref="TensorShape"/>.
         /// </summary>
-        /// <returns>The converted `TensorShape`.</returns>
+        /// <remarks>
+        /// Call <see cref="IsStatic"/> first to ensure the shape is fully static. Fails when the shape has dynamic rank.
+        /// </remarks>
+        /// <returns>The converted static tensor shape.</returns>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when the shape has dynamic rank.</exception>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var dynamicShape = new DynamicTensorShape(-1, 3, 224, 224);
+        /// if (dynamicShape.IsStatic())
+        ///     TensorShape staticShape = dynamicShape.ToTensorShape();
+        /// ]]></code>
+        /// </example>
         public TensorShape ToTensorShape()
         {
             Assert.IsTrue(hasRank, "ValueError: Cannot convert tensor of dynamic rank to TensorShape");
@@ -262,29 +307,38 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 1.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>1</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
+        /// <example>
+        /// <para>Create a shape of rank <c>1</c> (a vector with dynamic length).</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(-1);
+        /// ]]></code>
+        /// </example>
         public DynamicTensorShape(int d0)
             : this(DynamicTensorDim.FromInt(d0)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 2.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>2</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         public DynamicTensorShape(int d0, int d1)
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 3.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>3</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -292,10 +346,11 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 4.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>4</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -304,10 +359,11 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2), DynamicTensorDim.FromInt(d3)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 5.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>5</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -317,10 +373,11 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2), DynamicTensorDim.FromInt(d3), DynamicTensorDim.FromInt(d4)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 6.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>6</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -331,10 +388,11 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2), DynamicTensorDim.FromInt(d3), DynamicTensorDim.FromInt(d4), DynamicTensorDim.FromInt(d5)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 7.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>7</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -346,10 +404,11 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2), DynamicTensorDim.FromInt(d3), DynamicTensorDim.FromInt(d4), DynamicTensorDim.FromInt(d5), DynamicTensorDim.FromInt(d6)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with rank 8.
-        ///
-        /// Dimensions with non-negative values are static and values of -1 are dynamic.
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> with rank <c>8</c>.
         /// </summary>
+        /// <remarks>
+        /// Dimensions with non-negative values are static; use <c>-1</c> for dynamic dimensions.
+        /// </remarks>
         /// <param name="d0">The dimension of axis 0.</param>
         /// <param name="d1">The dimension of axis 1.</param>
         /// <param name="d2">The dimension of axis 2.</param>
@@ -362,11 +421,20 @@ namespace Unity.InferenceEngine
             : this(DynamicTensorDim.FromInt(d0), DynamicTensorDim.FromInt(d1), DynamicTensorDim.FromInt(d2), DynamicTensorDim.FromInt(d3), DynamicTensorDim.FromInt(d4), DynamicTensorDim.FromInt(d5), DynamicTensorDim.FromInt(d6), DynamicTensorDim.FromInt(d7)) { }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with given dims.
-        ///
-        /// Values of -1 are
+        /// Initializes and returns an instance of <see cref="DynamicTensorShape"/> from a span of dimension values.
         /// </summary>
-        /// <param name="shape">The shape as a span.</param>
+        /// <remarks>
+        /// Values of <c>-1</c> represent dynamic dimensions. Non-negative values are static. The span length must not exceed <see cref="TensorShape.maxRank"/>.
+        /// </remarks>
+        /// <param name="shape">The dimensions as a span of integers.</param>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when the span length exceeds the maximum rank.</exception>
+        /// <example>
+        /// <para>Create a shape from a span of dimensions (e.g. from an array or stack-allocated buffer).</para>
+        /// <code lang="cs"><![CDATA[
+        /// var dims = new[] { -1, 3, 224, 224 };
+        /// var shape = new DynamicTensorShape(dims.AsSpan());
+        /// ]]></code>
+        /// </example>
         public DynamicTensorShape(ReadOnlySpan<int> shape)
         {
             Logger.AssertIsTrue(shape.Length <= TensorShape.maxRank, "ValueError: DynamicTensorShape are capped to rank=8, cannot create DynamicTensorShape of rank {0}", shape.Length);
@@ -383,7 +451,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` of dynamic rank.
+        /// Creates a shape with dynamic rank (unknown number of dimensions).
         /// </summary>
         internal static DynamicTensorShape DynamicRank
         {
@@ -396,9 +464,19 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `DynamicTensorShape` with a given `TensorShape`, and dynamic dimensions. For example: `DynamicTensorShape(new TensorShape(3, 4, 5, 6))` returns a dynamic tensor shape of (3, 4, 5, 6).
+        /// Initializes a shape from a static <see cref="TensorShape"/>.
         /// </summary>
-        /// <param name="other">The `TensorShape` to copy.</param>
+        /// <remarks>
+        /// All dimensions from the source shape are copied as static. Use when converting from a fully known <see cref="TensorShape"/> to a <see cref="DynamicTensorShape"/> for use with the <see cref="Functional"/> API.
+        /// </remarks>
+        /// <param name="other">The static tensor shape to copy.</param>
+        /// <example>
+        /// <para>Convert a static TensorShape to DynamicTensorShape.</para>
+        /// <code lang="cs"><![CDATA[
+        /// var staticShape = new TensorShape(3, 4, 5, 6);
+        /// var dynamicShape = new DynamicTensorShape(staticShape);
+        /// ]]></code>
+        /// </example>
         public DynamicTensorShape(TensorShape other)
         {
             m_Rank = other.rank;
@@ -415,9 +493,18 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns a copy of another `DynamicTensorShape`.
+        /// Initializes a shape as a copy of another <see cref="DynamicTensorShape"/>.
         /// </summary>
-        /// <param name="other">The `DynamicTensorShape` to copy.</param>
+        /// <remarks>
+        /// Copies rank and all dimensions (including dynamic ones) from the source shape.
+        /// </remarks>
+        /// <param name="other">The shape to copy.</param>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var original = new DynamicTensorShape(-1, 3, 224, 224);
+        /// var copy = new DynamicTensorShape(original);
+        /// ]]></code>
+        /// </example>
         public DynamicTensorShape(DynamicTensorShape other)
         {
             m_Rank = other.m_Rank;
@@ -434,10 +521,24 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Creates and returns a `DynamicTensorShape` with given rank and all dimensions dynamic.
+        /// Creates a shape with the given rank and all dimensions dynamic.
         /// </summary>
-        /// <param name="rank">The rank of the `DynamicTensorShape`.</param>
-        /// <returns>The created `DynamicTensorShape`.</returns>
+        /// <remarks>
+        /// Use <see cref="Set"/> or <see cref="SetDynamic"/> to configure individual dimensions after creation.
+        /// </remarks>
+        /// <param name="rank">The rank (number of dimensions). Must be between <c>0</c> and <see cref="TensorShape.maxRank"/> (<c>8</c>).</param>
+        /// <returns>The created shape with all dimensions dynamic.</returns>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when rank is out of range.</exception>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// // Create a shape with dynamic batch dimension representing a texture in the NCHW format.
+        /// var shape = DynamicTensorShape.DynamicOfRank(4);
+        /// shape.Set(0, -1);  // batch
+        /// shape.Set(1, 3);   // channels
+        /// shape.Set(2, 224); // height
+        /// shape.Set(3, 224); // width
+        /// ]]></code>
+        /// </example>
         public static DynamicTensorShape DynamicOfRank(int rank)
         {
             Logger.AssertIsTrue(0 <= rank && rank <= TensorShape.maxRank, "ValueError: DynamicTensorShape are capped to rank=8, cannot create empty shape of rank {0}", rank);
@@ -448,11 +549,19 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Return the shape as an integer array, if the rank is dynamic this returns null.
-        ///
-        /// If a dimension is dynamic it is represented with a -1 in the array.
+        /// Returns the shape as an integer array.
         /// </summary>
-        /// <returns>The shape as an integer array.</returns>
+        /// <remarks>
+        /// Returns null when <see cref="isRankDynamic"/> is <see langword="true"/>. Dynamic dimensions are represented as <c>-1</c> in the array.
+        /// </remarks>
+        /// <returns>The shape as an integer array, or null when the rank is dynamic.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(-1, 3, 224, 224);
+        /// int[] dims = shape.ToIntArray();
+        /// // dims is [-1, 3, 224, 224]
+        /// ]]></code>
+        /// </example>
         public int[] ToIntArray()
         {
             if (m_IsRankDynamic)
@@ -465,11 +574,21 @@ namespace Unity.InferenceEngine
 
         /// <summary>
         /// Returns the dimension at a given axis as an integer.
-        ///
-        /// If a dimension is dynamic it is represented with a -1.
         /// </summary>
-        /// <param name="axis">The axis to get the dimension of.</param>
-        /// <returns>The integer dimension of an axis.</returns>
+        /// <remarks>
+        /// Dynamic dimensions return <c>-1</c>. Supports negative axis indexing (e.g. <c>-1</c> for the last axis).
+        /// </remarks>
+        /// <param name="axis">The axis index (0-based, or negative for reverse indexing).</param>
+        /// <returns>The dimension value at the axis, or <c>-1</c> for dynamic dimensions.</returns>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when the axis is out of bounds.</exception>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(-1, 3, 224);
+        /// int batch = shape.Get(0);   // -1 (dynamic)
+        /// int channels = shape.Get(1); // 3
+        /// int last = shape.Get(-1);    // 224 (last axis)
+        /// ]]></code>
+        /// </example>
         public int Get(int axis)
         {
             return this[axis].ToInt();
@@ -478,17 +597,38 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Sets the dimension at a given axis.
         /// </summary>
-        /// <param name="axis">The axis to set the dimension of.</param>
-        /// <param name="dimension">The dimension of the axis. Use -1 for a dynamic dimension.</param>
+        /// <remarks>
+        /// Use <c>-1</c> for a dynamic dimension. Supports negative axis indexing.
+        /// </remarks>
+        /// <param name="axis">The axis index to set.</param>
+        /// <param name="dimension">The dimension value. Use <c>-1</c> for a dynamic dimension.</param>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = DynamicTensorShape.DynamicOfRank(3);
+        /// shape.Set(0, -1); // dynamic
+        /// shape.Set(1, 3);
+        /// shape.Set(2, 224);
+        /// // shape is (?, 3, 224)
+        /// ]]></code>
+        /// </example>
         public void Set(int axis, int dimension)
         {
             this[axis] = DynamicTensorDim.FromInt(dimension);
         }
 
         /// <summary>
-        /// Sets the dimension to be dynamic at a given axis.
+        /// Sets the dimension at a given axis to be dynamic.
         /// </summary>
-        /// <param name="axis">The axis to set the dimension of.</param>
+        /// <remarks>
+        /// Equivalent to <see cref="Set"/> with <c>-1</c>. Use when converting a previously static dimension to dynamic.
+        /// </remarks>
+        /// <param name="axis">The axis index to make dynamic.</param>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(-1, 3, 224, 224);
+        /// shape.SetDynamic(1); // make dimension 1 dynamic (?, ?, 224, 224)
+        /// ]]></code>
+        /// </example>
         public void SetDynamic(int axis)
         {
             this[axis] = DynamicTensorDim.Unknown;
@@ -527,10 +667,21 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// DynamicTensorShape with given rank and all dimensions 1.
+        /// Creates a shape with the given rank and all dimensions equal to 1.
         /// </summary>
-        /// <param name="rank">The rank of the dynamic tensor shape.</param>
-        /// <returns>The dynamic tensor shape of ones.</returns>
+        /// <remarks>
+        /// Use for broadcasting or as a base shape to modify with <see cref="Set"/>. Rank <c>0</c> gives a scalar shape. Rank <c>1</c> gives <c>(1)</c>.
+        /// </remarks>
+        /// <param name="rank">The rank of the shape. The maximum rank is <see cref="TensorShape.maxRank"/> (<c>8</c>).</param>
+        /// <returns>A shape of the form <c>(1, 1, ..., 1)</c> with the given rank.</returns>
+        /// <exception cref="UnityEngine.Assertions.AssertionException">Thrown when rank is out of range.</exception>
+        /// <example>
+        /// <para>Create scalar and vector shapes of ones.</para>
+        /// <code lang="cs"><![CDATA[
+        /// var scalarShape = DynamicTensorShape.Ones(0);  // ()
+        /// var vectorShape = DynamicTensorShape.Ones(1);  // (1)
+        /// ]]></code>
+        /// </example>
         public static DynamicTensorShape Ones(int rank)
         {
             Logger.AssertIsTrue(0 <= rank && rank <= TensorShape.maxRank, "ValueError: DynamicTensorShape are capped to rank=8, cannot create empty shape of rank {0}", rank);
@@ -579,9 +730,18 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Returns a string that represents the `DynamicTensorShape`.
+        /// Returns a string representation of the shape.
         /// </summary>
-        /// <returns>The string representation of the `DynamicTensorShape`.</returns>
+        /// <remarks>
+        /// Dynamic dimensions are shown as <c>?</c> followed by a parameter index. Dynamic rank returns <c>?</c>.
+        /// </remarks>
+        /// <returns>The string representation, e.g. <c>(d0, 3, 224, 224)</c> or <c>(1, 3, 224, 224)</c>.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(1, 3, -1, -1);
+        /// var string = shape.ToString(); // "(1, 3, ?, ?)"
+        /// ]]></code>
+        /// </example>
         public override string ToString()
         {
             return ToString(p => "d" + p);
@@ -607,10 +767,8 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Wraps axis to positive index between 0,rank
-        /// (5,2,3,4)
-        /// axis = -1 => axis_out = 3
-        /// axis = 1 => axis_out = 1
+        /// Wraps axis to positive index between <c>0</c> and <c>rank</c>.
+        /// <c>(5, 2, 3, 4)</c>: <c>axis = -1</c> gives <c>axis_out = 3</c>; <c>axis = 1</c> gives <c>axis_out = 1</c>.
         /// </summary>
         internal int Axis(int axis)
         {
@@ -619,7 +777,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Removes axes of length 1. For example, if the `DynamicTensorShape` is (5, 1, 3, 1), the method returns (5, 3).
+        /// Removes axes of length 1. For example, if the <see cref="DynamicTensorShape"/> is <c>(5, 1, 3, 1)</c>, the method returns <c>(5, 3)</c>.
         /// </summary>
         internal DynamicTensorShape Squeeze()
         {
@@ -648,7 +806,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Removes the axis if its length is 1. For example, if `DynamicTensorShape` is (5, 1, 3, 1) and `axis` is 1, the method returns (5, 3, 1).
+        /// Removes the axis if its length is 1. For example, if <see cref="DynamicTensorShape"/> is <c>(5, 1, 3, 1)</c> and <c>axis</c> is <c>1</c>, the method returns <c>(5, 3, 1)</c>.
         /// </summary>
         internal DynamicTensorShape Squeeze(int axis)
         {
@@ -672,7 +830,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Removes axes if their length is 1. For example, if `DynamicTensorShape` is (5, 1, 3, 1) and `axes` is {1, -1}, the method returns (5, 3).
+        /// Removes axes if their length is 1. For example, if <see cref="DynamicTensorShape"/> is <c>(5, 1, 3, 1)</c> and <c>axes</c> is <c>{1, -1}</c>, the method returns <c>(5, 3)</c>.
         /// </summary>
         internal DynamicTensorShape Squeeze(PartialTensor<int> axes)
         {
@@ -704,7 +862,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Inserts a new axis at `axis` position. For example if `DynamicTensorShape` is (2) and the value of `axis` is 0, the method returns (1, 2).
+        /// Inserts a new axis at <c>axis</c> position. For example, if <see cref="DynamicTensorShape"/> is <c>(2)</c> and <c>axis</c> is <c>0</c>, the method returns <c>(1, 2)</c>.
         /// </summary>
         internal DynamicTensorShape Unsqueeze(int axis)
         {
@@ -729,7 +887,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Inserts new axes at `axes` positions. For example if `DynamicTensorShape` is (2) and `axes` is {0, 1}, the method returns (1, 1, 2).
+        /// Inserts new axes at <c>axes</c> positions. For example, if <see cref="DynamicTensorShape"/> is <c>(2)</c> and <c>axes</c> is <c>{0, 1}</c>, the method returns <c>(1, 1, 2)</c>.
         /// </summary>
         internal DynamicTensorShape Unsqueeze(PartialTensor<int> axes)
         {
@@ -764,7 +922,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Broadcasts the `DynamicTensorShape` with another `DynamicTensorShape`, according to numpy tensor broadcasting rules.
+        /// Broadcasts the <see cref="DynamicTensorShape"/> with another <see cref="DynamicTensorShape"/>, according to numpy tensor broadcasting rules.
         /// </summary>
         internal DynamicTensorShape Broadcast(DynamicTensorShape other)
         {
@@ -791,7 +949,7 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Multiplies two `DynamicTensorShape` objects.
+        /// Multiplies two <see cref="DynamicTensorShape"/> objects.
         /// </summary>
         internal DynamicTensorShape MatMul(DynamicTensorShape other)
         {
@@ -865,11 +1023,21 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Compares two `DynamicTensorShape` objects. Returns `true` if the two objects have the same rank, and all their dimensions are equal.
+        /// Returns <see langword="true"/> if two shapes have the same rank and, for every dimension, the dimensions are either equal or at least one of them is dynamic.
         /// </summary>
-        /// <param name="a">The first `DynamicTensorShape` to compare.</param>
-        /// <param name="b">The second `DynamicTensorShape` to compare.</param>
-        /// <returns>Whether the two `DynamicTensorShape` objects are equal.</returns>
+        /// <remarks>
+        /// Returns <see langword="false"/> when either shape has dynamic rank.
+        /// </remarks>
+        /// <param name="a">The first shape to compare.</param>
+        /// <param name="b">The second shape to compare.</param>
+        /// <returns><see langword="true"/> if the shapes are equal. Otherwise <see langword="false"/>.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var a = new DynamicTensorShape(-1, 3, 224, 224);
+        /// var b = new DynamicTensorShape(1, 3, 224, 224);
+        /// bool equal = (a == b); // true
+        /// ]]></code>
+        /// </example>
         public static bool operator ==(DynamicTensorShape a, DynamicTensorShape b)
         {
             if (!a.hasRank || !b.hasRank)
@@ -896,21 +1064,40 @@ namespace Unity.InferenceEngine
         }
 
         /// <summary>
-        /// Compares two `DynamicTensorShape` objects. Returns `true` if the two shapes have a different or dynamic rank, or at least one of their dimensions are not equal.
+        /// Returns <see langword="true"/> if two shapes are not equal.
         /// </summary>
-        /// <param name="a">The first `DynamicTensorShape` to compare.</param>
-        /// <param name="b">The second `DynamicTensorShape` to compare.</param>
-        /// <returns>Whether the two `DynamicTensorShape` objects are not equal.</returns>
+        /// <remarks>
+        /// Returns true when either shape has dynamic rank, when ranks differ, or when any dimensions are static and differ.
+        /// </remarks>
+        /// <param name="a">The first shape to compare.</param>
+        /// <param name="b">The second shape to compare.</param>
+        /// <returns><see langword="true"/> if the shapes are not equal. Otherwise <see langword="false"/>.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var a = new DynamicTensorShape(-1, 3, 224);
+        /// var b = new DynamicTensorShape(1, 3, 224);
+        /// bool notEqual = (a != b); // false
+        /// ]]></code>
+        /// </example>
         public static bool operator !=(DynamicTensorShape a, DynamicTensorShape b)
         {
             return !(a == b);
         }
 
         /// <summary>
-        /// Determines whether the specified object is equal to the current `DynamicTensorShape`.
+        /// Determines whether the specified object is equal to this shape.
         /// </summary>
+        /// <remarks>
+        /// Returns <see langword="false"/> for null or non-<see cref="DynamicTensorShape"/> types. Uses the same equality logic as <see cref="operator =="/>.
+        /// </remarks>
         /// <param name="obj">The object to compare.</param>
-        /// <returns>Whether the object is equal to the current `DynamicTensorShape`.</returns>
+        /// <returns><see langword="true"/> if <paramref name="obj"/> is a <see cref="DynamicTensorShape"/> equal to this shape. Otherwise <see langword="false"/>.</returns>
+        /// <example>
+        /// <code lang="cs"><![CDATA[
+        /// var shape = new DynamicTensorShape(2, 3, 4);
+        /// bool same = shape.Equals(otherShape);
+        /// ]]></code>
+        /// </example>
         public override bool Equals(object obj)
         {
             // Check for null values and compare run-time types.
@@ -979,7 +1166,18 @@ namespace Unity.InferenceEngine
         /// <summary>
         /// Serves as the default hash function.
         /// </summary>
+        /// <remarks>
+        /// The hash code is based on rank and all dimension values.
+        /// </remarks>
         /// <returns>The calculated hash code.</returns>
+        /// <example>
+        /// <para>Use with hash-based collections such as <c>HashSet</c> or <c>Dictionary</c>.</para>
+        /// <code lang="cs"><![CDATA[
+        /// var shape1 = new DynamicTensorShape(1, 3, 224, 224);
+        /// var shape2 = new DynamicTensorShape(1, 3, 224, 224);
+        /// var seen = new HashSet<DynamicTensorShape> { shape1, shape2 };
+        /// ]]></code>
+        /// </example>
         public override int GetHashCode()
         {
             return HashCode.Combine(m_IsRankDynamic, m_Rank, HashCode.Combine(m_D7, m_D6, m_D5, m_D4, m_D3, m_D2, m_D1, m_D0));

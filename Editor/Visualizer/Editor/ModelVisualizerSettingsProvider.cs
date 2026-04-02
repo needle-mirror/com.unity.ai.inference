@@ -28,8 +28,10 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Editor
         {
             m_SerializedObject.Update();
 
-            EditorGUILayout.LabelField("Model Visualizer Settings", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(6);
+            GUILayout.BeginVertical();
+            GUILayout.Space(12);
 
             EditorGUILayout.PropertyField(m_CanvasControlScheme, new GUIContent("Canvas Control Scheme"));
 
@@ -39,6 +41,9 @@ namespace Unity.InferenceEngine.Editor.Visualizer.Editor
                 ModelVisualizerSettings.instance.ResetToDefaults();
                 m_SerializedObject.Update();
             }
+
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
 
             // Check if properties were modified
             var wasModified = m_SerializedObject.ApplyModifiedProperties();

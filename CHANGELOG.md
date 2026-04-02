@@ -7,6 +7,11 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-04-02
+
+### Fixed
+- Documentation fix
+  
 ## [2.6.0] - 2026-03-20
 
 ### Added
@@ -30,7 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fix when GPU allocations (`ComputeTensorData`) are used for tensors without a corresponding backend.
 - Prevent crashes when closing the editor while in Play mode
 - Fixed memory leak in PyTorch Import
-- Fix GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute
+- Fix GPU crash for convolution with padding on GPU compute
 - Fixed issue with `Split` operator when importing `.sentis` file
 
 ## [2.5.0] - 2026-01-23
@@ -70,7 +75,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Migrate Mono APIs to CoreCLR-compatible APIs
 
 ### Fixed
-- Editor crash when quitting in play mode
+- Editor crash when quitting in Play Mode
 - Memory Leak in FuseConstantPass
 - `Clip` operator improvement: no longer need CPU fallback for min/max parameters
 - `Mod` operator fix: on some platform with float operands, could return incorrect value when one of them was 0

@@ -1,7 +1,7 @@
 {
   "name": "com.unity.ai.inference",
   "displayName": "Sentis",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "unity": "6000.0",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/ai for more resources.",
   "dependencies": {
@@ -15,16 +15,16 @@
     "com.unity.ai.inference.tests": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- Officially support ONNX opset up to version 25\n- Functional methods for `Swish` and `RMSNorm`\n- Support for the `alpha` argument for the `Swish` operator\n- Improved analytics and error reporting when importing models with unsupported operators\n- Now supporting Fast Enter Play Mode for CoreCLR compatibility\n- Added support for `Buffer` in PyTorch import\n- Tokenizer: Generic truncation with support for `longestfirst`, `onlyfirst` and `onlysecond`\n\n### Changed\n- Now using Unity's `Mathematics.Random` instead of `System.Random`\n- Improved documentation for the `Tensor` and `Functional` APIs\n- Maintenance of documentation links\n- Updated documentation for Cubic interpolation mode support limitations\n\n### Fixed\n- Updated behavior of `ReduceL1`, `ReduceL2`, `ReduceSumSquare` and `ReduceLogSum` operators when argument `noop_with_empty_axes` is `true` and `axes` are empty\n- `Interpolate` issue with argument `scaleFactor`\n- Fix when GPU allocations (`ComputeTensorData`) are used for tensors without a corresponding backend.\n- Prevent crashes when closing the editor while in Play mode\n- Fixed memory leak in PyTorch Import\n- Fix GPU crash on Nintendo Switch 2 for convolution with padding on GPU compute\n- Fixed issue with `Split` operator when importing `.sentis` file"
+    "changelog": "### Fixed\n- Documentation fix"
   },
   "upmCi": {
-    "footprint": "52dfaadfc86a8d0bdd56877678efe3572844c551"
+    "footprint": "7015f57731c4f8bfa0c0e7714e3931d999611791"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.ai.inference@2.6/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "f2ef1f90887483a6e5134c1330925c4f13be899f"
+    "revision": "ee0fb239bfee8fc968d32e221d392e46b20bf5bc"
   },
   "samples": [
     {
